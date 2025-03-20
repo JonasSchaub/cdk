@@ -1559,13 +1559,12 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         SmilesGenerator smiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer originalMolecule;
-        SugarRemovalUtility sugarRemovalUtil = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
         originalMolecule = smiPar.parseSmiles(
                 //CNP0138295
                 "O=CC(O)C(O)C(O)C(O)COC(O)(C(O)COC(=O)C(O)C(O)C(O)C(O)COC1=CC=CC=2C(=O)C3=CC(=CC(O)=C3C(=O)C12)C)C(O)C(O)C=O");
         List<IAtomContainer> beforeSplittingList = new ArrayList<>(1);
         beforeSplittingList.add(originalMolecule);
-        List<IAtomContainer> afterSplittingList = sugarRemovalUtil.splitEtherEsterAndPeroxideBonds(beforeSplittingList);
+        List<IAtomContainer> afterSplittingList = SugarRemovalUtility.splitEtherEsterAndPeroxideBonds(beforeSplittingList);
         List<String> smilesAfterSplittingList = new ArrayList<>(3);
         for (IAtomContainer fragment : afterSplittingList) {
             String smilesCode = smiGen.create(fragment);
@@ -1638,6 +1637,23 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         Assertions.assertEquals(
                 "CCC",
                 smilesCode);
+    }
+
+    /**
+     *
+     *
+     * @throws Exception
+     */
+    @Test
+    void sugarExtractionTest() throws Exception {
+        SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
+        SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.Stereo);
+        IAtomContainer mol = smiPar.parseSmiles("C=CC1C(C[C@@H]2NCCC3=C2NC2=CC=CC=C32)C(C(=O)O)=CO[C@H]1O[C@@H]1O[C@H](CO)[C@@H](O)[C@H](O)[C@H]1O");
+        SugarRemovalUtility sru = new SugarRemovalUtility(SilentChemObjectBuilder.getInstance());
+        List<IAtomContainer> candidates = sru.removeAndReturnCircularAndLinearSugars(mol);
+        for (IAtomContainer candidate : candidates) {
+            System.out.println(smiGen.create(candidate));
+        }
     }
 
     /**
