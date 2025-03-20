@@ -33,6 +33,10 @@ import org.openscience.cdk.interfaces.IAtomContainerSet;
 import org.openscience.cdk.interfaces.IBond;
 import org.openscience.cdk.interfaces.IChemObjectBuilder;
 import org.openscience.cdk.interfaces.IElement;
+import org.openscience.cdk.interfaces.ILonePair;
+import org.openscience.cdk.interfaces.IPseudoAtom;
+import org.openscience.cdk.interfaces.ISingleElectron;
+import org.openscience.cdk.interfaces.IStereoElement;
 import org.openscience.cdk.isomorphism.DfPattern;
 import org.openscience.cdk.isomorphism.Mappings;
 import org.openscience.cdk.isomorphism.UniversalIsomorphismTester;
@@ -49,6 +53,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -481,6 +486,108 @@ public class SugarRemovalUtility {
         should also be false.*/
         this.detectLinearAcidicSugarsSetting = false;
         this.restoreDefaultSettings();
+    }
+
+    /**
+     *
+     * @param mol
+     * @param markAttachPointsByR
+     * @return
+     */
+    public List<IAtomContainer> copyAndExtractAglyconeAndCircularSugars(IAtomContainer mol, boolean markAttachPointsByR) {
+        //setup and copying
+        float loadFactor = 0.75f;
+        int atomMapInitCapacity = (int)(mol.getAtomCount() * (1.0f / loadFactor) + 2.0f);
+        int bondMapInitCapacity = (int)(mol.getBondCount() * (1.0f / loadFactor) + 2.0f);
+        HashMap<IAtom, IAtom> origAtomToAtomAglycone = new HashMap<>(atomMapInitCapacity);
+        HashMap<IBond, IBond> origBondToBondAglycone = new HashMap<>(bondMapInitCapacity);
+        HashMap<IAtom, IAtom> origAtomToAtomSugars = new HashMap<>(atomMapInitCapacity);
+        HashMap<IBond, IBond> origBondToBondSugars = new HashMap<>(bondMapInitCapacity);
+        IAtomContainer copyForAglcone = SugarRemovalUtility.deeperCopy(mol, origAtomToAtomAglycone, origBondToBondAglycone);
+        IAtomContainer copyForSugars = SugarRemovalUtility.deeperCopy(mol, origAtomToAtomSugars, origBondToBondSugars);
+        //remove aglycone atoms from sugar container
+        boolean wasSugarRemoved = this.removeCircularSugars(copyForAglcone);
+        if (!wasSugarRemoved) {
+            List<IAtomContainer> results = new ArrayList<>(1);
+            results.add(copyForAglcone);
+            return results;
+        }
+        for (IAtom atom : mol.atoms()) {
+            if (copyForAglcone.contains(origAtomToAtomAglycone.get(atom))) {
+                copyForSugars.removeAtom(origAtomToAtomSugars.get(atom));
+            }
+        }
+        //identify bonds that were broken between sugar moieties and aglycone
+        // -> saturate them with R or H
+        // -> copy the connection atom (glycosidic O/N/S/C etc.) from the aglycone to the sugar, along with its stereo element
+        for (IBond bond : mol.bonds()) {
+            //bond not in aglycone or sugars, so it was broken during sugar removal
+            if (!copyForAglcone.contains(origBondToBondAglycone.get(bond)) && !copyForSugars.contains(origBondToBondSugars.get(bond))) {
+                for (IAtom atom : bond.atoms()) {
+                    //bond atom in aglycone -> saturate with H or R
+                    if (copyForAglcone.contains(origAtomToAtomAglycone.get(atom))) {
+                        if (markAttachPointsByR) {
+                            IPseudoAtom tmpRAtom = atom.getBuilder().newInstance(IPseudoAtom.class, "R");
+                            tmpRAtom.setAttachPointNum(1);
+                            tmpRAtom.setImplicitHydrogenCount(0);
+                            copyForAglcone.addAtom(tmpRAtom);
+                            IBond tmpNewBond;
+                            if (bond.getBegin().equals(atom)) {
+                                tmpNewBond = atom.getBuilder().newInstance(IBond.class, origAtomToAtomAglycone.get(atom), tmpRAtom, IBond.Order.SINGLE);
+                            } else {
+                                tmpNewBond = atom.getBuilder().newInstance(IBond.class, tmpRAtom, origAtomToAtomAglycone.get(atom), IBond.Order.SINGLE);
+                            }
+                            copyForAglcone.addBond(tmpNewBond);
+                        } else {
+                            origAtomToAtomAglycone.get(atom).setImplicitHydrogenCount(origAtomToAtomAglycone.get(atom).getImplicitHydrogenCount() + 1);
+                        }
+                    //bond atom in sugar -> get the formerly connected atom from the aglycone and copy it
+                    } else {
+                        IAtom otherAtom = bond.getOther(atom);
+                        IAtom cpyOtherAtom = SugarRemovalUtility.deeperCopy(otherAtom, copyForSugars);
+                        IBond newBond;
+                        if (bond.getBegin().equals(atom)) {
+                            newBond = atom.getBuilder().newInstance(IBond.class, origAtomToAtomSugars.get(atom), cpyOtherAtom, IBond.Order.SINGLE);
+                        } else {
+                            newBond = atom.getBuilder().newInstance(IBond.class, cpyOtherAtom, origAtomToAtomSugars.get(atom), IBond.Order.SINGLE);
+                        }
+                        copyForSugars.addBond(newBond);
+                        origAtomToAtomSugars.put(bond.getOther(atom), cpyOtherAtom);
+                        origBondToBondSugars.put(bond, newBond);
+                        //saturate with H or R
+                        if (markAttachPointsByR) {
+                            IPseudoAtom tmpRAtom = atom.getBuilder().newInstance(IPseudoAtom.class, "R");
+                            tmpRAtom.setAttachPointNum(1);
+                            tmpRAtom.setImplicitHydrogenCount(0);
+                            copyForSugars.addAtom(tmpRAtom);
+                            IBond bondToR = atom.getBuilder().newInstance(IBond.class, cpyOtherAtom, tmpRAtom, IBond.Order.SINGLE);
+                            copyForSugars.addBond(bondToR);
+                        } else {
+                            //TODO experiment with this more
+                            cpyOtherAtom.setImplicitHydrogenCount((int) (cpyOtherAtom.getImplicitHydrogenCount() + mol.getBondOrderSum(otherAtom) - 1));
+                        }
+                        //copy stereo elements for the broken bond to preserve the configuration in the sugar
+                        for (IStereoElement elem : mol.stereoElements()) {
+                            if (elem.contains(bond.getBegin()) && elem.contains(bond.getEnd())) {
+                                copyForSugars.addStereoElement(elem.map(origAtomToAtomSugars, origBondToBondSugars));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        //return value preparations, partition disconnected sugars
+        List<IAtomContainer> results = new ArrayList<>(mol.getAtomCount());
+        results.add(0, copyForAglcone);
+        if (ConnectivityChecker.isConnected(copyForSugars)) {
+            results.add(copyForSugars);
+        } else {
+            for (IAtomContainer part : ConnectivityChecker.partitionIntoMolecules(copyForSugars)) {
+                if (!part.isEmpty())
+                    results.add(part);
+            }
+        }
+        return results;
     }
 
     /**
@@ -3392,5 +3499,84 @@ public class SugarRemovalUtility {
             }
         }
         return processedCandidates;
+    }
+
+    /**
+     *
+     * @param mol
+     * @param origToCopyAtomMap
+     * @param origToCopyBondMap
+     * @return
+     */
+    protected static IAtomContainer deeperCopy(
+            IAtomContainer mol,
+            HashMap<IAtom, IAtom> origToCopyAtomMap,
+            HashMap<IBond, IBond> origToCopyBondMap) {
+        IAtomContainer copy = mol.getBuilder().newAtomContainer();
+        // atoms
+        for (IAtom atom : mol.atoms()) {
+            IAtom cpyAtom = SugarRemovalUtility.deeperCopy(atom, copy);
+            origToCopyAtomMap.put(atom, cpyAtom);
+        }
+        // bonds
+        for (IBond bond : mol.bonds()) {
+            IAtom beg = origToCopyAtomMap.get(bond.getBegin());
+            IAtom end = origToCopyAtomMap.get(bond.getEnd());
+            if (beg == null || end == null || beg.getContainer() != end.getContainer())
+                continue;
+            IBond newBond = SugarRemovalUtility.deeperCopy(bond, beg, end);
+            origToCopyBondMap.put(bond, newBond);
+        }
+        // single electrons
+        for (ISingleElectron se : mol.singleElectrons()) {
+            IAtom atom = origToCopyAtomMap.get(se.getAtom());
+            if (!Objects.isNull(atom)) {
+                atom.getContainer().addSingleElectron(atom.getIndex());
+            }
+        }
+        // lone pairs
+        for (ILonePair lp : mol.lonePairs()) {
+            IAtom atom = origToCopyAtomMap.get(lp.getAtom());
+            if (!Objects.isNull(atom)) {
+                atom.getContainer().addLonePair(atom.getIndex());
+            }
+        }
+        // stereo elements
+        for (IStereoElement elem : mol.stereoElements()) {
+            copy.addStereoElement(elem.map(origToCopyAtomMap, origToCopyBondMap));
+        }
+        return copy;
+    }
+
+    /**
+     *
+     * @param atom
+     * @param container
+     * @return
+     */
+    protected static IAtom deeperCopy(IAtom atom, IAtomContainer container) {
+        IAtom cpyAtom = container.newAtom(atom.getAtomicNumber(),
+                atom.getImplicitHydrogenCount());
+        cpyAtom.setIsAromatic(atom.isAromatic());
+        cpyAtom.setValency(atom.getValency());
+        cpyAtom.setAtomTypeName(atom.getAtomTypeName());
+        cpyAtom.setFormalCharge(atom.getFormalCharge());
+        return cpyAtom;
+    }
+
+    /**
+     *
+     * @param bond
+     * @param begin
+     * @param end
+     * @return
+     */
+    protected static IBond deeperCopy(IBond bond, IAtom begin, IAtom end) {
+        IBond newBond = begin.getContainer().newBond(begin, end, bond.getOrder());
+        newBond.setIsAromatic(bond.isAromatic());
+        newBond.setStereo(bond.getStereo());
+        newBond.setDisplay(bond.getDisplay());
+        newBond.setIsInRing(bond.isInRing());
+        return newBond;
     }
 }
