@@ -488,12 +488,23 @@ public class SugarRemovalUtility {
         this.restoreDefaultSettings();
     }
 
+    //TODO: add option to only copy O or don't copy C when it is the connecting atom
     /**
-     *
-     * @param mol
-     * @param markAttachPointsByR
-     * @return
-     */
+      * Extracts the aglycone and circular sugar components from a molecule.
+      *
+      * This method makes a copy of the input molecule, removes circular sugars from the
+      * aglycone copy, and creates separate containers for the aglycone and sugar fragments.
+      * At the attachment points between sugars and the aglycone, it either adds R-groups or
+      * implicit hydrogens to saturate the connections based on the markAttachPointsByR parameter.
+      * Stereochemistry information at connection points is preserved.
+      *
+      * @param mol The input molecule to process
+      * @param markAttachPointsByR If true, attachment points are marked with R-groups;
+      *                           if false, implicit hydrogens are added instead
+      * @return A list of atom containers where the first element is the aglycone and
+      *         subsequent elements are the separated sugar fragments. If no sugar was
+      *         detected/removed, the list contains only the copy of the original molecule.
+      */
     public List<IAtomContainer> copyAndExtractAglyconeAndCircularSugars(IAtomContainer mol, boolean markAttachPointsByR) {
         //setup and copying
         float loadFactor = 0.75f;
@@ -533,13 +544,13 @@ public class SugarRemovalUtility {
                             copyForAglcone.addAtom(tmpRAtom);
                             IBond tmpNewBond;
                             if (bond.getBegin().equals(atom)) {
-                                tmpNewBond = atom.getBuilder().newInstance(IBond.class, origAtomToAtomAglycone.get(atom), tmpRAtom, IBond.Order.SINGLE);
+                                tmpNewBond = atom.getBuilder().newInstance(IBond.class, origAtomToAtomAglycone.get(atom), tmpRAtom, bond.getOrder());
                             } else {
-                                tmpNewBond = atom.getBuilder().newInstance(IBond.class, tmpRAtom, origAtomToAtomAglycone.get(atom), IBond.Order.SINGLE);
+                                tmpNewBond = atom.getBuilder().newInstance(IBond.class, tmpRAtom, origAtomToAtomAglycone.get(atom), bond.getOrder());
                             }
                             copyForAglcone.addBond(tmpNewBond);
                         } else {
-                            origAtomToAtomAglycone.get(atom).setImplicitHydrogenCount(origAtomToAtomAglycone.get(atom).getImplicitHydrogenCount() + 1);
+                            origAtomToAtomAglycone.get(atom).setImplicitHydrogenCount(origAtomToAtomAglycone.get(atom).getImplicitHydrogenCount() + bond.getOrder().numeric());
                         }
                     //bond atom in sugar -> get the formerly connected atom from the aglycone and copy it
                     } else {
@@ -547,9 +558,9 @@ public class SugarRemovalUtility {
                         IAtom cpyOtherAtom = SugarRemovalUtility.deeperCopy(otherAtom, copyForSugars);
                         IBond newBond;
                         if (bond.getBegin().equals(atom)) {
-                            newBond = atom.getBuilder().newInstance(IBond.class, origAtomToAtomSugars.get(atom), cpyOtherAtom, IBond.Order.SINGLE);
+                            newBond = atom.getBuilder().newInstance(IBond.class, origAtomToAtomSugars.get(atom), cpyOtherAtom, bond.getOrder());
                         } else {
-                            newBond = atom.getBuilder().newInstance(IBond.class, cpyOtherAtom, origAtomToAtomSugars.get(atom), IBond.Order.SINGLE);
+                            newBond = atom.getBuilder().newInstance(IBond.class, cpyOtherAtom, origAtomToAtomSugars.get(atom), bond.getOrder());
                         }
                         copyForSugars.addBond(newBond);
                         origAtomToAtomSugars.put(bond.getOther(atom), cpyOtherAtom);
@@ -560,11 +571,11 @@ public class SugarRemovalUtility {
                             tmpRAtom.setAttachPointNum(1);
                             tmpRAtom.setImplicitHydrogenCount(0);
                             copyForSugars.addAtom(tmpRAtom);
-                            IBond bondToR = atom.getBuilder().newInstance(IBond.class, cpyOtherAtom, tmpRAtom, IBond.Order.SINGLE);
+                            IBond bondToR = atom.getBuilder().newInstance(IBond.class, cpyOtherAtom, tmpRAtom, bond.getOrder());
                             copyForSugars.addBond(bondToR);
+                            cpyOtherAtom.setImplicitHydrogenCount((int) (cpyOtherAtom.getImplicitHydrogenCount() + mol.getBondOrderSum(otherAtom) - (1 + bond.getOrder().numeric())));
                         } else {
-                            //TODO experiment with this more
-                            cpyOtherAtom.setImplicitHydrogenCount((int) (cpyOtherAtom.getImplicitHydrogenCount() + mol.getBondOrderSum(otherAtom) - 1));
+                            cpyOtherAtom.setImplicitHydrogenCount((int) (cpyOtherAtom.getImplicitHydrogenCount() + mol.getBondOrderSum(otherAtom) - bond.getOrder().numeric()));
                         }
                         //copy stereo elements for the broken bond to preserve the configuration in the sugar
                         for (IStereoElement elem : mol.stereoElements()) {

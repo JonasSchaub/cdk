@@ -1654,6 +1654,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         //IAtomContainer mol = smiPar.parseSmiles("CC(=O)N[C@H]1[C@H](O[C@H]2[C@H](O)[C@@H](NC(C)=O)[C@@H](OP(=O)(O)OP(=O)(O)OCCC(C)CC/C=C(\\C)CC/C=C(\\C)CC/C=C(\\C)CCC=C(C)C)O[C@@H]2CO)O[C@H](CO)[C@@H](O[C@@H]2O[C@H](CO[C@H]3O[C@H](CO[C@H]4O[C@H](CO)[C@@H](O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]5O)[C@H](O)[C@@H]4O)[C@@H](O)[C@H](O[C@H]4O[C@H](CO)[C@@H](O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]5O)[C@H](O)[C@@H]4O)[C@@H]3O)[C@@H](O)[C@H](O[C@H]3O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]3O[C@H]3O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]3O[C@H]3O[C@H](CO)[C@@H](O)[C@H](O[C@H]4O[C@H](CO)[C@@H](O)[C@H](O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@H]5O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@H]5O)[C@H]4O)[C@@H]3O)[C@@H]2O)[C@@H]1O");
         SugarRemovalUtility sru = new SugarRemovalUtility(SilentChemObjectBuilder.getInstance());
         String[] glycosidicNP = new String[] {
+                "C=CC1C(C[C@@H]2NCCC3=C2NC2=CC=CC=C32)C(C(=O)O)=CO[C@H]1O[C@@H]1O[C@H](CO)[C@@H](O)[C@H](O)[C@H]1O",
                 "CC(N)C(=O)NC(CCC(N)=O)C(=O)NOC1OC(O)C(O)C(O)C1O",
                 "CCCCCC=CC=CC(O)CC=CC=CC(=O)OC1C(O)C(C2=C(O)C=C(O)C=C2CO)OC(CO)C1OC1OC(C)C(O)C(O)C1OC1OC(O)C(O)C(O)C1O",
         "OC1OC(O)C(O)C1OC1C(OCCCCCCCCCCCCCCCCC)OC(OCCCCCCCCCCC)C(O)C1OC1C(O)C(O)C(O)OC(O)C1O",
@@ -1706,6 +1707,146 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
                 "O=C(O)CC1C(=CC2CCC=CC1C2OC3OC(CO)C4(OC(=C5N=C([CH-]C5=C4)C(C)C)CCCO)C(O)C3(O)CC)C(=O)OC",
                 "O=C(OC1C2=C(O)C=3C(=O)C=4C=CC=C(O)C4C(=O)C3C(O)=C2C(OC5OC(C)C(OC6OC(C)C(OC7OC(C(=O)CC7O)C)C(O)C6)C(N(C)C)C5)CC1(O)CC)C"
         };
+        for (String smiles : glycosidicNP) {
+            System.out.println(smiles + " input mol");
+            List<IAtomContainer> candidates = sru.copyAndExtractAglyconeAndCircularSugars(smiPar.parseSmiles(smiles), false);
+            for (IAtomContainer candidate : candidates) {
+                if (candidate.isEmpty() && candidates.indexOf(candidate) == 0) {
+                    System.out.println("[empty aglycone]");
+                    continue;
+                }
+                System.out.println(smiGen.create(candidate));
+            }
+        }
+    }
+
+    /**
+     * TODO: add special treatment for esters?
+     *
+     * @throws Exception
+     */
+    @Test
+    void sugarExtractionTestEster() throws Exception {
+        SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
+        SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.Stereo);
+        //CNP0225072.2
+        //IAtomContainer mol = smiPar.parseSmiles("C=CC1C(C[C@@H]2NCCC3=C2NC2=CC=CC=C32)C(C(=O)O)=CO[C@H]1O[C@@H]1O[C@H](CO)[C@@H](O)[C@H](O)[C@H]1O");
+        //CNP0083402.1
+        //IAtomContainer mol = smiPar.parseSmiles("CC(=O)N[C@H]1[C@H](O[C@H]2[C@H](O)[C@@H](NC(C)=O)[C@@H](OP(=O)(O)OP(=O)(O)OCCC(C)CC/C=C(\\C)CC/C=C(\\C)CC/C=C(\\C)CCC=C(C)C)O[C@@H]2CO)O[C@H](CO)[C@@H](O[C@@H]2O[C@H](CO[C@H]3O[C@H](CO[C@H]4O[C@H](CO)[C@@H](O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]5O)[C@H](O)[C@@H]4O)[C@@H](O)[C@H](O[C@H]4O[C@H](CO)[C@@H](O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]5O)[C@H](O)[C@@H]4O)[C@@H]3O)[C@@H](O)[C@H](O[C@H]3O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]3O[C@H]3O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]3O[C@H]3O[C@H](CO)[C@@H](O)[C@H](O[C@H]4O[C@H](CO)[C@@H](O)[C@H](O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@H]5O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@H]5O)[C@H]4O)[C@@H]3O)[C@@H]2O)[C@@H]1O");
+        SugarRemovalUtility sru = new SugarRemovalUtility(SilentChemObjectBuilder.getInstance());
+        String[] glycosidicNP = new String[] {"O=C1C=C(OC2=CC(OC(=O)C3OC(O)C(O)C(O)C3O)=C(O)C(O)=C12)C=4C=CC(O)=CC4"};
+        for (String smiles : glycosidicNP) {
+            System.out.println(smiles + " input mol");
+            List<IAtomContainer> candidates = sru.copyAndExtractAglyconeAndCircularSugars(smiPar.parseSmiles(smiles), false);
+            for (IAtomContainer candidate : candidates) {
+                if (candidate.isEmpty() && candidates.indexOf(candidate) == 0) {
+                    System.out.println("[empty aglycone]");
+                    continue;
+                }
+                System.out.println(smiGen.create(candidate));
+            }
+        }
+    }
+
+    /**
+     * TODO: this molecule creates issues (in batch processing!), investigate
+     *
+     * @throws Exception
+     */
+    @Test
+    void sugarExtractionTestBug() throws Exception {
+        SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
+        SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.Stereo);
+        //CNP0225072.2
+        //IAtomContainer mol = smiPar.parseSmiles("C=CC1C(C[C@@H]2NCCC3=C2NC2=CC=CC=C32)C(C(=O)O)=CO[C@H]1O[C@@H]1O[C@H](CO)[C@@H](O)[C@H](O)[C@H]1O");
+        //CNP0083402.1
+        //IAtomContainer mol = smiPar.parseSmiles("CC(=O)N[C@H]1[C@H](O[C@H]2[C@H](O)[C@@H](NC(C)=O)[C@@H](OP(=O)(O)OP(=O)(O)OCCC(C)CC/C=C(\\C)CC/C=C(\\C)CC/C=C(\\C)CCC=C(C)C)O[C@@H]2CO)O[C@H](CO)[C@@H](O[C@@H]2O[C@H](CO[C@H]3O[C@H](CO[C@H]4O[C@H](CO)[C@@H](O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]5O)[C@H](O)[C@@H]4O)[C@@H](O)[C@H](O[C@H]4O[C@H](CO)[C@@H](O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]5O)[C@H](O)[C@@H]4O)[C@@H]3O)[C@@H](O)[C@H](O[C@H]3O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]3O[C@H]3O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]3O[C@H]3O[C@H](CO)[C@@H](O)[C@H](O[C@H]4O[C@H](CO)[C@@H](O)[C@H](O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@H]5O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@H]5O)[C@H]4O)[C@@H]3O)[C@@H]2O)[C@@H]1O");
+        SugarRemovalUtility sru = new SugarRemovalUtility(SilentChemObjectBuilder.getInstance());
+        String[] glycosidicNP = new String[] {"OCC(O)C(O)C(O)C(O)C(O)C1OC(O)C(O)C(O)C1N"};
+        for (String smiles : glycosidicNP) {
+            System.out.println(smiles + " input mol");
+            List<IAtomContainer> candidates = sru.copyAndExtractAglyconeAndCircularSugars(smiPar.parseSmiles(smiles), false);
+            for (IAtomContainer candidate : candidates) {
+                if (candidate.isEmpty() && candidates.indexOf(candidate) == 0) {
+                    System.out.println("[empty aglycone]");
+                    continue;
+                }
+                System.out.println(smiGen.create(candidate));
+            }
+        }
+    }
+
+    /**
+     * TODO: this molecule creates issues (in batch processing), investigate
+     *
+     * @throws Exception
+     */
+    @Test
+    void sugarExtractionTestBug2() throws Exception {
+        SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
+        SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.Stereo);
+        //CNP0225072.2
+        //IAtomContainer mol = smiPar.parseSmiles("C=CC1C(C[C@@H]2NCCC3=C2NC2=CC=CC=C32)C(C(=O)O)=CO[C@H]1O[C@@H]1O[C@H](CO)[C@@H](O)[C@H](O)[C@H]1O");
+        //CNP0083402.1
+        //IAtomContainer mol = smiPar.parseSmiles("CC(=O)N[C@H]1[C@H](O[C@H]2[C@H](O)[C@@H](NC(C)=O)[C@@H](OP(=O)(O)OP(=O)(O)OCCC(C)CC/C=C(\\C)CC/C=C(\\C)CC/C=C(\\C)CCC=C(C)C)O[C@@H]2CO)O[C@H](CO)[C@@H](O[C@@H]2O[C@H](CO[C@H]3O[C@H](CO[C@H]4O[C@H](CO)[C@@H](O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]5O)[C@H](O)[C@@H]4O)[C@@H](O)[C@H](O[C@H]4O[C@H](CO)[C@@H](O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]5O)[C@H](O)[C@@H]4O)[C@@H]3O)[C@@H](O)[C@H](O[C@H]3O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]3O[C@H]3O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]3O[C@H]3O[C@H](CO)[C@@H](O)[C@H](O[C@H]4O[C@H](CO)[C@@H](O)[C@H](O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@H]5O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@H]5O)[C@H]4O)[C@@H]3O)[C@@H]2O)[C@@H]1O");
+        SugarRemovalUtility sru = new SugarRemovalUtility(SilentChemObjectBuilder.getInstance());
+        String[] glycosidicNP = new String[] {"O=C(O)CC(O)(C(=O)O)C(C(=O)O)CCCCCCCCCCCCCC"};
+        for (String smiles : glycosidicNP) {
+            System.out.println(smiles + " input mol");
+            List<IAtomContainer> candidates = sru.copyAndExtractAglyconeAndCircularSugars(smiPar.parseSmiles(smiles), false);
+            for (IAtomContainer candidate : candidates) {
+                if (candidate.isEmpty() && candidates.indexOf(candidate) == 0) {
+                    System.out.println("[empty aglycone]");
+                    continue;
+                }
+                System.out.println(smiGen.create(candidate));
+            }
+        }
+    }
+
+    /**
+     * TODO: this molecule creates issues (in batch processing), investigate
+     *
+     * @throws Exception
+     */
+    @Test
+    void sugarExtractionTestBug3() throws Exception {
+        SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
+        SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.Stereo);
+        //CNP0225072.2
+        //IAtomContainer mol = smiPar.parseSmiles("C=CC1C(C[C@@H]2NCCC3=C2NC2=CC=CC=C32)C(C(=O)O)=CO[C@H]1O[C@@H]1O[C@H](CO)[C@@H](O)[C@H](O)[C@H]1O");
+        //CNP0083402.1
+        //IAtomContainer mol = smiPar.parseSmiles("CC(=O)N[C@H]1[C@H](O[C@H]2[C@H](O)[C@@H](NC(C)=O)[C@@H](OP(=O)(O)OP(=O)(O)OCCC(C)CC/C=C(\\C)CC/C=C(\\C)CC/C=C(\\C)CCC=C(C)C)O[C@@H]2CO)O[C@H](CO)[C@@H](O[C@@H]2O[C@H](CO[C@H]3O[C@H](CO[C@H]4O[C@H](CO)[C@@H](O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]5O)[C@H](O)[C@@H]4O)[C@@H](O)[C@H](O[C@H]4O[C@H](CO)[C@@H](O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]5O)[C@H](O)[C@@H]4O)[C@@H]3O)[C@@H](O)[C@H](O[C@H]3O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]3O[C@H]3O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]3O[C@H]3O[C@H](CO)[C@@H](O)[C@H](O[C@H]4O[C@H](CO)[C@@H](O)[C@H](O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@H]5O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@H]5O)[C@H]4O)[C@@H]3O)[C@@H]2O)[C@@H]1O");
+        SugarRemovalUtility sru = new SugarRemovalUtility(SilentChemObjectBuilder.getInstance());
+        String[] glycosidicNP = new String[] {"OCC(O)C(O)C(O)C(O)C1OC(CO)C(O)C(O)C1O"};
+        for (String smiles : glycosidicNP) {
+            System.out.println(smiles + " input mol");
+            List<IAtomContainer> candidates = sru.copyAndExtractAglyconeAndCircularSugars(smiPar.parseSmiles(smiles), false);
+            for (IAtomContainer candidate : candidates) {
+                if (candidate.isEmpty() && candidates.indexOf(candidate) == 0) {
+                    System.out.println("[empty aglycone]");
+                    continue;
+                }
+                System.out.println(smiGen.create(candidate));
+            }
+        }
+    }
+
+    /**
+     * TODO: this molecule creates issues (in batch processing), investigate
+     *
+     * @throws Exception
+     */
+    @Test
+    void sugarExtractionTestBug4() throws Exception {
+        SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
+        SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.Stereo);
+        //CNP0225072.2
+        //IAtomContainer mol = smiPar.parseSmiles("C=CC1C(C[C@@H]2NCCC3=C2NC2=CC=CC=C32)C(C(=O)O)=CO[C@H]1O[C@@H]1O[C@H](CO)[C@@H](O)[C@H](O)[C@H]1O");
+        //CNP0083402.1
+        //IAtomContainer mol = smiPar.parseSmiles("CC(=O)N[C@H]1[C@H](O[C@H]2[C@H](O)[C@@H](NC(C)=O)[C@@H](OP(=O)(O)OP(=O)(O)OCCC(C)CC/C=C(\\C)CC/C=C(\\C)CC/C=C(\\C)CCC=C(C)C)O[C@@H]2CO)O[C@H](CO)[C@@H](O[C@@H]2O[C@H](CO[C@H]3O[C@H](CO[C@H]4O[C@H](CO)[C@@H](O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]5O)[C@H](O)[C@@H]4O)[C@@H](O)[C@H](O[C@H]4O[C@H](CO)[C@@H](O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]5O)[C@H](O)[C@@H]4O)[C@@H]3O)[C@@H](O)[C@H](O[C@H]3O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]3O[C@H]3O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]3O[C@H]3O[C@H](CO)[C@@H](O)[C@H](O[C@H]4O[C@H](CO)[C@@H](O)[C@H](O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@H]5O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@H]5O)[C@H]4O)[C@@H]3O)[C@@H]2O)[C@@H]1O");
+        SugarRemovalUtility sru = new SugarRemovalUtility(SilentChemObjectBuilder.getInstance());
+        String[] glycosidicNP = new String[] {"O=C(C=CC1=CC=C(O)C=C1)C=2C(=O)C(C(=O)C(O)(C2O)C3OC(CO)C(O)C(O)C3O)C(O)C4OCC(O)C(O)C4O"};
         for (String smiles : glycosidicNP) {
             System.out.println(smiles + " input mol");
             List<IAtomContainer> candidates = sru.copyAndExtractAglyconeAndCircularSugars(smiPar.parseSmiles(smiles), false);
