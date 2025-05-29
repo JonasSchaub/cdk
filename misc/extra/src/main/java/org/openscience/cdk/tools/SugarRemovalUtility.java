@@ -33,6 +33,10 @@ import org.openscience.cdk.interfaces.IAtomContainerSet;
 import org.openscience.cdk.interfaces.IBond;
 import org.openscience.cdk.interfaces.IChemObjectBuilder;
 import org.openscience.cdk.interfaces.IElement;
+import org.openscience.cdk.interfaces.ILonePair;
+import org.openscience.cdk.interfaces.IPseudoAtom;
+import org.openscience.cdk.interfaces.ISingleElectron;
+import org.openscience.cdk.interfaces.IStereoElement;
 import org.openscience.cdk.isomorphism.DfPattern;
 import org.openscience.cdk.isomorphism.Mappings;
 import org.openscience.cdk.isomorphism.UniversalIsomorphismTester;
@@ -49,6 +53,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -481,6 +486,119 @@ public class SugarRemovalUtility {
         should also be false.*/
         this.detectLinearAcidicSugarsSetting = false;
         this.restoreDefaultSettings();
+    }
+
+    //TODO: add option to only copy O or don't copy C when it is the connecting atom
+    /**
+      * Extracts the aglycone and circular sugar components from a molecule.
+      *
+      * This method makes a copy of the input molecule, removes circular sugars from the
+      * aglycone copy, and creates separate containers for the aglycone and sugar fragments.
+      * At the attachment points between sugars and the aglycone, it either adds R-groups or
+      * implicit hydrogens to saturate the connections based on the markAttachPointsByR parameter.
+      * Stereochemistry information at connection points is preserved.
+      *
+      * @param mol The input molecule to process
+      * @param markAttachPointsByR If true, attachment points are marked with R-groups;
+      *                           if false, implicit hydrogens are added instead
+      * @return A list of atom containers where the first element is the aglycone and
+      *         subsequent elements are the separated sugar fragments. If no sugar was
+      *         detected/removed, the list contains only the copy of the original molecule.
+      */
+    public List<IAtomContainer> copyAndExtractAglyconeAndCircularSugars(IAtomContainer mol, boolean markAttachPointsByR) {
+        //setup and copying
+        float loadFactor = 0.75f;
+        int atomMapInitCapacity = (int)(mol.getAtomCount() * (1.0f / loadFactor) + 2.0f);
+        int bondMapInitCapacity = (int)(mol.getBondCount() * (1.0f / loadFactor) + 2.0f);
+        HashMap<IAtom, IAtom> origAtomToAtomAglycone = new HashMap<>(atomMapInitCapacity);
+        HashMap<IBond, IBond> origBondToBondAglycone = new HashMap<>(bondMapInitCapacity);
+        HashMap<IAtom, IAtom> origAtomToAtomSugars = new HashMap<>(atomMapInitCapacity);
+        HashMap<IBond, IBond> origBondToBondSugars = new HashMap<>(bondMapInitCapacity);
+        IAtomContainer copyForAglcone = SugarRemovalUtility.deeperCopy(mol, origAtomToAtomAglycone, origBondToBondAglycone);
+        IAtomContainer copyForSugars = SugarRemovalUtility.deeperCopy(mol, origAtomToAtomSugars, origBondToBondSugars);
+        //remove aglycone atoms from sugar container
+        boolean wasSugarRemoved = this.removeCircularSugars(copyForAglcone);
+        if (!wasSugarRemoved) {
+            List<IAtomContainer> results = new ArrayList<>(1);
+            results.add(copyForAglcone);
+            return results;
+        }
+        for (IAtom atom : mol.atoms()) {
+            if (copyForAglcone.contains(origAtomToAtomAglycone.get(atom))) {
+                copyForSugars.removeAtom(origAtomToAtomSugars.get(atom));
+            }
+        }
+        //identify bonds that were broken between sugar moieties and aglycone
+        // -> saturate them with R or H
+        // -> copy the connection atom (glycosidic O/N/S/C etc.) from the aglycone to the sugar, along with its stereo element
+        for (IBond bond : mol.bonds()) {
+            //bond not in aglycone or sugars, so it was broken during sugar removal
+            if (!copyForAglcone.contains(origBondToBondAglycone.get(bond)) && !copyForSugars.contains(origBondToBondSugars.get(bond))) {
+                for (IAtom atom : bond.atoms()) {
+                    //bond atom in aglycone -> saturate with H or R
+                    if (copyForAglcone.contains(origAtomToAtomAglycone.get(atom))) {
+                        if (markAttachPointsByR) {
+                            IPseudoAtom tmpRAtom = atom.getBuilder().newInstance(IPseudoAtom.class, "R");
+                            tmpRAtom.setAttachPointNum(1);
+                            tmpRAtom.setImplicitHydrogenCount(0);
+                            copyForAglcone.addAtom(tmpRAtom);
+                            IBond tmpNewBond;
+                            if (bond.getBegin().equals(atom)) {
+                                tmpNewBond = atom.getBuilder().newInstance(IBond.class, origAtomToAtomAglycone.get(atom), tmpRAtom, bond.getOrder());
+                            } else {
+                                tmpNewBond = atom.getBuilder().newInstance(IBond.class, tmpRAtom, origAtomToAtomAglycone.get(atom), bond.getOrder());
+                            }
+                            copyForAglcone.addBond(tmpNewBond);
+                        } else {
+                            origAtomToAtomAglycone.get(atom).setImplicitHydrogenCount(origAtomToAtomAglycone.get(atom).getImplicitHydrogenCount() + bond.getOrder().numeric());
+                        }
+                    //bond atom in sugar -> get the formerly connected atom from the aglycone and copy it
+                    } else {
+                        IAtom otherAtom = bond.getOther(atom);
+                        IAtom cpyOtherAtom = SugarRemovalUtility.deeperCopy(otherAtom, copyForSugars);
+                        IBond newBond;
+                        if (bond.getBegin().equals(atom)) {
+                            newBond = atom.getBuilder().newInstance(IBond.class, origAtomToAtomSugars.get(atom), cpyOtherAtom, bond.getOrder());
+                        } else {
+                            newBond = atom.getBuilder().newInstance(IBond.class, cpyOtherAtom, origAtomToAtomSugars.get(atom), bond.getOrder());
+                        }
+                        copyForSugars.addBond(newBond);
+                        origAtomToAtomSugars.put(bond.getOther(atom), cpyOtherAtom);
+                        origBondToBondSugars.put(bond, newBond);
+                        //saturate with H or R
+                        if (markAttachPointsByR) {
+                            IPseudoAtom tmpRAtom = atom.getBuilder().newInstance(IPseudoAtom.class, "R");
+                            tmpRAtom.setAttachPointNum(1);
+                            tmpRAtom.setImplicitHydrogenCount(0);
+                            copyForSugars.addAtom(tmpRAtom);
+                            IBond bondToR = atom.getBuilder().newInstance(IBond.class, cpyOtherAtom, tmpRAtom, bond.getOrder());
+                            copyForSugars.addBond(bondToR);
+                            cpyOtherAtom.setImplicitHydrogenCount((int) (cpyOtherAtom.getImplicitHydrogenCount() + mol.getBondOrderSum(otherAtom) - (1 + bond.getOrder().numeric())));
+                        } else {
+                            cpyOtherAtom.setImplicitHydrogenCount((int) (cpyOtherAtom.getImplicitHydrogenCount() + mol.getBondOrderSum(otherAtom) - bond.getOrder().numeric()));
+                        }
+                        //copy stereo elements for the broken bond to preserve the configuration in the sugar
+                        for (IStereoElement elem : mol.stereoElements()) {
+                            if (elem.contains(bond.getBegin()) && elem.contains(bond.getEnd())) {
+                                copyForSugars.addStereoElement(elem.map(origAtomToAtomSugars, origBondToBondSugars));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        //return value preparations, partition disconnected sugars
+        List<IAtomContainer> results = new ArrayList<>(mol.getAtomCount());
+        results.add(0, copyForAglcone);
+        if (ConnectivityChecker.isConnected(copyForSugars)) {
+            results.add(copyForSugars);
+        } else {
+            for (IAtomContainer part : ConnectivityChecker.partitionIntoMolecules(copyForSugars)) {
+                if (!part.isEmpty())
+                    results.add(part);
+            }
+        }
+        return results;
     }
 
     /**
@@ -1435,7 +1553,7 @@ public class SugarRemovalUtility {
         if (moleculeParam.isEmpty()) {
             return false;
         }
-        this.addUniqueIndicesToAtoms(moleculeParam);
+        SugarRemovalUtility.addUniqueIndicesToAtoms(moleculeParam);
         List<IAtomContainer> sugarCandidates = this.getLinearSugarCandidates(moleculeParam);
         return !sugarCandidates.isEmpty();
     }
@@ -1459,7 +1577,7 @@ public class SugarRemovalUtility {
         if (moleculeParam.isEmpty()) {
             return false;
         }
-        this.addUniqueIndicesToAtoms(moleculeParam);
+        SugarRemovalUtility.addUniqueIndicesToAtoms(moleculeParam);
         List<IAtomContainer> sugarCandidates = this.getCircularSugarCandidates(moleculeParam);
         return !sugarCandidates.isEmpty();
     }
@@ -1484,7 +1602,7 @@ public class SugarRemovalUtility {
         if (moleculeParam.isEmpty()) {
             return false;
         }
-        this.addUniqueIndicesToAtoms(moleculeParam);
+        SugarRemovalUtility.addUniqueIndicesToAtoms(moleculeParam);
         List<IAtomContainer> circularSugarCandidates = this.getCircularSugarCandidates(moleculeParam);
         boolean containsCircularSugar = !circularSugarCandidates.isEmpty();
         List<IAtomContainer> linearSugarCandidates = this.getLinearSugarCandidates(moleculeParam);
@@ -1517,7 +1635,7 @@ public class SugarRemovalUtility {
         if (moleculeParam.isEmpty()) {
             return false;
         }
-        this.addUniqueIndicesToAtoms(moleculeParam);
+        SugarRemovalUtility.addUniqueIndicesToAtoms(moleculeParam);
         List<IAtomContainer> potentialSugarRings = this.detectPotentialSugarCycles(
                 moleculeParam,
                 this.detectSpiroRingsAsCircularSugarsSetting,
@@ -1526,7 +1644,7 @@ public class SugarRemovalUtility {
             return false;
         }
         IAtomContainer potentialSugarRing = potentialSugarRings.get(0);
-        boolean hasGlycosidicBond = this.hasGlycosidicBond(potentialSugarRing, moleculeParam);
+        boolean hasGlycosidicBond = SugarRemovalUtility.hasGlycosidicBond(potentialSugarRing, moleculeParam);
         boolean moleculeIsOnlyOneSugarRing;
         if (!hasGlycosidicBond) {
             //special exemption for molecules that only consist of a sugar ring and nothing else:
@@ -1723,7 +1841,7 @@ public class SugarRemovalUtility {
             returnList.add(0, moleculeParam);
             return returnList;
         }
-        this.addUniqueIndicesToAtoms(moleculeParam);
+        SugarRemovalUtility.addUniqueIndicesToAtoms(moleculeParam);
         if (this.preservationModeSetting != PreservationMode.ALL && !ConnectivityChecker.isConnected(moleculeParam)) {
             this.flagTooSmallDisconnectedPartsToPreserve(moleculeParam);
         }
@@ -1845,7 +1963,7 @@ public class SugarRemovalUtility {
             returnList.add(0, moleculeParam);
             return returnList;
         }
-        this.addUniqueIndicesToAtoms(moleculeParam);
+        SugarRemovalUtility.addUniqueIndicesToAtoms(moleculeParam);
         if (this.preservationModeSetting != PreservationMode.ALL && !ConnectivityChecker.isConnected(moleculeParam)) {
             this.flagTooSmallDisconnectedPartsToPreserve(moleculeParam);
         }
@@ -1985,7 +2103,7 @@ public class SugarRemovalUtility {
             returnList.add(0, moleculeParam);
             return returnList;
         }
-        this.addUniqueIndicesToAtoms(moleculeParam);
+        SugarRemovalUtility.addUniqueIndicesToAtoms(moleculeParam);
         if (this.preservationModeSetting != PreservationMode.ALL && !ConnectivityChecker.isConnected(moleculeParam)) {
             this.flagTooSmallDisconnectedPartsToPreserve(moleculeParam);
         }
@@ -2053,9 +2171,9 @@ public class SugarRemovalUtility {
         if (moleculeParam.isEmpty()) {
             return new ArrayList<>(0);
         }
-        boolean areIndicesSet = this.checkUniqueIndicesOfAtoms(moleculeParam);
+        boolean areIndicesSet = SugarRemovalUtility.checkUniqueIndicesOfAtoms(moleculeParam);
         if (!areIndicesSet) {
-            this.addUniqueIndicesToAtoms(moleculeParam);
+            SugarRemovalUtility.addUniqueIndicesToAtoms(moleculeParam);
         }
         List<IAtomContainer> potentialSugarRings = this.detectPotentialSugarCycles(moleculeParam,
                 this.detectSpiroRingsAsCircularSugarsSetting, this.detectCircularSugarsWithKetoGroupsSetting);
@@ -2074,7 +2192,7 @@ public class SugarRemovalUtility {
              */
             //do not remove rings without an attached glycosidic bond if this option is set
             if (this.detectCircularSugarsOnlyWithOGlycosidicBondSetting) {
-                boolean hasGlycosidicBond = this.hasGlycosidicBond(potentialSugarRing, moleculeParam);
+                boolean hasGlycosidicBond = SugarRemovalUtility.hasGlycosidicBond(potentialSugarRing, moleculeParam);
                 if (!hasGlycosidicBond) {
                     //special exemption for molecules that only consist of a sugar ring and nothing else:
                     // they should also be seen as candidate even though they do not have a glycosidic bond
@@ -2096,7 +2214,7 @@ public class SugarRemovalUtility {
             }
             //do not remove rings with 'too few' attached oxygens if this option is set
             if (this.detectCircularSugarsOnlyWithEnoughExocyclicOxygenAtomsSetting) {
-                int exocyclicOxygenCount = this.getExocyclicOxygenAtomCount(potentialSugarRing, moleculeParam);
+                int exocyclicOxygenCount = SugarRemovalUtility.getExocyclicOxygenAtomCount(potentialSugarRing, moleculeParam);
                 int atomsInRingCount = potentialSugarRing.getAtomCount();
                 boolean areEnoughOxygensAttached = this.doesRingHaveEnoughExocyclicOxygenAtoms(atomsInRingCount,
                         exocyclicOxygenCount);
@@ -2129,19 +2247,19 @@ public class SugarRemovalUtility {
         if (moleculeParam.isEmpty()) {
             return new ArrayList<>(0);
         }
-        boolean areIndicesSet = this.checkUniqueIndicesOfAtoms(moleculeParam);
+        boolean areIndicesSet = SugarRemovalUtility.checkUniqueIndicesOfAtoms(moleculeParam);
         if (!areIndicesSet) {
-            this.addUniqueIndicesToAtoms(moleculeParam);
+            SugarRemovalUtility.addUniqueIndicesToAtoms(moleculeParam);
         }
         List<IAtomContainer> sugarCandidates = this.detectLinearSugarCandidatesByPatternMatching(moleculeParam);
         //alternative ideas: SMARTS or matching the biggest patterns first and exclude the matched atoms
         if (!sugarCandidates.isEmpty()) {
-            sugarCandidates = this.combineOverlappingCandidates(sugarCandidates);
-            sugarCandidates = this.splitEtherEsterAndPeroxideBonds(sugarCandidates);
+            sugarCandidates = SugarRemovalUtility.combineOverlappingCandidates(sugarCandidates);
+            sugarCandidates = SugarRemovalUtility.splitEtherEsterAndPeroxideBonds(sugarCandidates);
             this.removeAtomsOfCircularSugarsFromCandidates(sugarCandidates, moleculeParam);
         }
         if (!this.detectLinearSugarsInRingsSetting && !sugarCandidates.isEmpty()) {
-            this.removeCyclicAtomsFromSugarCandidates(sugarCandidates, moleculeParam);
+            SugarRemovalUtility.removeCyclicAtomsFromSugarCandidates(sugarCandidates, moleculeParam);
         }
         if (!sugarCandidates.isEmpty()) {
             sugarCandidates = this.removeTooSmallAndTooLargeCandidates(sugarCandidates);
@@ -2159,9 +2277,9 @@ public class SugarRemovalUtility {
      * @param moleculeParam the disconnected input molecule to check
      */
     protected void flagTooSmallDisconnectedPartsToPreserve(IAtomContainer moleculeParam) {
-        boolean areIndicesSet = this.checkUniqueIndicesOfAtoms(moleculeParam);
+        boolean areIndicesSet = SugarRemovalUtility.checkUniqueIndicesOfAtoms(moleculeParam);
         if (!areIndicesSet) {
-            this.addUniqueIndicesToAtoms(moleculeParam);
+            SugarRemovalUtility.addUniqueIndicesToAtoms(moleculeParam);
         }
         float loadFactor = 0.75f;
         int indexToAtomMapInitCapacity = (int)(moleculeParam.getAtomCount() * (1.0f / loadFactor) + 2.0f);
@@ -2282,21 +2400,21 @@ public class SugarRemovalUtility {
     protected boolean isTerminal(IAtomContainer substructure,
                                IAtomContainer parentMolecule,
                                List<IAtomContainer> candidateList) {
-        if (!this.checkUniqueIndicesOfAtoms(parentMolecule)) {
-            this.addUniqueIndicesToAtoms(parentMolecule);
+        if (!SugarRemovalUtility.checkUniqueIndicesOfAtoms(parentMolecule)) {
+            SugarRemovalUtility.addUniqueIndicesToAtoms(parentMolecule);
         }
-        if (!this.checkUniqueIndicesOfAtoms(substructure)) {
-            this.addUniqueIndicesToAtoms(substructure);
+        if (!SugarRemovalUtility.checkUniqueIndicesOfAtoms(substructure)) {
+            SugarRemovalUtility.addUniqueIndicesToAtoms(substructure);
         }
         for (IAtomContainer candidate : candidateList) {
-            boolean areIndicesSet = this.checkUniqueIndicesOfAtoms(candidate);
+            boolean areIndicesSet = SugarRemovalUtility.checkUniqueIndicesOfAtoms(candidate);
             if (!areIndicesSet) {
-                this.addUniqueIndicesToAtoms(candidate);
+                SugarRemovalUtility.addUniqueIndicesToAtoms(candidate);
             }
         }
 
         boolean isTerminal;
-        IAtomContainer moleculeCopy = this.copy(parentMolecule);
+        IAtomContainer moleculeCopy = SugarRemovalUtility.basicCopy(parentMolecule);
         if (!ConnectivityChecker.isConnected(moleculeCopy)) {
             //since we are using isConnected() to determine whether the substructure
             // is terminal, the structure to start with needs to be connected; if
@@ -2500,7 +2618,7 @@ public class SugarRemovalUtility {
      * @param molecule atom container to copy
      * @return basic copy of the molecule
      */
-    protected IAtomContainer copy(IAtomContainer molecule) {
+    protected static IAtomContainer basicCopy(IAtomContainer molecule) {
         IAtomContainer copy = molecule.getBuilder().newInstance(IAtomContainer.class);
         if (molecule.isEmpty()) {
             return copy;
@@ -2533,7 +2651,7 @@ public class SugarRemovalUtility {
      *
      * @param moleculeParam the molecule that will be processed by the class
      */
-    protected void addUniqueIndicesToAtoms(IAtomContainer moleculeParam) {
+    protected static void addUniqueIndicesToAtoms(IAtomContainer moleculeParam) {
         if (moleculeParam.isEmpty()) {
             return;
         }
@@ -2553,7 +2671,7 @@ public class SugarRemovalUtility {
      * @param substructure the substructure to create an identifier for
      * @return the identifier string
      */
-    protected String generateSubstructureIdentifier(IAtomContainer substructure) {
+    protected static String generateSubstructureIdentifier(IAtomContainer substructure) {
         if (substructure.isEmpty()) {
             return "";
         }
@@ -2581,7 +2699,7 @@ public class SugarRemovalUtility {
      * @return true if every atom has an index property that is unique in the
      *         given molecule
      */
-    protected boolean checkUniqueIndicesOfAtoms(IAtomContainer moleculeParam) {
+    protected static boolean checkUniqueIndicesOfAtoms(IAtomContainer moleculeParam) {
         if (moleculeParam.isEmpty()) {
             return true;
         }
@@ -2639,9 +2757,9 @@ public class SugarRemovalUtility {
         if (moleculeParam.isEmpty()) {
             return new ArrayList<>(0);
         }
-        boolean areIndicesSet = this.checkUniqueIndicesOfAtoms(moleculeParam);
+        boolean areIndicesSet = SugarRemovalUtility.checkUniqueIndicesOfAtoms(moleculeParam);
         if (!areIndicesSet) {
-            this.addUniqueIndicesToAtoms(moleculeParam);
+            SugarRemovalUtility.addUniqueIndicesToAtoms(moleculeParam);
         }
         int[][] adjList = GraphUtil.toAdjList(moleculeParam);
         //efficient computation/partitioning of the ring systems
@@ -2664,7 +2782,7 @@ public class SugarRemovalUtility {
         /* Every atom of every ring is visited; If one atom is visited multiple times, it is in a fused ring or a spiro
          * atom connecting two spiro rings */
         for (IAtomContainer ring : ringFragments) {
-            String ringID = this.generateSubstructureIdentifier(ring);
+            String ringID = SugarRemovalUtility.generateSubstructureIdentifier(ring);
             //initial value false until one atom of the ring is visited more than once
             ringIdentifierToIsFusedOrSpiroMap.put(ringID, false);
             for (IAtom atom : ring.atoms()) {
@@ -2699,7 +2817,7 @@ public class SugarRemovalUtility {
             }
             if (!includeSpiroRings) {
                 //Filtering spiro rings if they should not be detected as sugars
-                String ringID = this.generateSubstructureIdentifier(isolatedRing);
+                String ringID = SugarRemovalUtility.generateSubstructureIdentifier(isolatedRing);
                 //if true, the ring is fused or spiro according to the map; but since only isolated cycles are queried,
                 // they are definitely spiro if the map returns true
                 if (Boolean.TRUE.equals(ringIdentifierToIsFusedOrSpiroMap.get(ringID))) {
@@ -2719,7 +2837,7 @@ public class SugarRemovalUtility {
                     /* note: another requirement of a suspected sugar ring should be that it contains only single bonds.
                      * This is not tested here because all the structures in the reference rings do meet this criterion.
                      * But a structure that does not meet this criterion could be added to the references by the user.*/
-                    boolean areAllExocyclicBondsSingle = this.areAllExocyclicBondsSingle(isolatedRing, moleculeParam, ignoreKetoGroups);
+                    boolean areAllExocyclicBondsSingle = SugarRemovalUtility.areAllExocyclicBondsSingle(isolatedRing, moleculeParam, ignoreKetoGroups);
                     if (!areAllExocyclicBondsSingle) {
                         //do not remove rings with non-single exocyclic bonds, they are not sugars (not an option!)
                         break;
@@ -2777,7 +2895,7 @@ public class SugarRemovalUtility {
      * @return true, if all exocyclic bonds connected to the ring are of single
      *         order
      */
-    protected boolean areAllExocyclicBondsSingle(IAtomContainer ringToTest, IAtomContainer originalMolecule, boolean ignoreKetoGroups) {
+    protected static boolean areAllExocyclicBondsSingle(IAtomContainer ringToTest, IAtomContainer originalMolecule, boolean ignoreKetoGroups) {
         if (ringToTest.isEmpty() || originalMolecule.isEmpty()) {
             return true;
         }
@@ -2851,7 +2969,7 @@ public class SugarRemovalUtility {
      *                         substructure to query the connected atoms from
      * @return true, if a glycosidic bond is detected
      */
-    protected boolean hasGlycosidicBond(IAtomContainer ringToTest, IAtomContainer originalMolecule) {
+    protected static boolean hasGlycosidicBond(IAtomContainer ringToTest, IAtomContainer originalMolecule) {
         if (ringToTest.isEmpty() || originalMolecule.isEmpty()) {
             return false;
         }
@@ -2911,12 +3029,12 @@ public class SugarRemovalUtility {
      *         ring and subsequent removal of too small remaining fragments
      */
     protected boolean isMoleculeEmptyAfterRemovalOfThisRing(IAtomContainer ringParam, IAtomContainer moleculeParam) {
-        if (!this.checkUniqueIndicesOfAtoms(moleculeParam)) {
-            this.addUniqueIndicesToAtoms(moleculeParam);
+        if (!SugarRemovalUtility.checkUniqueIndicesOfAtoms(moleculeParam)) {
+            SugarRemovalUtility.addUniqueIndicesToAtoms(moleculeParam);
         }
 
         boolean isMoleculeEmptyAfterRemoval;
-        IAtomContainer moleculeCopy = this.copy(moleculeParam);
+        IAtomContainer moleculeCopy = SugarRemovalUtility.basicCopy(moleculeParam);
         float loadFactor = 0.75f;
         int indexToAtomMapInitCapacity = (int)(moleculeCopy.getAtomCount() * (1.0f / loadFactor) + 2.0f);
         HashMap<Integer, IAtom> indexToAtomMap = new HashMap<>(indexToAtomMapInitCapacity, loadFactor);
@@ -2964,7 +3082,7 @@ public class SugarRemovalUtility {
      *                         queried from it
      * @return number of attached exocyclic oxygen atoms of the given ring
      */
-    protected int getExocyclicOxygenAtomCount(IAtomContainer ringToTest, IAtomContainer originalMolecule) {
+    protected static int getExocyclicOxygenAtomCount(IAtomContainer ringToTest, IAtomContainer originalMolecule) {
         int exocyclicOxygenCounter = 0;
         Iterable<IAtom> ringAtoms = ringToTest.atoms();
         for (IAtom ringAtom : ringAtoms) {
@@ -3089,7 +3207,7 @@ public class SugarRemovalUtility {
      * @return a list of distinct, non-overlapping substructures after combining
      *         every formerly overlapping structure
      */
-    protected List<IAtomContainer> combineOverlappingCandidates(List<IAtomContainer> candidateList) {
+    protected static List<IAtomContainer> combineOverlappingCandidates(List<IAtomContainer> candidateList) {
         if (candidateList == null || candidateList.isEmpty()) {
             return new ArrayList<>(0);
         }
@@ -3129,7 +3247,7 @@ public class SugarRemovalUtility {
      * @return a new list of candidates where all ether, ester, and peroxide
      *         bonds have been split and disconnected candidates separated
      */
-    protected List<IAtomContainer> splitEtherEsterAndPeroxideBonds(List<IAtomContainer> candidateList) {
+    protected static List<IAtomContainer> splitEtherEsterAndPeroxideBonds(List<IAtomContainer> candidateList) {
         if (candidateList == null ||candidateList.isEmpty()) {
             return new ArrayList<>(0);
         }
@@ -3238,8 +3356,8 @@ public class SugarRemovalUtility {
         if (candidateList == null || candidateList.isEmpty()) {
             return;
         }
-        if (!this.checkUniqueIndicesOfAtoms(parentMolecule)) {
-            this.addUniqueIndicesToAtoms(parentMolecule);
+        if (!SugarRemovalUtility.checkUniqueIndicesOfAtoms(parentMolecule)) {
+            SugarRemovalUtility.addUniqueIndicesToAtoms(parentMolecule);
         }
 
         //generating set of atom ids of atoms that are part of the circular sugars in the molecule
@@ -3266,8 +3384,8 @@ public class SugarRemovalUtility {
                 i = i - 1;
                 continue;
             }
-            if (!this.checkUniqueIndicesOfAtoms(candidate)) {
-                this.addUniqueIndicesToAtoms(candidate);
+            if (!SugarRemovalUtility.checkUniqueIndicesOfAtoms(candidate)) {
+                SugarRemovalUtility.addUniqueIndicesToAtoms(candidate);
             }
             for (IAtom candidateAtom : candidate.atoms()) {
                 int atomIndex = candidateAtom.getProperty(SugarRemovalUtility.INDEX_PROPERTY_KEY);
@@ -3310,7 +3428,7 @@ public class SugarRemovalUtility {
      * @param moleculeParam the molecule that is currently scanned for linear
      *                      sugars to detect its cycles
      */
-    protected void removeCyclicAtomsFromSugarCandidates(List<IAtomContainer> candidateList,
+    protected static void removeCyclicAtomsFromSugarCandidates(List<IAtomContainer> candidateList,
                                                         IAtomContainer moleculeParam) {
         if (candidateList == null || candidateList.isEmpty()) {
             return;
@@ -3392,5 +3510,84 @@ public class SugarRemovalUtility {
             }
         }
         return processedCandidates;
+    }
+
+    /**
+     *
+     * @param mol
+     * @param origToCopyAtomMap
+     * @param origToCopyBondMap
+     * @return
+     */
+    protected static IAtomContainer deeperCopy(
+            IAtomContainer mol,
+            HashMap<IAtom, IAtom> origToCopyAtomMap,
+            HashMap<IBond, IBond> origToCopyBondMap) {
+        IAtomContainer copy = mol.getBuilder().newAtomContainer();
+        // atoms
+        for (IAtom atom : mol.atoms()) {
+            IAtom cpyAtom = SugarRemovalUtility.deeperCopy(atom, copy);
+            origToCopyAtomMap.put(atom, cpyAtom);
+        }
+        // bonds
+        for (IBond bond : mol.bonds()) {
+            IAtom beg = origToCopyAtomMap.get(bond.getBegin());
+            IAtom end = origToCopyAtomMap.get(bond.getEnd());
+            if (beg == null || end == null || beg.getContainer() != end.getContainer())
+                continue;
+            IBond newBond = SugarRemovalUtility.deeperCopy(bond, beg, end);
+            origToCopyBondMap.put(bond, newBond);
+        }
+        // single electrons
+        for (ISingleElectron se : mol.singleElectrons()) {
+            IAtom atom = origToCopyAtomMap.get(se.getAtom());
+            if (!Objects.isNull(atom)) {
+                atom.getContainer().addSingleElectron(atom.getIndex());
+            }
+        }
+        // lone pairs
+        for (ILonePair lp : mol.lonePairs()) {
+            IAtom atom = origToCopyAtomMap.get(lp.getAtom());
+            if (!Objects.isNull(atom)) {
+                atom.getContainer().addLonePair(atom.getIndex());
+            }
+        }
+        // stereo elements
+        for (IStereoElement elem : mol.stereoElements()) {
+            copy.addStereoElement(elem.map(origToCopyAtomMap, origToCopyBondMap));
+        }
+        return copy;
+    }
+
+    /**
+     *
+     * @param atom
+     * @param container
+     * @return
+     */
+    protected static IAtom deeperCopy(IAtom atom, IAtomContainer container) {
+        IAtom cpyAtom = container.newAtom(atom.getAtomicNumber(),
+                atom.getImplicitHydrogenCount());
+        cpyAtom.setIsAromatic(atom.isAromatic());
+        cpyAtom.setValency(atom.getValency());
+        cpyAtom.setAtomTypeName(atom.getAtomTypeName());
+        cpyAtom.setFormalCharge(atom.getFormalCharge());
+        return cpyAtom;
+    }
+
+    /**
+     *
+     * @param bond
+     * @param begin
+     * @param end
+     * @return
+     */
+    protected static IBond deeperCopy(IBond bond, IAtom begin, IAtom end) {
+        IBond newBond = begin.getContainer().newBond(begin, end, bond.getOrder());
+        newBond.setIsAromatic(bond.isAromatic());
+        newBond.setStereo(bond.getStereo());
+        newBond.setDisplay(bond.getDisplay());
+        newBond.setIsInRing(bond.isInRing());
+        return newBond;
     }
 }
