@@ -1654,10 +1654,6 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         //IAtomContainer mol = smiPar.parseSmiles("CC(=O)N[C@H]1[C@H](O[C@H]2[C@H](O)[C@@H](NC(C)=O)[C@@H](OP(=O)(O)OP(=O)(O)OCCC(C)CC/C=C(\\C)CC/C=C(\\C)CC/C=C(\\C)CCC=C(C)C)O[C@@H]2CO)O[C@H](CO)[C@@H](O[C@@H]2O[C@H](CO[C@H]3O[C@H](CO[C@H]4O[C@H](CO)[C@@H](O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]5O)[C@H](O)[C@@H]4O)[C@@H](O)[C@H](O[C@H]4O[C@H](CO)[C@@H](O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]5O)[C@H](O)[C@@H]4O)[C@@H]3O)[C@@H](O)[C@H](O[C@H]3O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]3O[C@H]3O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]3O[C@H]3O[C@H](CO)[C@@H](O)[C@H](O[C@H]4O[C@H](CO)[C@@H](O)[C@H](O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@H]5O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@H]5O)[C@H]4O)[C@@H]3O)[C@@H]2O)[C@@H]1O");
         SugarRemovalUtility sru = new SugarRemovalUtility(SilentChemObjectBuilder.getInstance());
         String[] glycosidicNP = new String[] {
-                "C=CC1C(C[C@@H]2NCCC3=C2NC2=CC=CC=C32)C(C(=O)O)=CO[C@H]1O[C@@H]1O[C@H](CO)[C@@H](O)[C@H](O)[C@H]1O",
-                "CC(N)C(=O)NC(CCC(N)=O)C(=O)NOC1OC(O)C(O)C(O)C1O",
-                "CCCCCC=CC=CC(O)CC=CC=CC(=O)OC1C(O)C(C2=C(O)C=C(O)C=C2CO)OC(CO)C1OC1OC(C)C(O)C(O)C1OC1OC(O)C(O)C(O)C1O",
-        "OC1OC(O)C(O)C1OC1C(OCCCCCCCCCCCCCCCCC)OC(OCCCCCCCCCCC)C(O)C1OC1C(O)C(O)C(O)OC(O)C1O",
                 "[H]OC1([H])C([H])(OC2=C3C(OC(=O)C4=C3C([H])([H])C([H])([H])C4([H])[H])=C([H])C(=C2[H])C([H])([H])[H])OC([H])(C([H])(O[H])C1([H])O[H])C([H])([H])O[H]",
         "O=C(OC1C(OCC2=COC(OC(=O)CC(C)C)C3C2CC(O)C3(O)COC(=O)C)OC(CO)C(O)C1O)C=CC4=CC=C(O)C=C4",
         "O=P(O)(O)OCC1OC(OP(=O)(O)O)C(O)C1O",
@@ -1719,6 +1715,108 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
             }
         }
     }
+
+    /**
+     *
+     *
+     * @throws Exception
+     */
+    @Test
+    void sugarExtractionStrictosidinicAcidTest() throws Exception {
+        SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
+        SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.Stereo);
+        //CNP0225072.2
+        IAtomContainer mol = smiPar.parseSmiles("C=CC1C(C[C@@H]2NCCC3=C2NC2=CC=CC=C32)C(C(=O)O)=CO[C@H]1O[C@@H]1O[C@H](CO)[C@@H](O)[C@H](O)[C@H]1O");
+        SugarRemovalUtility sru = new SugarRemovalUtility(SilentChemObjectBuilder.getInstance());
+        List<IAtomContainer> candidates = sru.copyAndExtractAglyconeAndCircularSugars(mol, false);
+        Assertions.assertEquals(2, candidates.size());
+        //aglycone
+        Assertions.assertEquals("C=CC1C(C[C@@H]2NCCC3=C2NC4=CC=CC=C34)C(C(=O)O)=CO[C@H]1O", smiGen.create(candidates.get(0)));
+        //beta-D-glucose
+        Assertions.assertEquals("[C@H]1(O[C@H](CO)[C@@H](O)[C@H](O)[C@H]1O)O", smiGen.create(candidates.get(1)));
+    }
+
+    /**
+     * TODO
+     *
+     * @throws Exception
+     */
+    @Test
+    void sugarExtractionCNP0580945_1Test() throws Exception {
+        SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
+        SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.Stereo);
+        //CNP0580945.1
+        IAtomContainer mol = smiPar.parseSmiles("CC(=O)N[C@H]1[C@H](O[C@@H]2C3CO[C@H](O3)[C@H](NC(C)=O)[C@H]2O[C@H](C)C(=O)N[C@@H](C)C(=O)N[C@H](CCC(=O)N[C@@H](CCC[C@@H](N)C(=O)O)C(=O)N[C@H](C)C(=O)O)C(=O)O)O[C@H](CO)[C@@H](O)[C@@H]1O");
+        SugarRemovalUtility sru = new SugarRemovalUtility(SilentChemObjectBuilder.getInstance());
+        List<IAtomContainer> candidates = sru.copyAndExtractAglyconeAndCircularSugars(mol, false);
+        Assertions.assertEquals(2, candidates.size());
+        //aglycone
+        Assertions.assertEquals("O[C@@H]1C2CO[C@H](O2)[C@H](NC(C)=O)[C@H]1O[C@H](C)C(=O)N[C@@H](C)C(=O)N[C@H](CCC(=O)N[C@@H](CCC[C@@H](N)C(=O)O)C(=O)N[C@H](C)C(=O)O)C(=O)O", smiGen.create(candidates.get(0)));
+        //N-Acetyl-beta-D-glucosamine
+        Assertions.assertEquals("CC(=O)N[C@H]1[C@@H](O[C@H](CO)[C@@H](O)[C@@H]1O)O", smiGen.create(candidates.get(1)));
+    }
+
+    /**
+     * TODO: experiment with settings (removal also of non-terminal sugars) here
+     *
+     * @throws Exception
+     */
+    @Test
+    void sugarExtractionFusacandin_BTest() throws Exception {
+        SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
+        SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.Stereo);
+        //CNP0295326.2
+        IAtomContainer mol = smiPar.parseSmiles("CCCCC/C=C/C=C/C(O)C/C=C/C=C/C(=O)O[C@@H]1[C@@H](O)[C@H](C2=C(O)C=C(O)C=C2CO)O[C@H](CO)[C@H]1O[C@@H]1O[C@H](CO)[C@H](O)[C@H](O)[C@H]1O[C@@H]1O[C@H](CO)[C@H](O)[C@H](O)[C@H]1O");
+        SugarRemovalUtility sru = new SugarRemovalUtility(SilentChemObjectBuilder.getInstance());
+        List<IAtomContainer> candidates = sru.copyAndExtractAglyconeAndCircularSugars(mol, false);
+        Assertions.assertEquals(2, candidates.size());
+        //aglycone
+        Assertions.assertEquals("CCCCCC=CC=CC(O)CC=CC=CC(=O)O[C@@H]1[C@@H](O)[C@H](C2=C(O)C=C(O)C=C2CO)O[C@H](CO)[C@H]1O", smiGen.create(candidates.get(0)));
+        //2-O-beta-D-galactopyranosyl-beta-D-galactopyranose
+        Assertions.assertEquals("[C@H]1(O[C@H](CO)[C@H](O)[C@H](O)[C@H]1O[C@@H]2O[C@H](CO)[C@H](O)[C@H](O)[C@H]2O)O", smiGen.create(candidates.get(1)));
+    }
+
+    /**
+     * TODO
+     *
+     * @throws Exception
+     */
+    @Test
+    void sugarExtractionCID131999265Test() throws Exception {
+        SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
+        SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.Stereo);
+        //CID	131999265
+        IAtomContainer mol = smiPar.parseSmiles("CCCCCCCCCCCCOCC(COCCOCC(COCCCCCCCCCCCC)O[C@H]1[C@H](C([C@@H](C(O1)CO)O)O)O)O[C@H]2[C@H](C([C@@H](C(O2)CO)O)O)O");
+        SugarRemovalUtility sru = new SugarRemovalUtility(SilentChemObjectBuilder.getInstance());
+        List<IAtomContainer> candidates = sru.copyAndExtractAglyconeAndCircularSugars(mol, false);
+        Assertions.assertEquals(3, candidates.size());
+        //aglycone
+        Assertions.assertEquals("CCCCCCCCCCCCOCC(COCCOCC(COCCCCCCCCCCCC)O)O", smiGen.create(candidates.get(0)));
+        //sugar 1, CID	58265196 (underdefined hexopyranose)
+        Assertions.assertEquals("[C@@H]1([C@H](C([C@@H](C(O1)CO)O)O)O)O", smiGen.create(candidates.get(1)));
+        //sugar 2 (the same)
+        Assertions.assertEquals("[C@@H]1([C@H](C([C@@H](C(O1)CO)O)O)O)O", smiGen.create(candidates.get(2)));
+    }
+
+//    /**
+//     * TODO
+//     *
+//     * @throws Exception
+//     */
+//    @Test
+//    void sugarExtractionTest() throws Exception {
+//        SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
+//        SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.Stereo);
+//        //
+//        IAtomContainer mol = smiPar.parseSmiles("");
+//        SugarRemovalUtility sru = new SugarRemovalUtility(SilentChemObjectBuilder.getInstance());
+//        List<IAtomContainer> candidates = sru.copyAndExtractAglyconeAndCircularSugars(mol, false);
+//        Assertions.assertEquals(2, candidates.size());
+//        //aglycone
+//        Assertions.assertEquals("", smiGen.create(candidates.get(0)));
+//        //beta-D-glucose
+//        Assertions.assertEquals("", smiGen.create(candidates.get(1)));
+//    }
 
     /**
      * TODO: add special treatment for esters?
