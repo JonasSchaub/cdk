@@ -34,9 +34,11 @@ import org.openscience.cdk.smiles.SmilesParser;
 import org.openscience.cdk.tools.manipulator.AtomContainerManipulator;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * JUnit test class for testing the functionalities of the SugarRemovalUtility
@@ -1645,7 +1647,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
      * @throws Exception
      */
     @Test
-    void sugarExtractionTest() throws Exception {
+    void sugarExtractionTestOld() throws Exception {
         SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.Stereo);
         SugarRemovalUtility sru = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
@@ -1714,6 +1716,339 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
                 }
                 System.out.println(smiGen.create(candidate));
             }
+        }
+    }
+
+    @Test
+    void sugarExtractionTest() throws Exception {
+        SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
+        SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.Stereo);
+        SugarRemovalUtility sru = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
+
+        // Map of input SMILES codes to list of expected aglycone and sugar SMILES codes
+        Map<String, List<String>> testCases = new HashMap<>(); //TODO: define init capacity
+
+        testCases.put(
+                "CC(=O)N[C@H]1[C@H](O[C@H]2[C@H](O)[C@@H](NC(C)=O)[C@@H](OP(=O)(O)OP(=O)(O)OCCC(C)CC/C=C(\\C)CC/C=C(\\C)CC/C=C(\\C)CCC=C(C)C)O[C@@H]2CO)O[C@H](CO)[C@@H](O[C@@H]2O[C@H](CO[C@H]3O[C@H](CO[C@H]4O[C@H](CO)[C@@H](O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]5O)[C@H](O)[C@@H]4O)[C@@H](O)[C@H](O[C@H]4O[C@H](CO)[C@@H](O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]5O)[C@H](O)[C@@H]4O)[C@@H]3O)[C@@H](O)[C@H](O[C@H]3O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]3O[C@H]3O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]3O[C@H]3O[C@H](CO)[C@@H](O)[C@H](O[C@H]4O[C@H](CO)[C@@H](O)[C@H](O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@H]5O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@H]5O)[C@H]4O)[C@@H]3O)[C@@H]2O)[C@@H]1O",
+                Arrays.asList(
+                        "OP(=O)(O)OP(=O)(O)OCCC(C)CCC=C(C)CCC=C(C)CCC=C(C)CCC=C(C)C",
+                        "CC(=O)N[C@H]1[C@H](O[C@H]2[C@H](O)[C@@H](NC(C)=O)[C@H](O[C@@H]2CO)O)O[C@H](CO)[C@@H](O[C@@H]3O[C@H](CO[C@H]4O[C@H](CO[C@H]5O[C@H](CO)[C@@H](O[C@H]6O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]6O)[C@H](O)[C@@H]5O)[C@@H](O)[C@H](O[C@H]7O[C@H](CO)[C@@H](O[C@H]8O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]8O)[C@H](O)[C@@H]7O)[C@@H]4O)[C@@H](O)[C@H](O[C@H]9O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]9O[C@H]%10O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]%10O[C@H]%11O[C@H](CO)[C@@H](O)[C@H](O[C@H]%12O[C@H](CO)[C@@H](O)[C@H](O[C@H]%13O[C@H](CO)[C@@H](O)[C@H](O)[C@H]%13O[C@H]%14O[C@H](CO)[C@@H](O)[C@H](O)[C@H]%14O)[C@H]%12O)[C@@H]%11O)[C@@H]3O)[C@@H]1O"
+                )
+        );
+
+        testCases.put(
+                "C=CC1C(C[C@@H]2NCCC3=C2NC2=CC=CC=C32)C(C(=O)O)=CO[C@H]1O[C@@H]1O[C@H](CO)[C@@H](O)[C@H](O)[C@H]1O",
+                Arrays.asList(
+                        "C=CC1C(C[C@@H]2NCCC3=C2NC4=CC=CC=C34)C(C(=O)O)=CO[C@H]1O",
+                        "[C@H]1(O[C@H](CO)[C@@H](O)[C@H](O)[C@H]1O)O"
+                )
+        );
+
+        testCases.put(
+                "CC(N)C(=O)NC(CCC(N)=O)C(=O)NOC1OC(O)C(O)C(O)C1O",
+                Arrays.asList(
+                        "CC(N)C(=O)NC(CCC(N)=O)C(=O)N[O]",
+                        "[CH]1OC(O)C(O)C(O)C1O"
+                )
+        );
+
+        testCases.put(
+                "CCCCCC=CC=CC(O)CC=CC=CC(=O)OC1C(O)C(C2=C(O)C=C(O)C=C2CO)OC(CO)C1OC1OC(C)C(O)C(O)C1OC1OC(O)C(O)C(O)C1O",
+                Arrays.asList(
+                        "CCCCCC=CC=CC(O)CC=CC=CC(=O)OC1C(O)C(C2=C(O)C=C(O)C=C2CO)OC(CO)C1O",
+                        "C1(OC(C)C(O)C(O)C1OC2OC(O)C(O)C(O)C2O)O"
+                )
+        );
+
+        testCases.put(
+                "OC1OC(O)C(O)C1OC1C(OCCCCCCCCCCCCCCCCC)OC(OCCCCCCCCCCC)C(O)C1OC1C(O)C(O)C(O)OC(O)C1O",
+                Arrays.asList(
+                        "OC1C(OCCCCCCCCCCCCCCCCC)OC(OCCCCCCCCCCC)C(O)C1[O]",
+                        "OC1OC(O)C(O)C1O",
+                        "[CH]1C(O)C(O)C(O)OC(O)C1O"
+                )
+        );
+
+        testCases.put(
+                "[H]OC1([H])C([H])(OC2=C3C(OC(=O)C4=C3C([H])([H])C([H])([H])C4([H])[H])=C([H])C(=C2[H])C([H])([H])[H])OC([H])(C([H])(O[H])C1([H])O[H])C([H])([H])O[H]",
+                Arrays.asList(
+                        "OC1=C2C(OC(=O)C3=C2C([H])([H])C([H])([H])C3([H])[H])=C([H])C(=C1[H])C([H])([H])[H]",
+                        "[H]OC1([H])C([H])(OC([H])(C([H])(O[H])C1([H])O[H])C([H])([H])O[H])O"
+                )
+        );
+
+        testCases.put(
+                "O=C(OC1C(OCC2=COC(OC(=O)CC(C)C)C3C2CC(O)C3(O)COC(=O)C)OC(CO)C(O)C1O)C=CC4=CC=C(O)C=C4",
+                Arrays.asList(
+                        "O=C(OC1C(OCC2=COC(OC(=O)CC(C)C)C3C2CC(O)C3(O)COC(=O)C)OC(CO)C(O)C1O)C=CC4=CC=C(O)C=C4"
+                )
+        );
+
+        testCases.put(
+                "O=P(O)(O)OCC1OC(OP(=O)(O)O)C(O)C1O",
+                Arrays.asList(
+                        "O=P(O)(O)OCC1OC(OP(=O)(O)O)C(O)C1O"
+                )
+        );
+
+        testCases.put(
+                "O=C1OC2C(CCO)CCC3(C=C4C=CCC5C(C=CC(C45)C23)CCCC(C)(CC6=CN=C(N)C=C6)CC=7C=CC=C8C(=O)C9(OC19C(=O)C87)CC(=C(C)CC%10C=%11C=CN=C%12NC(NC)CC(C%12%11)CC%10)CO)NCC",
+                Arrays.asList(
+                        "O=C1OC2C(CCO)CCC3(C=C4C=CCC5C(C=CC(C45)C23)CCCC(C)(CC6=CN=C(N)C=C6)CC=7C=CC=C8C(=O)C9(OC19C(=O)C87)CC(=C(C)CC%10C=%11C=CN=C%12NC(NC)CC(C%12%11)CC%10)CO)NCC"
+                )
+        );
+
+        testCases.put(
+                "O=CCC12OC(OC1=O)C3(C)C(C)CCC3(C)C2",
+                Arrays.asList(
+                        "O=CCC12OC(OC1=O)C3(C)C(C)CCC3(C)C2"
+                )
+        );
+
+        testCases.put(
+                "O=C(O)C12OC(OC3=CC=4OCC5C6=C(OC5C4C(=C3)C7=CC=CC(O)=C7)C(OC)=C(OC)C=C6CNC)(CO)C(O)C(O)(NCC1NC)C2O",
+                Arrays.asList(
+                        "O=C(O)C12OC(OC3=CC=4OCC5C6=C(OC5C4C(=C3)C7=CC=CC(O)=C7)C(OC)=C(OC)C=C6CNC)(CO)C(O)C(O)(NCC1NC)C2O"
+                )
+        );
+
+        testCases.put(
+                "O=C(O)C1OC(OC=2C=CC=3C(=O)[C-](C=[O+]C3C2)C4=CC=C(O)C=C4)C(O)(CNCC(CC=5C=NCC5)C(C)C)C(O)C1O",
+                Arrays.asList(
+                        "O=C(O)C1OC(OC=2C=CC=3C(=O)[C-](C=[O+]C3C2)C4=CC=C(O)C=C4)C(O)(CNCC(CC=5C=NCC5)C(C)C)C(O)C1O"
+                )
+        );
+
+        testCases.put(
+                "O=C1OC(C2=COC=C2)CC3(C)C1CCC4(C)C3C5OC(=O)C4(O)C=C5",
+                Arrays.asList(
+                        "O=C1OC(C2=COC=C2)CC3(C)C1CCC4(C)C3C5OC(=O)C4(O)C=C5"
+                )
+        );
+
+        testCases.put(
+                "O=C1OC2CC3(OC4(O)C(CC5(OC45C(=O)OC)CCCCCCCCCCCCCCCC)C2(O3)C1)CCCCCCCCCCCCCCCC",
+                Arrays.asList(
+                        "O=C1OC2CC3(OC4(O)C(CC5(OC45C(=O)OC)CCCCCCCCCCCCCCCC)C2(O3)C1)CCCCCCCCCCCCCCCC"
+                )
+        );
+
+        testCases.put(
+                "O=C1C2=CC=CC3=C2CN1CC(=O)C4=C(O)C5=C6OC7OC(COC(C=CC6=C(OC)C8=C5C=9C(=CC%10CCCC%10C49)CC8)C%11=CNC=%12C=CC(=CC%12%11)CNC)C(O)C(OC#CC3)C7(O)CO",
+                Arrays.asList(
+                        "O=C1C2=CC=CC3=C2CN1CC(=O)C4=C(O)C5=C6OC7OC(COC(C=CC6=C(OC)C8=C5C=9C(=CC%10CCCC%10C49)CC8)C%11=CNC=%12C=CC(=CC%12%11)CNC)C(O)C(OC#CC3)C7(O)CO"
+                )
+        );
+
+        testCases.put(
+                "O=C(O)CC(OC1OC(CO)C(O)C(O)C1O)(C)CC(=O)OCC=CC2=CC(OC)=C(OC3OC(CO)C(O)C(O)C3O)C(OC)=C2",
+                Arrays.asList(
+                        "O=C(O)CC(O)(C)CC(=O)OCC=CC1=CC(OC)=C(O)C(OC)=C1",
+                        "C1(OC(CO)C(O)C(O)C1O)O",
+                        "C1(OC(CO)C(O)C(O)C1O)O"
+                )
+        );
+
+        testCases.put(
+                "O=C(O)CC(O)(C)CC(=O)OCC1=CC=C(OC2OC(CO)C(O)C(O)C2O)C=C1",
+                Arrays.asList(
+                        "O=C(O)CC(O)(C)CC(=O)OCC1=CC=C(O)C=C1",
+                        "C1(OC(CO)C(O)C(O)C1O)O"
+                )
+        );
+
+        testCases.put(
+                "O=C(O)CC(C(=O)O)C(OCC1C(=C)CCC2C(C)(COC(=O)C(CC(=O)O)C(OCC3C(=C)CCC4C(C)(C)CCCC34C)C(=O)OC)CCCC12C)C(=O)OC",
+                Arrays.asList(
+                        "O=C(O)CC(C(=O)O)C(OCC1C(=C)CCC2C(C)(COC(=O)C(CC(=O)O)C(OCC3C(=C)CCC4C(C)(C)CCCC34C)C(=O)OC)CCCC12C)C(=O)OC"
+                )
+        );
+
+        testCases.put(
+                "O=C(O)CC(O)(C)CC(=O)OC1COC(OC2C(O)C(OC(OC3C(O)C(O)C(OC4CC5CCC6C(CCC7(C)C6CC8OC9(OCC(C)CC9)C(C)C87)C5(C)CC4O)OC3CO)C2OC%10OC(CO)C(O)C(O)C%10O)CO)C(O)C1O",
+                Arrays.asList(
+                        "O=C(O)CC(O)(C)CC(=O)OC1COC(OC2C(O)C(OC(OC3C(O)C(O)C(OC4CC5CCC6C(CCC7(C)C6CC8OC9(OCC(C)CC9)C(C)C87)C5(C)CC4O)OC3CO)C2O)CO)C(O)C1O",
+                        "C1(OC(CO)C(O)C(O)C1O)O"
+                )
+        );
+
+        testCases.put(
+                "O=C(O)CC(O)(C)CC(=O)OCC1OC(OCC2OC(OC(=O)C34CCC(C)(C)CC4C5=CCC6C7(C)CCC(O)C(C(=O)OC8OC(CO)C(O)C(O)C8O)(C)C7CCC6(C)C5(C)CC3)C(O)C(OC9OC(CO)C(O)C(O)C9O)C2O)C(OC%10OC(CO)C(O)C(O)C%10O)C(O)C1O",
+                Arrays.asList(
+                        "O=C(O)CC(O)(C)CC(=O)OCC1OC(OCC2OC(OC(=O)C34CCC(C)(C)CC3C5=CCC6C7(C)CCC(O)C(C(=O)O)(C)C7CCC6(C)C5(C)CC4)C(O)C(O)C2O)C(O)C(O)C1O",
+                        "C1(OC(CO)C(O)C(O)C1O)O",
+                        "C1(OC(CO)C(O)C(O)C1O)O",
+                        "C1(OC(CO)C(O)C(O)C1O)O"
+                )
+        );
+
+        testCases.put(
+                "O=C(O)CC(O)(C)CC(=O)OC1C(O)C(OC2C3=C(O)C(=CC=C3OC2C(=C)CO)C(=O)C)OC(CO)C1O",
+                Arrays.asList(
+                        "O=C(O)CC(O)(C)CC(=O)OC1C(O)C(OC2C3=C(O)C(=CC=C3OC2C(=C)CO)C(=O)C)OC(CO)C1O"
+                )
+        );
+
+        testCases.put(
+                "O=C(O)CC(O)(C)CC(=O)OCC1OC(C=2C(O)=CC(O)=C3C(=O)C=C(OC32)C=4C=CC(O)=C(O)C4)C(O)C(O)C1O",
+                Arrays.asList(
+                        "O=C(O)CC(O)(C)CC(=O)OCC1OC(C=2C(O)=CC(O)=C3C(=O)C=C(OC32)C=4C=CC(O)=C(O)C4)C(O)C(O)C1O"
+                )
+        );
+
+        testCases.put(
+                "O=C(O)CC(O)(C)CC(=O)OCC1(O)COC(OC2C(O)C(OC(C)C2OC3OCC(O)C(OC4OCC(O)C(O)C4O)C3O)OC5C(OC(=O)C67CCC(C)(C)CC7C8=CCC9C%10(C)CC(O)C(OC%11OC(CO)C(O)C(O)C%11O)C(C(=O)O)(C)C%10CCC9(C)C8(CO)CC6)OC(C)C(OC(=O)C=CC%12=CC(OC)=C(OC)C(OC)=C%12)C5OC%13OC(C)C(O)C(O)C%13O)C1O",
+                Arrays.asList(
+                        "O=C(O)CC(O)(C)CC(=O)OCC1(O)COC(OC2C(O)C(OC(C)C2O)OC3C(OC(=O)C45CCC(C)(C)CC4C6=CCC7C8(C)CC(O)C(O)C(C(=O)O)(C)C8CCC7(C)C6(CO)CC5)OC(C)C(OC(=O)C=CC9=CC(OC)=C(OC)C(OC)=C9)C3O)C1O",
+                        "C1(OCC(O)C(OC2OCC(O)C(O)C2O)C1O)O",
+                        "C1(OC(CO)C(O)C(O)C1O)O",
+                        "C1(OC(C)C(O)C(O)C1O)O"
+                )
+        );
+
+        testCases.put(
+                "O=C(O)C1OC(O)C(O)C(O)C1O",
+                Arrays.asList(
+                        "",
+                        "O=C(O)C1OC(O)C(O)C(O)C1O"
+                )
+        );
+
+        testCases.put(
+                "O=C(O)CC(C(=O)O)C(OCC1C(=C)CCC2C(C)(C)CCCC12C)C(=O)O",
+                Arrays.asList(
+                        "O=C(O)CC(C(=O)O)C(OCC1C(=C)CCC2C(C)(C)CCCC12C)C(=O)O"
+                )
+        );
+
+        testCases.put(
+                "O=C1C=C(OC=2C=C3OC(C)(CCC4CNC(=O)C4)C(OOCC(O)C(O)C(O)C(O)CO)CC3=CC12)C",
+                Arrays.asList(
+                        "O=C1C=C(OC=2C=C3OC(C)(CCC4CNC(=O)C4)C(OOCC(O)C(O)C(O)C(O)CO)CC3=CC12)C"
+                )
+        );
+
+        testCases.put(
+                "O=C1C=C(OC=2C1=CC3=C(OC(C)(C)C(OOCC(O)C(O)C(O)C(O)CO)C3)C2[N+]=4C=C5N=CC=C5C4CC)C",
+                Arrays.asList(
+                        "O=C1C=C(OC=2C1=CC3=C(OC(C)(C)C(OOCC(O)C(O)C(O)C(O)CO)C3)C2[N+]=4C=C5N=CC=C5C4CC)C"
+                )
+        );
+
+        testCases.put(
+                "O=C1C=C(OC2=CC(OC(=O)C3OC(O)C(O)C(O)C3O)=C(O)C(O)=C12)C=4C=CC(O)=CC4",
+                Arrays.asList(
+                        "O=C1C=C(OC2=CC(OC=O)=C(O)C(O)=C12)C=3C=CC(O)=CC3",
+                        "C1(OC(O)C(O)C(O)C1O)C"
+                )
+        );
+
+        testCases.put(
+                "O=C(O)CC(O)(C(=O)O)C(C(=O)O)CCCCCCCCCCCCCC",
+                Arrays.asList(
+                        "O=C(O)CC(O)(C(=O)O)C(C(=O)O)CCCCCCCCCCCCCC"
+                )
+        );
+
+        testCases.put(
+                "O=CC1(C)C(OC2OC(C(=O)O)C(O)C(OC3OCC(O)C(O)C3O)C2OC4OC(CO)C(O)C(O)C4O)CCC5(C)C6CC=C7C8CC(C)(C)CCC8(C(=O)OC9OC(C)C(OC(=O)CC(O)CC(OC(=O)CC(O)CC(OC%10OC(CO)C(O)C%10O)C(C)CC)C(C)CC)C(O)C9OC%11OC(C)C(OC%12OCC(O)C(O)C%12O)C(O)C%11O)C(O)CC7(C)C6(C)CCC15",
+                Arrays.asList(
+                        "O=CC1(C)C(O)CCC2(C)C3CC=C4C5CC(C)(C)CCC5(C(=O)OC6OC(C)C(OC(=O)CC(O)CC(OC(=O)CC(O)CC(O)C(C)CC)C(C)CC)C(O)C6O)C(O)CC4(C)C3(C)CCC12",
+                        "C1(OC(C(=O)O)C(O)C(OC2OCC(O)C(O)C2O)C1OC3OC(CO)C(O)C(O)C3O)O",
+                        "C1(OC(CO)C(O)C1O)O",
+                        "C1(OC(C)C(OC2OCC(O)C(O)C2O)C(O)C1O)O"
+                )
+        );
+
+        testCases.put(
+                "O=C(NC1C(O)OC(CO)C(O)C1OC2OC(CO)C(OC)C(O)C2OC3OC(C)C(O)C(O)C3OC)C",
+                Arrays.asList(
+                        "",
+                        "O=C(NC1C(O)OC(CO)C(O)C1OC2OC(CO)C(OC)C(O)C2OC3OC(C)C(O)C(O)C3OC)C"
+                )
+        );
+
+        testCases.put(
+                "O=C(O)CC(C)(O)CC(=O)OCc1ccc(cc1)OC1C(CO)OC(OC(C(=O)OCc2ccc(OC3OC(CO)CC(O)C3O)cc2)C(O)(CC(C)C)C(=O)OC2CCc3cc4cc(O)c(C)c(O)c4c(O)c3C2=O)C(O)C1O",
+                Arrays.asList(
+                        "O=C(O)CC(C)(O)CC(=O)OCC1=CC=C(C=C1)OC2C(CO)OC(OC(C(=O)OCC3=CC=C(O)C=C3)C(O)(CC(C)C)C(=O)OC4CCC5=CC6=CC(O)=C(C)C(O)=C6C(O)=C5C4=O)C(O)C2O",
+                        "C1(OC(CO)CC(O)C1O)O"
+                )
+        );
+
+        testCases.put(
+                "OCC(O)C(O)C(O)C(O)C1OC(CO)C(O)C(O)C1O",
+                Arrays.asList(
+                        "OCC(O)C(O)C(O)CO",
+                        "C1(OC(CO)C(O)C(O)C1O)C"
+                )
+        );
+
+        testCases.put(
+                "OCC(O)C(O)C(O)C(O)C(O)C1OC(O)C(O)C(O)C1N",
+                Arrays.asList(
+                        "OCC(O)C(O)C(O)C(O)CO",
+                        "C1(OC(O)C(O)C(O)C1N)C"
+                )
+        );
+
+        testCases.put(
+                "O=C(O)C1=CC(O)C(O)C(OC(=O)C2C(=CC=3C=C(O)C(OC4OC(CO)C(O)C(O)C4O)=CC3C2C5=CC=C(O)C(O)=C5)C(=O)OCC(O)C(O)C(O)C(O)C(O)CO)C1",
+                Arrays.asList(
+                        "O=C(O)C1=CC(O)C(O)C(OC(=O)C2C(=CC=3C=C(O)C(O)=CC3C2C4=CC=C(O)C(O)=C4)C(=O)OCC(O)C(O)C(O)C(O)C(O)CO)C1",
+                        "C1(OC(CO)C(O)C(O)C1O)O"
+                )
+        );
+
+        testCases.put(
+                "O=C1N=C2C(=NC=3C=C(C(=CC3N2CC(O)C(O)C(O)COC4OC(CO)C(O)C(O)C4O)C)C)C(=O)N1",
+                Arrays.asList(
+                        "O=C1N=C2C(=NC=3C=C(C(=CC3N2CC(O)C(O)C(O)CO)C)C)C(=O)N1",
+                        "C1(OC(CO)C(O)C(O)C1O)O"
+                )
+        );
+
+        testCases.put(
+                "O=C(C1(CC2=C3C=CC4C5(CCC(C(CO)(C5CCC4(C3(CC(C2(CC1)CO)O)C)C)C)OC6OC(C(C(C6O)OC7OC(C(C(C7O)O)O)CO)O)C)C)C)OCC(C(C(CO)O)O)O",
+                Arrays.asList(
+                        "O=C(C1(CC2=C3C=CC4C5(CCC(C(CO)(C5CCC4(C3(CC(C2(CC1)CO)O)C)C)C)O)C)C)OCC(C(C(CO)O)O)O",
+                        "C1(OC(C(C(C1O)OC2OC(C(C(C2O)O)O)CO)O)C)O"
+                )
+        );
+
+        testCases.put(
+                "CC(CCC=C(C)CCC=C(C)CCC=C(C)CCC=C(C)C)CCOP(=O)(O)OP(=O)(O)OC1C(C(C(C(O1)CO)OC2C(C(C(C(O2)CO)OC3C(C(C(C(O3)COC4C(C(C(C(O4)COC5C(C(C(C(O5)CO)OC6C(C(C(C(O6)CO)O)O)O)O)O)O)OC7C(C(C(C(O7)CO)OC8C(C(C(C(O8)CO)O)O)O)O)O)O)O)OC9C(C(C(C(O9)CO)O)O)OC1C(C(C(C(O1)CO)O)O)OC1C(C(C(C(O1)CO)O)OC1C(C(C(C(O1)CO)O)OC1C(C(C(C(O1)CO)O)O)OC1C(C(C(C(O1)CO)O)O)O)O)O)O)O)NC(=O)C)O)NC(=O)C",
+                Arrays.asList(
+                        "CC(CCC=C(C)CCC=C(C)CCC=C(C)CCC=C(C)C)CCOP(=O)(O)OP(=O)(O)O",
+                        "C1(C(C(C(C(O1)CO)OC2C(C(C(C(O2)CO)OC3C(C(C(C(O3)COC4C(C(C(C(O4)COC5C(C(C(C(O5)CO)OC6C(C(C(C(O6)CO)O)O)O)O)O)O)OC7C(C(C(C(O7)CO)OC8C(C(C(C(O8)CO)O)O)O)O)O)O)O)OC9C(C(C(C(O9)CO)O)O)OC%10C(C(C(C(O%10)CO)O)O)OC%11C(C(C(C(O%11)CO)O)OC%12C(C(C(C(O%12)CO)O)OC%13C(C(C(C(O%13)CO)O)O)OC%14C(C(C(C(O%14)CO)O)O)O)O)O)O)O)NC(=O)C)O)NC(=O)C)O"
+                )
+        );
+
+        testCases.put(
+                "O=C(C=CC1=CC=C(O)C=C1)C=2C(=O)C(C(=O)C(O)(C2O)C3OC(CO)C(O)C(O)C3O)C(O)C4OCC(O)C(O)C4O",
+                Arrays.asList(
+                        "O=C(C=CC1=CC=C(O)C=C1)C=2C(=O)C(C(=O)C(O)C2O)[CH]O",
+                        "C1(OC(CO)C(O)C(O)C1O)C",
+                        "[CH]1OCC(O)C(O)C1O"
+                )
+        );
+
+        // Process each test case
+        for (Map.Entry<String, List<String>> entry : testCases.entrySet()) {
+            String inputSmiles = entry.getKey();
+            List<String> expectedSmilesList = entry.getValue();
+
+            List<IAtomContainer> candidates = sru.copyAndExtractAglyconeAndCircularSugars(smiPar.parseSmiles(inputSmiles), false);
+            List<String> generatedSmilesList = candidates.stream()
+                    .map(mol -> {
+                        try {
+                            return smiGen.create(mol);
+                        } catch (Exception e) {
+                            throw new RuntimeException("Error generating SMILES", e);
+                        }
+                    })
+                    .collect(Collectors.toList());
+            Assertions.assertLinesMatch(expectedSmilesList, generatedSmilesList);
         }
     }
 
