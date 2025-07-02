@@ -1654,8 +1654,11 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         String[] glycosidicNP = new String[] {
                 "CC(=O)N[C@H]1[C@H](O[C@H]2[C@H](O)[C@@H](NC(C)=O)[C@@H](OP(=O)(O)OP(=O)(O)OCCC(C)CC/C=C(\\C)CC/C=C(\\C)CC/C=C(\\C)CCC=C(C)C)O[C@@H]2CO)O[C@H](CO)[C@@H](O[C@@H]2O[C@H](CO[C@H]3O[C@H](CO[C@H]4O[C@H](CO)[C@@H](O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]5O)[C@H](O)[C@@H]4O)[C@@H](O)[C@H](O[C@H]4O[C@H](CO)[C@@H](O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]5O)[C@H](O)[C@@H]4O)[C@@H]3O)[C@@H](O)[C@H](O[C@H]3O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]3O[C@H]3O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]3O[C@H]3O[C@H](CO)[C@@H](O)[C@H](O[C@H]4O[C@H](CO)[C@@H](O)[C@H](O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@H]5O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@H]5O)[C@H]4O)[C@@H]3O)[C@@H]2O)[C@@H]1O",
                 "C=CC1C(C[C@@H]2NCCC3=C2NC2=CC=CC=C32)C(C(=O)O)=CO[C@H]1O[C@@H]1O[C@H](CO)[C@@H](O)[C@H](O)[C@H]1O",
+                //has issues in this batch processing
                 "CC(N)C(=O)NC(CCC(N)=O)C(=O)NOC1OC(O)C(O)C(O)C1O",
+                //has issues in this batch processing
                 "CCCCCC=CC=CC(O)CC=CC=CC(=O)OC1C(O)C(C2=C(O)C=C(O)C=C2CO)OC(CO)C1OC1OC(C)C(O)C(O)C1OC1OC(O)C(O)C(O)C1O",
+                //has issues in this batch processing
                 "OC1OC(O)C(O)C1OC1C(OCCCCCCCCCCCCCCCCC)OC(OCCCCCCCCCCC)C(O)C1OC1C(O)C(O)C(O)OC(O)C1O",
                 "[H]OC1([H])C([H])(OC2=C3C(OC(=O)C4=C3C([H])([H])C([H])([H])C4([H])[H])=C([H])C(=C2[H])C([H])([H])[H])OC([H])(C([H])(O[H])C1([H])O[H])C([H])([H])O[H]",
         "O=C(OC1C(OCC2=COC(OC(=O)CC(C)C)C3C2CC(O)C3(O)COC(=O)C)OC(CO)C(O)C1O)C=CC4=CC=C(O)C=C4",
@@ -1681,7 +1684,8 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
                 "O=C1C=C(OC=2C1=CC3=C(OC(C)(C)C(OOCC(O)C(O)C(O)C(O)CO)C3)C2[N+]=4C=C5N=CC=C5C4CC)C",
                 "O=C1C=C(OC2=CC(OC(=O)C3OC(O)C(O)C(O)C3O)=C(O)C(O)=C12)C=4C=CC(O)=CC4",
         "O=C(O)CC(O)(C)CC(=O)OCC1OC(C=2C(O)=CC(O)=C3C(=O)C=C(OC32)C=4C=CC(O)=C(O)C4)C(O)C(O)C1O",
-               " O=C(O)CC(O)(C(=O)O)C(C(=O)O)CCCCCCCCCCCCCC",
+               //has issues in this batch processing
+                "O=C(O)CC(O)(C(=O)O)C(C(=O)O)CCCCCCCCCCCCCC",
                 "O=CC1(C)C(OC2OC(C(=O)O)C(O)C(OC3OCC(O)C(O)C3O)C2OC4OC(CO)C(O)C(O)C4O)CCC5(C)C6CC=C7C8CC(C)(C)CCC8(C(=O)OC9OC(C)C(OC(=O)CC(O)CC(OC(=O)CC(O)CC(OC%10OC(CO)C(O)C%10O)C(C)CC)C(C)CC)C(O)C9OC%11OC(C)C(OC%12OCC(O)C(O)C%12O)C(O)C%11O)C(O)CC7(C)C6(C)CCC15",
                 "O=C(OCC)CCC1=CC=2C=COC2C=3OCCNCC4(SSCC5(OC(OC31)C(O)C(O)C5O)CO)CCCC4",
                 "O=C1OC2CC3(OC(CCC3)CC(O)CC)OC(CC4(O)OC(C)(C)CC4C=CCCCCCC(O)(C)C(O)C(OC5OC(C)C(N(C)C)CC5)C(O)C(C)C(O)C(O)(C=C1)C)C2C",
@@ -1690,8 +1694,10 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         "OC1(OCCC21OC3(O)CCOC3(O2)C)C",
         "OCC1OC2(OC3C(O)C(OC3(OC2)CO)CO)C(O)C1O",
         "OCC1OC2(OCC3OC(OC2)(CO)C(O)C3O)C(O)C1O",
+        //might create issues in this batch processing
         "OCC(O)C(O)C(O)C(O)C1OC(CO)C(O)C(O)C1O",
-        "OCC(O)C(O)C(O)C(O)C(O)C1OC(O)C(O)C(O)C1N",
+        //might create issues in this batch processing
+                "OCC(O)C(O)C(O)C(O)C(O)C1OC(O)C(O)C(O)C1N",
         "OCC1OC2OC3C(O)C(O)C(OC3CO)OC4C(O)C(O)C(OC4CO)OC5C(O)C(O)C(OC5CO)OC6C(O)C(O)C(OC6CO)OC7C(O)C(O)C(OC7CO)OC1C(O)C2O",
         "O(*)C1OC(CN)CCC1N",
                 "O=C(O)C1=CC(O)C(O)C(OC(=O)C2C(=CC=3C=C(O)C(OC4OC(CO)C(O)C(O)C4O)=CC3C2C5=CC=C(O)C(O)=C5)C(=O)OCC(O)C(O)C(O)C(O)C(O)CO)C1",
@@ -1719,6 +1725,11 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         }
     }
 
+    /**
+     *
+     *
+     * @throws Exception
+     */
     @Test
     void sugarExtractionTest() throws Exception {
         SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
@@ -1726,7 +1737,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         SugarRemovalUtility sru = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
 
         // Map of input SMILES codes to list of expected aglycone and sugar SMILES codes
-        Map<String, List<String>> testCases = new HashMap<>(); //TODO: define init capacity
+        Map<String, List<String>> testCases = new HashMap<>((int) (40.0/0.75));
 
         testCases.put(
                 "CC(=O)N[C@H]1[C@H](O[C@H]2[C@H](O)[C@@H](NC(C)=O)[C@@H](OP(=O)(O)OP(=O)(O)OCCC(C)CC/C=C(\\C)CC/C=C(\\C)CC/C=C(\\C)CCC=C(C)C)O[C@@H]2CO)O[C@H](CO)[C@@H](O[C@@H]2O[C@H](CO[C@H]3O[C@H](CO[C@H]4O[C@H](CO)[C@@H](O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]5O)[C@H](O)[C@@H]4O)[C@@H](O)[C@H](O[C@H]4O[C@H](CO)[C@@H](O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]5O)[C@H](O)[C@@H]4O)[C@@H]3O)[C@@H](O)[C@H](O[C@H]3O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]3O[C@H]3O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]3O[C@H]3O[C@H](CO)[C@@H](O)[C@H](O[C@H]4O[C@H](CO)[C@@H](O)[C@H](O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@H]5O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@H]5O)[C@H]4O)[C@@H]3O)[C@@H]2O)[C@@H]1O",
@@ -1747,8 +1758,8 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         testCases.put(
                 "CC(N)C(=O)NC(CCC(N)=O)C(=O)NOC1OC(O)C(O)C(O)C1O",
                 Arrays.asList(
-                        "CC(N)C(=O)NC(CCC(N)=O)C(=O)N[O]",
-                        "[CH]1OC(O)C(O)C(O)C1O"
+                        "CC(N)C(=O)NC(CCC(N)=O)C(=O)NO",
+                        "C1(OC(O)C(O)C(O)C1O)O"
                 )
         );
 
@@ -1763,9 +1774,9 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         testCases.put(
                 "OC1OC(O)C(O)C1OC1C(OCCCCCCCCCCCCCCCCC)OC(OCCCCCCCCCCC)C(O)C1OC1C(O)C(O)C(O)OC(O)C1O",
                 Arrays.asList(
-                        "OC1C(OCCCCCCCCCCCCCCCCC)OC(OCCCCCCCCCCC)C(O)C1[O]",
+                        "OC1C(OCCCCCCCCCCCCCCCCC)OC(OCCCCCCCCCCC)C(O)C1O",
                         "OC1OC(O)C(O)C1O",
-                        "[CH]1C(O)C(O)C(O)OC(O)C1O"
+                        "C1(C(O)C(O)C(O)OC(O)C1O)O"
                 )
         );
 
@@ -2027,27 +2038,22 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         testCases.put(
                 "O=C(C=CC1=CC=C(O)C=C1)C=2C(=O)C(C(=O)C(O)(C2O)C3OC(CO)C(O)C(O)C3O)C(O)C4OCC(O)C(O)C4O",
                 Arrays.asList(
-                        "O=C(C=CC1=CC=C(O)C=C1)C=2C(=O)C(C(=O)C(O)C2O)[CH]O",
+                        "O=C(C=CC1=CC=C(O)C=C1)C=2C(=O)C(C(=O)C(O)C2O)CO",
                         "C1(OC(CO)C(O)C(O)C1O)C",
-                        "[CH]1OCC(O)C(O)C1O"
+                        "C1(OCC(O)C(O)C1O)C"
                 )
         );
 
         // Process each test case
         for (Map.Entry<String, List<String>> entry : testCases.entrySet()) {
             String inputSmiles = entry.getKey();
+            if (inputSmiles.equals("CCCCCC=CC=CC(O)CC=CC=CC(=O)OC1C(O)C(C2=C(O)C=C(O)C=C2CO)OC(CO)C1OC1OC(C)C(O)C(O)C1OC1OC(O)C(O)C(O)C1O")) {
+                System.out.println("Hello");
+            }
             List<String> expectedSmilesList = entry.getValue();
 
             List<IAtomContainer> candidates = sru.copyAndExtractAglyconeAndCircularSugars(smiPar.parseSmiles(inputSmiles), false);
-            List<String> generatedSmilesList = candidates.stream()
-                    .map(mol -> {
-                        try {
-                            return smiGen.create(mol);
-                        } catch (Exception e) {
-                            throw new RuntimeException("Error generating SMILES", e);
-                        }
-                    })
-                    .collect(Collectors.toList());
+            List<String> generatedSmilesList = SugarRemovalUtilityTest.generateSmilesList(candidates, smiGen);
             Assertions.assertLinesMatch(expectedSmilesList, generatedSmilesList);
         }
     }
@@ -2333,18 +2339,15 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.Stereo);
         SugarRemovalUtility sru = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
-        String[] glycosidicNP = new String[] {"OCC(O)C(O)C(O)C(O)C(O)C1OC(O)C(O)C(O)C1N"};
-        for (String smiles : glycosidicNP) {
-            System.out.println(smiles + " input mol");
-            List<IAtomContainer> candidates = sru.copyAndExtractAglyconeAndCircularSugars(smiPar.parseSmiles(smiles), false);
-            for (IAtomContainer candidate : candidates) {
-                if (candidate.isEmpty() && candidates.indexOf(candidate) == 0) {
-                    System.out.println("[empty aglycone]");
-                    continue;
-                }
-                System.out.println(smiGen.create(candidate));
-            }
-        }
+        String glycosidicNP = "OCC(O)C(O)C(O)C(O)C(O)C1OC(O)C(O)C(O)C1N";
+        List<String> expectedSmilesList = Arrays.asList(
+                "OCC(O)C(O)C(O)C(O)CO",
+                "C1(OC(O)C(O)C(O)C1N)C"
+        );
+        IAtomContainer molecule = smiPar.parseSmiles(glycosidicNP);
+        List<IAtomContainer> candidates = sru.copyAndExtractAglyconeAndCircularSugars(molecule, false);
+        List<String> generatedSmilesList = SugarRemovalUtilityTest.generateSmilesList(candidates, smiGen);
+        Assertions.assertLinesMatch(expectedSmilesList, generatedSmilesList);
     }
 
     /**
@@ -2357,18 +2360,13 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.Stereo);
         SugarRemovalUtility sru = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
-        String[] glycosidicNP = new String[] {"O=C(O)CC(O)(C(=O)O)C(C(=O)O)CCCCCCCCCCCCCC"};
-        for (String smiles : glycosidicNP) {
-            System.out.println(smiles + " input mol");
-            List<IAtomContainer> candidates = sru.copyAndExtractAglyconeAndCircularSugars(smiPar.parseSmiles(smiles), false);
-            for (IAtomContainer candidate : candidates) {
-                if (candidate.isEmpty() && candidates.indexOf(candidate) == 0) {
-                    System.out.println("[empty aglycone]");
-                    continue;
-                }
-                System.out.println(smiGen.create(candidate));
-            }
-        }
+        String smiles = "O=C(O)CC(O)(C(=O)O)C(C(=O)O)CCCCCCCCCCCCCC";
+        List<IAtomContainer> candidates = sru.copyAndExtractAglyconeAndCircularSugars(smiPar.parseSmiles(smiles), false);
+        List<String> expectedSmilesList = Arrays.asList(
+                "O=C(O)CC(O)(C(=O)O)C(C(=O)O)CCCCCCCCCCCCCC"
+        );
+        List<String> generatedSmilesList = SugarRemovalUtilityTest.generateSmilesList(candidates, smiGen);
+        Assertions.assertLinesMatch(expectedSmilesList, generatedSmilesList);
     }
 
     /**
@@ -2381,18 +2379,14 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.Stereo);
         SugarRemovalUtility sru = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
-        String[] glycosidicNP = new String[] {"OCC(O)C(O)C(O)C(O)C1OC(CO)C(O)C(O)C1O"};
-        for (String smiles : glycosidicNP) {
-            System.out.println(smiles + " input mol");
-            List<IAtomContainer> candidates = sru.copyAndExtractAglyconeAndCircularSugars(smiPar.parseSmiles(smiles), false);
-            for (IAtomContainer candidate : candidates) {
-                if (candidate.isEmpty() && candidates.indexOf(candidate) == 0) {
-                    System.out.println("[empty aglycone]");
-                    continue;
-                }
-                System.out.println(smiGen.create(candidate));
-            }
-        }
+        String smiles = "OCC(O)C(O)C(O)C(O)C1OC(CO)C(O)C(O)C1O";
+        List<IAtomContainer> candidates = sru.copyAndExtractAglyconeAndCircularSugars(smiPar.parseSmiles(smiles), false);
+        List<String> expectedSmilesList = Arrays.asList(
+                "OCC(O)C(O)C(O)CO",
+                "C1(OC(CO)C(O)C(O)C1O)C"
+        );
+        List<String> generatedSmilesList = SugarRemovalUtilityTest.generateSmilesList(candidates, smiGen);
+        Assertions.assertLinesMatch(expectedSmilesList, generatedSmilesList);
     }
 
     /**
@@ -2405,18 +2399,76 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.Stereo);
         SugarRemovalUtility sru = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
-        String[] glycosidicNP = new String[] {"O=C(C=CC1=CC=C(O)C=C1)C=2C(=O)C(C(=O)C(O)(C2O)C3OC(CO)C(O)C(O)C3O)C(O)C4OCC(O)C(O)C4O"};
-        for (String smiles : glycosidicNP) {
-            System.out.println(smiles + " input mol");
-            List<IAtomContainer> candidates = sru.copyAndExtractAglyconeAndCircularSugars(smiPar.parseSmiles(smiles), false);
-            for (IAtomContainer candidate : candidates) {
-                if (candidate.isEmpty() && candidates.indexOf(candidate) == 0) {
-                    System.out.println("[empty aglycone]");
-                    continue;
-                }
-                System.out.println(smiGen.create(candidate));
-            }
-        }
+        String smiles = "O=C(C=CC1=CC=C(O)C=C1)C=2C(=O)C(C(=O)C(O)(C2O)C3OC(CO)C(O)C(O)C3O)C(O)C4OCC(O)C(O)C4O";
+        List<IAtomContainer> candidates = sru.copyAndExtractAglyconeAndCircularSugars(smiPar.parseSmiles(smiles), false);
+        List<String> expectedSmilesList = Arrays.asList(
+                "O=C(C=CC1=CC=C(O)C=C1)C=2C(=O)C(C(=O)C(O)C2O)CO",
+                "C1(OC(CO)C(O)C(O)C1O)C",
+                "C1(OCC(O)C(O)C1O)C"
+        );
+        List<String> generatedSmilesList = SugarRemovalUtilityTest.generateSmilesList(candidates, smiGen);
+        Assertions.assertLinesMatch(expectedSmilesList, generatedSmilesList);
+    }
+
+    /**
+     * TODO: this molecule creates issues (in batch processing), investigate
+     *
+     * @throws Exception
+     */
+    @Test
+    void sugarExtractionTestBug5() throws Exception {
+        SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
+        SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.Stereo);
+        SugarRemovalUtility sru = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
+        String smiles = "CC(N)C(=O)NC(CCC(N)=O)C(=O)NOC1OC(O)C(O)C(O)C1O";
+        List<IAtomContainer> candidates = sru.copyAndExtractAglyconeAndCircularSugars(smiPar.parseSmiles(smiles), false);
+        List<String> expectedSmilesList = Arrays.asList(
+                "CC(N)C(=O)NC(CCC(N)=O)C(=O)NO",
+                "C1(OC(O)C(O)C(O)C1O)O"
+        );
+        List<String> generatedSmilesList = SugarRemovalUtilityTest.generateSmilesList(candidates, smiGen);
+        Assertions.assertLinesMatch(expectedSmilesList, generatedSmilesList);
+    }
+
+    /**
+     * TODO: this molecule creates issues (in batch processing), investigate
+     *
+     * @throws Exception
+     */
+    @Test
+    void sugarExtractionTestBug6() throws Exception {
+        SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
+        SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.Stereo);
+        SugarRemovalUtility sru = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
+        String smiles = "OC1OC(O)C(O)C1OC1C(OCCCCCCCCCCCCCCCCC)OC(OCCCCCCCCCCC)C(O)C1OC1C(O)C(O)C(O)OC(O)C1O";
+        List<IAtomContainer> candidates = sru.copyAndExtractAglyconeAndCircularSugars(smiPar.parseSmiles(smiles), false);
+        List<String> expectedSmilesList = Arrays.asList(
+                "OC1C(OCCCCCCCCCCCCCCCCC)OC(OCCCCCCCCCCC)C(O)C1O",
+                "OC1OC(O)C(O)C1O",
+                "C1(C(O)C(O)C(O)OC(O)C1O)O"
+        );
+        List<String> generatedSmilesList = SugarRemovalUtilityTest.generateSmilesList(candidates, smiGen);
+        Assertions.assertLinesMatch(expectedSmilesList, generatedSmilesList);
+    }
+
+    /**
+     * TODO: this molecule creates issues (in batch processing), investigate
+     *
+     * @throws Exception
+     */
+    @Test
+    void sugarExtractionTestBug7() throws Exception {
+        SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
+        SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.Stereo);
+        SugarRemovalUtility sru = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
+        String smiles = "CCCCCC=CC=CC(O)CC=CC=CC(=O)OC1C(O)C(C2=C(O)C=C(O)C=C2CO)OC(CO)C1OC1OC(C)C(O)C(O)C1OC1OC(O)C(O)C(O)C1O";
+        List<IAtomContainer> candidates = sru.copyAndExtractAglyconeAndCircularSugars(smiPar.parseSmiles(smiles), false);
+        List<String> expectedSmilesList = Arrays.asList(
+                "CCCCCC=CC=CC(O)CC=CC=CC(=O)OC1C(O)C(C2=C(O)C=C(O)C=C2CO)OC(CO)C1O",
+                "C1(OC(C)C(O)C(O)C1OC2OC(O)C(O)C(O)C2O)O"
+        );
+        List<String> generatedSmilesList = SugarRemovalUtilityTest.generateSmilesList(candidates, smiGen);
+        Assertions.assertLinesMatch(expectedSmilesList, generatedSmilesList);
     }
 
     /**
@@ -2432,6 +2484,25 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
             AtomContainerManipulator.percieveAtomTypesAndConfigureAtoms(molecule);
             CDKHydrogenAdder.getInstance(SilentChemObjectBuilder.getInstance()).addImplicitHydrogens(molecule);
         }
+    }
+
+    /**
+     * Helper method to convert a list of IAtomContainer to a list of SMILES strings
+     *
+     * @param candidates List of IAtomContainer molecules to convert
+     * @param smiGen SMILES generator to use for conversion
+     * @return List of SMILES strings
+     */
+    protected static List<String> generateSmilesList(List<IAtomContainer> candidates, SmilesGenerator smiGen) {
+        return candidates.stream()
+                .map(mol -> {
+                    try {
+                        return smiGen.create(mol);
+                    } catch (Exception e) {
+                        throw new RuntimeException("Error generating SMILES", e);
+                    }
+                })
+                .collect(Collectors.toList());
     }
 
     /**

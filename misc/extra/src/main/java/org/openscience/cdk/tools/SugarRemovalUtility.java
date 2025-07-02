@@ -508,16 +508,21 @@ public class SugarRemovalUtility {
     public List<IAtomContainer> copyAndExtractAglyconeAndCircularSugars(IAtomContainer mol, boolean markAttachPointsByR) {
         //setup and copying
         float loadFactor = 0.75f;
-        int atomMapInitCapacity = (int)(mol.getAtomCount() * (1.0f / loadFactor) + 2.0f);
-        int bondMapInitCapacity = (int)(mol.getBondCount() * (1.0f / loadFactor) + 2.0f);
+        int atomMapInitCapacity = (int)(mol.getAtomCount() * (1.0f / loadFactor) + 3.0f);
+        int bondMapInitCapacity = (int)(mol.getBondCount() * (1.0f / loadFactor) + 3.0f);
         HashMap<IAtom, IAtom> origAtomToAtomAglycone = new HashMap<>(atomMapInitCapacity);
         HashMap<IBond, IBond> origBondToBondAglycone = new HashMap<>(bondMapInitCapacity);
         HashMap<IAtom, IAtom> origAtomToAtomSugars = new HashMap<>(atomMapInitCapacity);
         HashMap<IBond, IBond> origBondToBondSugars = new HashMap<>(bondMapInitCapacity);
-        IAtomContainer copyForAglcone = SugarRemovalUtility.deeperCopy(mol, origAtomToAtomAglycone, origBondToBondAglycone);
-        IAtomContainer copyForSugars = SugarRemovalUtility.deeperCopy(mol, origAtomToAtomSugars, origBondToBondSugars);
+        IAtomContainer copyForAglcone = this.deeperCopy(mol, origAtomToAtomAglycone, origBondToBondAglycone);
+        IAtomContainer copyForSugars = this.deeperCopy(mol, origAtomToAtomSugars, origBondToBondSugars);
         //remove aglycone atoms from sugar container
+        int bondCountBefore = mol.getBondCount();
         boolean wasSugarRemoved = this.removeCircularSugars(copyForAglcone);
+        int bondCountAfter = mol.getBondCount();
+        if (bondCountBefore != bondCountAfter) {
+            SugarRemovalUtility.LOGGER.error("molecule instance was changed!");
+        }
         if (!wasSugarRemoved) {
             List<IAtomContainer> results = new ArrayList<>(1);
             results.add(copyForAglcone);
@@ -528,12 +533,26 @@ public class SugarRemovalUtility {
                 copyForSugars.removeAtom(origAtomToAtomSugars.get(atom));
             }
         }
+        for (IBond bond: copyForAglcone.bonds()) {
+            if (!copyForAglcone.contains(bond.getBegin()) || !copyForAglcone.contains(bond.getEnd())) {
+                copyForAglcone.removeBond(bond);
+                SugarRemovalUtility.LOGGER.error("Removed incomplete bond");
+            }
+        }
+        for (IBond bond: copyForSugars.bonds()) {
+            if (!copyForSugars.contains(bond.getBegin()) || !copyForSugars.contains(bond.getEnd())) {
+                copyForSugars.removeBond(bond);
+                SugarRemovalUtility.LOGGER.error("Removed incomplete bond");
+            }
+        }
+        boolean identifiedBrockenBond = false;
         //identify bonds that were broken between sugar moieties and aglycone
         // -> saturate them with R or H
         // -> copy the connection atom (glycosidic O/N/S/C etc.) from the aglycone to the sugar, along with its stereo element
         for (IBond bond : mol.bonds()) {
             //bond not in aglycone or sugars, so it was broken during sugar removal
             if (!copyForAglcone.contains(origBondToBondAglycone.get(bond)) && !copyForSugars.contains(origBondToBondSugars.get(bond))) {
+                identifiedBrockenBond = true;
                 for (IAtom atom : bond.atoms()) {
                     //bond atom in aglycone -> saturate with H or R
                     if (copyForAglcone.contains(origAtomToAtomAglycone.get(atom))) {
@@ -550,12 +569,17 @@ public class SugarRemovalUtility {
                             }
                             copyForAglcone.addBond(tmpNewBond);
                         } else {
-                            origAtomToAtomAglycone.get(atom).setImplicitHydrogenCount(origAtomToAtomAglycone.get(atom).getImplicitHydrogenCount() + bond.getOrder().numeric());
+                            IAtom bondAtomInAglycone = origAtomToAtomAglycone.get(atom);
+                            int implHCount = bondAtomInAglycone.getImplicitHydrogenCount();
+                            bondAtomInAglycone.setImplicitHydrogenCount(implHCount + bond.getOrder().numeric());
                         }
                     //bond atom in sugar -> get the formerly connected atom from the aglycone and copy it
-                    } else {
+                    } else if (copyForSugars.contains(origAtomToAtomSugars.get(atom))) {
                         IAtom otherAtom = bond.getOther(atom);
-                        IAtom cpyOtherAtom = SugarRemovalUtility.deeperCopy(otherAtom, copyForSugars);
+                        if (!copyForAglcone.contains(origAtomToAtomAglycone.get(otherAtom))) {
+                            SugarRemovalUtility.LOGGER.error("Other atom of broken bond not found in aglycone, this should not happen!");
+                        }
+                        IAtom cpyOtherAtom = this.deeperCopy(otherAtom, copyForSugars);
                         IBond newBond;
                         if (bond.getBegin().equals(atom)) {
                             newBond = atom.getBuilder().newInstance(IBond.class, origAtomToAtomSugars.get(atom), cpyOtherAtom, bond.getOrder());
@@ -583,9 +607,14 @@ public class SugarRemovalUtility {
                                 copyForSugars.addStereoElement(elem.map(origAtomToAtomSugars, origBondToBondSugars));
                             }
                         }
+                    } else {
+                        SugarRemovalUtility.LOGGER.error("Bond atom neither found in aglycone nor in sugars, this should not happen!");
                     }
                 }
             }
+        }
+        if (!identifiedBrockenBond && !copyForAglcone.isEmpty()) {
+            SugarRemovalUtility.LOGGER.error("No broken bonds found between aglycone and sugars, no saturation performed, this should not happen!");
         }
         //return value preparations, partition disconnected sugars
         List<IAtomContainer> results = new ArrayList<>(mol.getAtomCount());
@@ -3514,19 +3543,23 @@ public class SugarRemovalUtility {
 
     /**
      *
+     *
+     * Note: making this method static caused issues when processing multiple molecules with the same instance of this
+     * class. No idea why.
+     *
      * @param mol
      * @param origToCopyAtomMap
      * @param origToCopyBondMap
      * @return
      */
-    protected static IAtomContainer deeperCopy(
+    protected IAtomContainer deeperCopy(
             IAtomContainer mol,
             HashMap<IAtom, IAtom> origToCopyAtomMap,
             HashMap<IBond, IBond> origToCopyBondMap) {
         IAtomContainer copy = mol.getBuilder().newAtomContainer();
         // atoms
         for (IAtom atom : mol.atoms()) {
-            IAtom cpyAtom = SugarRemovalUtility.deeperCopy(atom, copy);
+            IAtom cpyAtom = this.deeperCopy(atom, copy);
             origToCopyAtomMap.put(atom, cpyAtom);
         }
         // bonds
@@ -3535,7 +3568,7 @@ public class SugarRemovalUtility {
             IAtom end = origToCopyAtomMap.get(bond.getEnd());
             if (beg == null || end == null || beg.getContainer() != end.getContainer())
                 continue;
-            IBond newBond = SugarRemovalUtility.deeperCopy(bond, beg, end);
+            IBond newBond = this.deeperCopy(bond, beg, end);
             origToCopyBondMap.put(bond, newBond);
         }
         // single electrons
@@ -3561,11 +3594,14 @@ public class SugarRemovalUtility {
 
     /**
      *
+     * Note: making this method static caused issues when processing multiple molecules with the same instance of this
+     * class. No idea why.
+     *
      * @param atom
      * @param container
      * @return
      */
-    protected static IAtom deeperCopy(IAtom atom, IAtomContainer container) {
+    protected IAtom deeperCopy(IAtom atom, IAtomContainer container) {
         IAtom cpyAtom = container.newAtom(atom.getAtomicNumber(),
                 atom.getImplicitHydrogenCount());
         cpyAtom.setIsAromatic(atom.isAromatic());
@@ -3577,12 +3613,15 @@ public class SugarRemovalUtility {
 
     /**
      *
+     * Note: making this method static caused issues when processing multiple molecules with the same instance of this
+     * class. No idea why.
+     *
      * @param bond
      * @param begin
      * @param end
      * @return
      */
-    protected static IBond deeperCopy(IBond bond, IAtom begin, IAtom end) {
+    protected IBond deeperCopy(IBond bond, IAtom begin, IAtom end) {
         IBond newBond = begin.getContainer().newBond(begin, end, bond.getOrder());
         newBond.setIsAromatic(bond.isAromatic());
         newBond.setStereo(bond.getStereo());
