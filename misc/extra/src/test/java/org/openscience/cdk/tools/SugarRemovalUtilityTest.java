@@ -35,6 +35,7 @@ import org.openscience.cdk.tools.manipulator.AtomContainerManipulator;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -52,15 +53,7 @@ import java.util.stream.Collectors;
  *
  * @author Jonas Schaub
  */
-class SugarRemovalUtilityTest extends SugarRemovalUtility {
-    /**
-     * Constructor that uses SilentChemObjectBuilder as parameter for the
-     * SugarRemovalUtility constructor.
-     */
-    SugarRemovalUtilityTest() {
-        super(SilentChemObjectBuilder.getInstance());
-    }
-
+class SugarRemovalUtilityTest {
     /**
      * Example usage code for the class documentation.
      *
@@ -113,14 +106,14 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
                 "OC1C(OCCCCCCCCCCC)OC(OCCCCCCCCCCCCCCCCC)C(O)C1O");
         SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.Canonical);
-        SugarRemovalUtility sugarRemovalUtil = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
+        SugarRemovalUtility sugarRemovalUtil = this.getSugarRemovalUtilityV1200DefaultSettings();
         sugarRemovalUtil.setDetectCircularSugarsOnlyWithOGlycosidicBondSetting(true);
         for (String key : smilesBeforeAndAfterDeglycosylationMap.keySet()) {
             IAtomContainer originalMolecule = smiPar.parseSmiles(key);
             Assertions.assertTrue(sugarRemovalUtil.hasCircularSugars(originalMolecule));
             Assertions.assertTrue(sugarRemovalUtil.hasCircularOrLinearSugars(originalMolecule));
             sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-            SugarRemovalUtilityTest.saturate(originalMolecule);
+            this.saturate(originalMolecule);
             String smilesAfterDeglycosylation = smiGen.create(originalMolecule);
             Assertions.assertEquals(smilesBeforeAndAfterDeglycosylationMap.get(key), smilesAfterDeglycosylation);
         }
@@ -139,13 +132,13 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         SmilesGenerator smiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer originalMolecule;
         String smilesCode;
-        SugarRemovalUtility sugarRemovalUtil = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
+        SugarRemovalUtility sugarRemovalUtil = this.getSugarRemovalUtilityV1200DefaultSettings();
         sugarRemovalUtil.setDetectCircularSugarsOnlyWithOGlycosidicBondSetting(true);
         originalMolecule = smiPar.parseSmiles(
                 //CNP0220816
                 "CC1=CC(OC2OC(CO)C(O)C(O)C2O)=C2C3=C(CCC3)C(=O)OC2=C1");
         sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //A simple example, the sugar has a glycosidic bond and is not terminal and therefore removed; the resulting
         // disconnected CH3OH is too small to keep and gets cleared away
@@ -166,12 +159,12 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         SmilesGenerator smiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer originalMolecule;
         String smilesCode;
-        SugarRemovalUtility sugarRemovalUtil = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
+        SugarRemovalUtility sugarRemovalUtil = this.getSugarRemovalUtilityV1200DefaultSettings();
         originalMolecule = smiPar.parseSmiles(
                 //CNP0151033
                 "O=C(OC1C(OCC2=COC(OC(=O)CC(C)C)C3C2CC(O)C3(O)COC(=O)C)OC(CO)C(O)C1O)C=CC4=CC=C(O)C=C4");
         sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //The sugar ring is not terminal and should not be removed, so the molecule remains unchanged
         Assertions.assertEquals(
@@ -179,7 +172,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
                 smilesCode);
         sugarRemovalUtil.setRemoveOnlyTerminalSugarsSetting(false);
         sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //Now that all sugars are removed, the sugar ring is removed and an unconnected structure remains
         Assertions.assertEquals(
@@ -201,18 +194,18 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         SmilesGenerator smiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer originalMolecule;
         String smilesCode;
-        SugarRemovalUtility sugarRemovalUtil = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
+        SugarRemovalUtility sugarRemovalUtil = this.getSugarRemovalUtilityV1200DefaultSettings();
         originalMolecule = smiPar.parseSmiles(
                 //CNP0125332
                 "O=P(O)(O)OCC1OC(OP(=O)(O)O)C(O)C1O");
         sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //Nothing is removed, the sugar is terminal because the two phosphate groups are big enough to keep (5 and 6 heavy atoms)
         Assertions.assertEquals("O=P(O)(O)OCC1OC(OP(=O)(O)O)C(O)C1O", smilesCode);
         sugarRemovalUtil.setPreservationModeThresholdSetting(6);
         sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //Now, one of the phosphate groups is removed because it has only 5 heavy atoms and therefore, the sugar is
         // no longer terminal and also removed
@@ -223,7 +216,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
                 "O=P(O)(O)OCC1OC(OP(=O)(O)O)C(O)C1O");
         sugarRemovalUtil.setPreservationModeThresholdSetting(7);
         sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //Now, both phosphate groups are removed because they are too small and nothing remains of the molecule
         Assertions.assertEquals("", smilesCode);
@@ -235,7 +228,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         //back to default
         sugarRemovalUtil.setPreservationModeThresholdSetting(5);
         sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //Now, also non-terminal sugars are removed, which leaves two unconnected phosphate groups in this case
         Assertions.assertEquals("O=P(O)(O)O.O=P(O)(O)OC", smilesCode);
@@ -245,7 +238,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
                 "O=P(O)(O)OCC1OC(OP(=O)(O)O)C(O)C1O");
         sugarRemovalUtil.setExocyclicOxygenAtomsToAtomsInRingRatioThresholdSetting(0.7);
         sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //Now, the sugar ring does not have enough oxygen atoms attached to be classified as a sugar and be removed
         // (3 oxygen atoms to 5 atoms in the ring makes a ratio of 3/5 = 0.6)
@@ -266,13 +259,13 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         SmilesGenerator smiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer originalMolecule;
         String smilesCode;
-        SugarRemovalUtility sugarRemovalUtil = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
+        SugarRemovalUtility sugarRemovalUtil = this.getSugarRemovalUtilityV1200DefaultSettings();
         originalMolecule = smiPar.parseSmiles(
                 //CNP0426917
                 "O=C1OC2C(CCO)CCC3(C=C4C=CCC5C(C=CC(C45)C23)CCCC(C)(CC6=CN=C(N)C=C6)CC=7C=CC=C8C(=O)C9(OC19C(=O)C87)CC(=C(C)CC%10C=%11C=CN=C%12NC(NC)CC(C%12%11)CC%10)CO)NCC");
         Assertions.assertFalse(sugarRemovalUtil.hasLinearSugars(originalMolecule));
         sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //There is a structure at the center of the molecule that gets detected as a linear sugar having three carbon atoms,
         // but it should not be detected as a linear sugar and not be removed because it is in parts cyclic and too small.
@@ -281,7 +274,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
                 smilesCode);
         sugarRemovalUtil.setDetectLinearSugarsInRingsSetting(true);
         sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //now too, nothing should happen because it is still too small
         Assertions.assertEquals(
@@ -289,7 +282,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
                 smilesCode);
         sugarRemovalUtil.setLinearSugarCandidateMinSizeSetting(3);
         sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //now, the structure is big enough to be removed, and it is revealed that it is in fact terminal
         // but its removal breaks up the big ring
@@ -311,12 +304,12 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         SmilesGenerator smiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer originalMolecule;
         String smilesCode;
-        SugarRemovalUtility sugarRemovalUtil = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
+        SugarRemovalUtility sugarRemovalUtil = this.getSugarRemovalUtilityV1200DefaultSettings();
         originalMolecule = smiPar.parseSmiles("O=CCC12OC(OC1=O)C3(C)C(C)CCC3(C)C2"); //CNP0243650
         Assertions.assertFalse(sugarRemovalUtil.hasLinearSugars(originalMolecule));
         sugarRemovalUtil.setDetectLinearAcidicSugarsSetting(true);
         sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //Nothing should be removed here
         Assertions.assertEquals("O=CCC12OC(OC1=O)C3(C)C(C)CCC3(C)C2", smilesCode);
@@ -335,7 +328,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         SmilesGenerator smiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer originalMolecule;
         String smilesCode;
-        SugarRemovalUtility sugarRemovalUtil = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
+        SugarRemovalUtility sugarRemovalUtil = this.getSugarRemovalUtilityV1200DefaultSettings();
         //this molecule contains a fused, 8-membered macrocyle that is partly made up of sugars
         originalMolecule = smiPar.parseSmiles(
                 //CNP0098894
@@ -343,7 +336,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         //since linear sugars in cycles should not be removed, this must be false
         Assertions.assertFalse(sugarRemovalUtil.hasLinearSugars(originalMolecule));
         sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //Nothing should be removed here because the linear sugar in the macrocycle is cyclic and non-terminal
         Assertions.assertEquals(
@@ -353,7 +346,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         //now, the linear sugar is detected but still not removed because it is non-terminal
         Assertions.assertTrue(sugarRemovalUtil.hasLinearSugars(originalMolecule));
         sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //Nothing should be removed here because the linear sugar in the macrocycle is detected but not terminal
         Assertions.assertEquals(
@@ -361,7 +354,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
                 smilesCode);
         sugarRemovalUtil.setRemoveOnlyTerminalSugarsSetting(false);
         sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //now, the sugar in the macrocycle is removed and the molecule is disconnected
         Assertions.assertEquals("OC=1C=CC=C(C1)C=2C=CC=C3OCC4C5=C(OC4C32)C(OC)=C(OC)C=C5CNC.NCCNC", smilesCode);
@@ -380,13 +373,13 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         SmilesGenerator smiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer originalMolecule;
         String smilesCode;
-        SugarRemovalUtility sugarRemovalUtil = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
+        SugarRemovalUtility sugarRemovalUtil = this.getSugarRemovalUtilityV1200DefaultSettings();
         //two structures connected by a circular sugar moiety
         originalMolecule = smiPar.parseSmiles(
                 //CNP0436852
                 "O=C(O)C1OC(OC=2C=CC=3C(=O)[C-](C=[O+]C3C2)C4=CC=C(O)C=C4)C(O)(CNCC(CC=5C=NCC5)C(C)C)C(O)C1O");
         sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //Nothing should be removed here because the circular sugar is not terminal
         Assertions.assertEquals(
@@ -395,14 +388,14 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         sugarRemovalUtil.setRemoveOnlyTerminalSugarsSetting(false);
         sugarRemovalUtil.setDetectLinearSugarsInRingsSetting(true);
         sugarRemovalUtil.removeLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //Nothing should be removed because only linear sugars are removed and there are none!
         Assertions.assertEquals(
                 "O=C(O)C1OC(OC=2C=CC=3C(=O)[C-](C=[O+]C3C2)C4=CC=C(O)C=C4)C(O)(CNCC(CC=5C=NCC5)C(C)C)C(O)C1O",
                 smilesCode);
         sugarRemovalUtil.removeCircularSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //Now, the circular sugar is removed
         Assertions.assertEquals(
@@ -423,10 +416,10 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         SmilesGenerator smiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer originalMolecule;
         String smilesCode;
-        SugarRemovalUtility sugarRemovalUtil = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
+        SugarRemovalUtility sugarRemovalUtil = this.getSugarRemovalUtilityV1200DefaultSettings();
         originalMolecule = smiPar.parseSmiles("O=C1OC(C2=COC=C2)CC3(C)C1CCC4(C)C3C5OC(=O)C4(O)C=C5"); //CNP0235814
         sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //Nothing should be removed here although there might be a match for the linear sugar patterns
         Assertions.assertEquals("O=C1OC(C2=COC=C2)CC3(C)C1CCC4(C)C3C5OC(=O)C4(O)C=C5", smilesCode);
@@ -445,12 +438,12 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         SmilesGenerator smiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer originalMolecule;
         String smilesCode;
-        SugarRemovalUtility sugarRemovalUtil = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
+        SugarRemovalUtility sugarRemovalUtil = this.getSugarRemovalUtilityV1200DefaultSettings();
         originalMolecule = smiPar.parseSmiles(
                 //CNP0296940
                 "O=C1OC2CC3(OC4(O)C(CC5(OC45C(=O)OC)CCCCCCCCCCCCCCCC)C2(O3)C1)CCCCCCCCCCCCCCCC");
         sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //Nothing should be removed here although there is a small match for the linear sugar patterns
         Assertions.assertEquals(
@@ -473,13 +466,13 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         SmilesGenerator smiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer originalMolecule;
         String smilesCode;
-        SugarRemovalUtility sugarRemovalUtil = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
+        SugarRemovalUtility sugarRemovalUtil = this.getSugarRemovalUtilityV1200DefaultSettings();
         //Interesting case because there are two macrocycles containing in principle a circular sugar that is not isolated
         originalMolecule = smiPar.parseSmiles(
                 //CNP0419027
                 "O=C1C2=CC=CC3=C2CN1CC(=O)C4=C(O)C5=C6OC7OC(COC(C=CC6=C(OC)C8=C5C=9C(=CC%10CCCC%10C49)CC8)C%11=CNC=%12C=CC(=CC%12%11)CNC)C(O)C(OC#CC3)C7(O)CO");
         sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //Nothing should be removed here although there is a match for the linear sugar patterns in the said
         // non-isolated sugar cycle in the macrocycle
@@ -488,7 +481,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
                 smilesCode);
         sugarRemovalUtil.setDetectLinearSugarsInRingsSetting(true);
         sugarRemovalUtil.removeLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //Now, the sugar cycle in the macrocyle is removed because it matches the linear sugar patterns;
         // the macrocycles are broken but the molecule does not get disconnected, so the moiety was terminal
@@ -509,13 +502,13 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         SmilesGenerator smiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer originalMolecule;
         String smilesCode;
-        SugarRemovalUtility sugarRemovalUtil = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
+        SugarRemovalUtility sugarRemovalUtil = this.getSugarRemovalUtilityV1200DefaultSettings();
         sugarRemovalUtil.setDetectLinearAcidicSugarsSetting(true);
         originalMolecule = smiPar.parseSmiles(
                 //CNP0218440
                 "O=C(O)CC(OC1OC(CO)C(O)C(O)C1O)(C)CC(=O)OCC=CC2=CC(OC)=C(OC3OC(CO)C(O)C(O)C3O)C(OC)=C2");
         sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //The two circular sugar moieties and one connected linear sugar (a sugar acid) are removed (all terminal)
         Assertions.assertEquals("OC1=C(OC)C=C(C=CC)C=C1OC", smilesCode);
@@ -533,13 +526,13 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         SmilesGenerator smiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer originalMolecule;
         String smilesCode;
-        SugarRemovalUtility sugarRemovalUtil = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
+        SugarRemovalUtility sugarRemovalUtil = this.getSugarRemovalUtilityV1200DefaultSettings();
         sugarRemovalUtil.setDetectLinearAcidicSugarsSetting(true);
         originalMolecule = smiPar.parseSmiles(
                 //CNP0120327
                 "O=C(O)CC(O)(C)CC(=O)OCC1=CC=C(OC2OC(CO)C(O)C(O)C2O)C=C1");
         sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //One circular and one linear sugar moiety (a sugar acid) are removed
         Assertions.assertEquals("OC1=CC=C(C=C1)C", smilesCode);
@@ -557,13 +550,13 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         SmilesGenerator smiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer originalMolecule;
         String smilesCode;
-        SugarRemovalUtility sugarRemovalUtil = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
+        SugarRemovalUtility sugarRemovalUtil = this.getSugarRemovalUtilityV1200DefaultSettings();
         sugarRemovalUtil.setDetectLinearAcidicSugarsSetting(true);
         originalMolecule = smiPar.parseSmiles(
                 //CNP0420141
                 "O=C(O)CC(C(=O)O)C(OCC1C(=C)CCC2C(C)(COC(=O)C(CC(=O)O)C(OCC3C(=C)CCC4C(C)(C)CCCC34C)C(=O)OC)CCCC12C)C(=O)OC");
         sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //One linear sugar moiety is removed (a sugar acid), the other one is not because it is terminal;
         // no other changes are done to the molecule
@@ -590,13 +583,13 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         SmilesGenerator smiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer originalMolecule;
         String smilesCode;
-        SugarRemovalUtility sugarRemovalUtil = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
+        SugarRemovalUtility sugarRemovalUtil = this.getSugarRemovalUtilityV1200DefaultSettings();
         sugarRemovalUtil.setDetectLinearAcidicSugarsSetting(true);
         originalMolecule = smiPar.parseSmiles(
                 //CNP0260973
                 "O=C(O)CC(O)(C)CC(=O)OC1COC(OC2C(O)C(OC(OC3C(O)C(O)C(OC4CC5CCC6C(CCC7(C)C6CC8OC9(OCC(C)CC9)C(C)C87)C5(C)CC4O)OC3CO)C2OC%10OC(CO)C(O)C(O)C%10O)CO)C(O)C1O");
         sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //All sugars get removed although some circular sugars only become terminal after the removal of the linear one,
         // a sugar acid (that was a problem before)
@@ -606,7 +599,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
                 //CNP0250097
                 "O=C(O)CC(O)(C)CC(=O)OCC1OC(OCC2OC(OC(=O)C34CCC(C)(C)CC4C5=CCC6C7(C)CCC(O)C(C(=O)OC8OC(CO)C(O)C(O)C8O)(C)C7CCC6(C)C5(C)CC3)C(O)C(OC9OC(CO)C(O)C(O)C9O)C2O)C(OC%10OC(CO)C(O)C(O)C%10O)C(O)C1O");
         sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //All sugars get removed although some circular sugars only become terminal after the removal of the linear one,
         // a sugar acid (that was a problem before)
@@ -616,7 +609,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
                 //CNP0428924
                 "O=C(O)CC(O)(C)CC(=O)OC1C(O)C(OC2C3=C(O)C(=CC=C3OC2C(=C)CO)C(=O)C)OC(CO)C1O");
         sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //All sugars get removed although the circular sugar only becomes terminal after the removal of the linear one,
         // a sugar acid (that was a problem before)
@@ -626,7 +619,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
                 //CNP0428862
                 "O=C(O)CC(O)(C)CC(=O)OCC1OC(C=2C(O)=CC(O)=C3C(=O)C=C(OC32)C=4C=CC(O)=C(O)C4)C(O)C(O)C1O");
         sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //All sugars get removed although the circular sugar only become terminal after the removal of the linear one,
         // a sugar acid (that was a problem before)
@@ -636,7 +629,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
                 //CNP0063672
                 "O=C(O)CC(O)(C)CC(=O)OCC1(O)COC(OC2C(O)C(OC(C)C2OC3OCC(O)C(OC4OCC(O)C(O)C4O)C3O)OC5C(OC(=O)C67CCC(C)(C)CC7C8=CCC9C%10(C)CC(O)C(OC%11OC(CO)C(O)C(O)C%11O)C(C(=O)O)(C)C%10CCC9(C)C8(CO)CC6)OC(C)C(OC(=O)C=CC%12=CC(OC)=C(OC)C(OC)=C%12)C5OC%13OC(C)C(O)C(O)C%13O)C1O");
         sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //All sugars get removed although some circular sugars only become terminal after the removal of the linear one,
         // a sugar acid (that was a problem before), only one non-terminal sugar remains
@@ -659,16 +652,16 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         SmilesGenerator smiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer originalMolecule;
         String smilesCode;
-        SugarRemovalUtility sugarRemovalUtil = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
+        SugarRemovalUtility sugarRemovalUtil = this.getSugarRemovalUtilityV1200DefaultSettings();
         originalMolecule = smiPar.parseSmiles("O=C(O)C1OC(O)C(O)C(O)C1O"); //CNP0171089
         sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //This molecule is a sugar and should be completely removed
         Assertions.assertEquals("", smilesCode);
         sugarRemovalUtil.setDetectCircularSugarsOnlyWithOGlycosidicBondSetting(true);
         sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //Even with detection of glycosidic bonds, this sugar ring should be removed because there is no other structure
         // it can bind to via a glycosidic bond
@@ -687,11 +680,11 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         SmilesGenerator smiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer originalMolecule;
         String smilesCode;
-        SugarRemovalUtility sugarRemovalUtil = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
+        SugarRemovalUtility sugarRemovalUtil = this.getSugarRemovalUtilityV1200DefaultSettings();
         sugarRemovalUtil.setDetectLinearAcidicSugarsSetting(true);
         originalMolecule = smiPar.parseSmiles("O=C(O)CC(C(=O)O)C(OCC1C(=C)CCC2C(C)(C)CCCC12C)C(=O)O"); //CNP0321675
         sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //The linear sugar moiety (a sugar acid) is removed
         Assertions.assertEquals("C=C1CCC2C(C)(C)CCCC2(C)C1C", smilesCode);
@@ -700,7 +693,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
                 //CNP0032409
                 "O=C1C=C(OC=2C=C3OC(C)(CCC4CNC(=O)C4)C(OOCC(O)C(O)C(O)C(O)CO)CC3=CC12)C");
         sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //The linear sugar moiety (a hexose attached via a peroxide bond) is removed
         Assertions.assertEquals("O=C1C=C(OC=2C=C3OC(C)(CCC4CNC(=O)C4)C(O)CC3=CC12)C", smilesCode);
@@ -718,12 +711,12 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         SmilesGenerator smiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer originalMolecule;
         String smilesCode;
-        SugarRemovalUtility sugarRemovalUtil = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
+        SugarRemovalUtility sugarRemovalUtil = this.getSugarRemovalUtilityV1200DefaultSettings();
         originalMolecule = smiPar.parseSmiles(
                 //CNP0163522
                 "O=C1C=C(OC=2C1=CC3=C(OC(C)(C)C(OOCC(O)C(O)C(O)C(O)CO)C3)C2[N+]=4C=C5N=CC=C5C4CC)C");
         sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //The linear sugar moiety is removed
         Assertions.assertEquals("O=C1C=C(OC=2C1=CC3=C(OC(C)(C)C(O)C3)C2[N+]=4C=C5N=CC=C5C4CC)C", smilesCode);
@@ -743,13 +736,13 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         SmilesGenerator smiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer originalMolecule;
         String smilesCode;
-        SugarRemovalUtility sugarRemovalUtil = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
+        SugarRemovalUtility sugarRemovalUtil = this.getSugarRemovalUtilityV1200DefaultSettings();
         sugarRemovalUtil.setDetectCircularSugarsOnlyWithOGlycosidicBondSetting(true);
         originalMolecule = smiPar.parseSmiles(
                 //CNP0162697
                 "O=C1C=C(OC2=CC(OC(=O)C3OC(O)C(O)C(O)C3O)=C(O)C(O)=C12)C=4C=CC(O)=CC4");
         sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //The sugar moiety is NOT connected to the core structure via a glycosidic bond, so it is not removed
         Assertions.assertEquals(
@@ -757,7 +750,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
                 smilesCode);
         sugarRemovalUtil.setDetectCircularSugarsOnlyWithOGlycosidicBondSetting(false);
         sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //Now that this setting is changed, the sugar moiety is removed
         //note: chemically, the carboxy group should be part of the sugar, not of the core
@@ -771,14 +764,14 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         sugarRemovalUtil.setDetectCircularSugarsOnlyWithOGlycosidicBondSetting(true);
         sugarRemovalUtil.setDetectLinearAcidicSugarsSetting(true);
         sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //The circular sugar moiety is NOT connected to the core structure via a glycosidic bond, so it is not removed;
         // also, the removal of linear sugars leaves the circular sugar untouched
         Assertions.assertEquals("O=C1C=C(OC=2C1=C(O)C=C(O)C2C3OC(CO)C(O)C(O)C3O)C=4C=CC(O)=C(O)C4", smilesCode);
         sugarRemovalUtil.setDetectCircularSugarsOnlyWithOGlycosidicBondSetting(false);
         sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //Now that this setting is changed, the sugar moiety is removed
         Assertions.assertEquals("O=C1C=C(OC=2C=C(O)C=C(O)C12)C=3C=CC(O)=C(O)C3", smilesCode);
@@ -800,11 +793,11 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         SmilesGenerator smiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer originalMolecule;
         String smilesCode;
-        SugarRemovalUtility sugarRemovalUtil = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
+        SugarRemovalUtility sugarRemovalUtil = this.getSugarRemovalUtilityV1200DefaultSettings();
         sugarRemovalUtil.setDetectLinearAcidicSugarsSetting(true);
         originalMolecule = smiPar.parseSmiles("O=C(O)CC(O)(C(=O)O)C(C(=O)O)CCCCCCCCCCCCCC"); //CNP0231882
         sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //Only the aliphatic chain remains (in its full length)
         Assertions.assertEquals("CCCCCCCCCCCCCC", smilesCode);
@@ -822,13 +815,13 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         SmilesGenerator smiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer originalMolecule;
         String smilesCode;
-        SugarRemovalUtility sugarRemovalUtil = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
+        SugarRemovalUtility sugarRemovalUtil = this.getSugarRemovalUtilityV1200DefaultSettings();
         sugarRemovalUtil.setDetectLinearAcidicSugarsSetting(true);
         originalMolecule = smiPar.parseSmiles(
                 //CNP0097028
                 "O=CC1(C)C(OC2OC(C(=O)O)C(O)C(OC3OCC(O)C(O)C3O)C2OC4OC(CO)C(O)C(O)C4O)CCC5(C)C6CC=C7C8CC(C)(C)CCC8(C(=O)OC9OC(C)C(OC(=O)CC(O)CC(OC(=O)CC(O)CC(OC%10OC(CO)C(O)C%10O)C(C)CC)C(C)CC)C(O)C9OC%11OC(C)C(OC%12OCC(O)C(O)C%12O)C(O)C%11O)C(O)CC7(C)C6(C)CCC15");
         sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //Only the core structure remains
         Assertions.assertEquals(
@@ -851,18 +844,18 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         SmilesGenerator smiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer originalMolecule;
         String smilesCode;
-        SugarRemovalUtility sugarRemovalUtil = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
+        SugarRemovalUtility sugarRemovalUtil = this.getSugarRemovalUtilityV1200DefaultSettings();
         originalMolecule = smiPar.parseSmiles(
                 //CNP0416117
                 "O=C(OCC)CCC1=CC=2C=COC2C=3OCCNCC4(SSCC5(OC(OC31)C(O)C(O)C5O)CO)CCCC4");
         sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //the sugar ring within the macrocycle can be matched by the linear sugar patterns but should not be removed
         Assertions.assertEquals("O=C(OCC)CCC1=CC=2C=COC2C=3OCCNCC4(SSCC5(OC(OC31)C(O)C(O)C5O)CO)CCCC4", smilesCode);
         sugarRemovalUtil.setDetectLinearSugarsInRingsSetting(true);
         sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //Now, the (circular) sugar moiety within the macrocyle is removed
         Assertions.assertEquals("O=C(OCC)CCC=1C=C(OCCNCC2(SSC)CCCC2)C=3OC=CC3C1", smilesCode);
@@ -881,12 +874,12 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         SmilesGenerator smiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer originalMolecule;
         String smilesCode;
-        SugarRemovalUtility sugarRemovalUtil = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
+        SugarRemovalUtility sugarRemovalUtil = this.getSugarRemovalUtilityV1200DefaultSettings();
         originalMolecule = smiPar.parseSmiles(
                 //CNP0230833
                 "O=C1OC2CC3(OC(CCC3)CC(O)CC)OC(CC4(O)OC(C)(C)CC4C=CCCCCCC(O)(C)C(O)C(OC5OC(C)C(N(C)C)CC5)C(O)C(C)C(O)C(O)(C=C1)C)C2C");
         sugarRemovalUtil.removeLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //Nothing gets removed
         Assertions.assertEquals(
@@ -894,7 +887,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
                 smilesCode);
         sugarRemovalUtil.setRemoveOnlyTerminalSugarsSetting(false);
         sugarRemovalUtil.removeLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //Again, nothing is removed because the linear sugar is contained in a (macro-)cycle
         Assertions.assertEquals(
@@ -902,7 +895,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
                 smilesCode);
         sugarRemovalUtil.setDetectLinearSugarsInRingsSetting(true);
         sugarRemovalUtil.removeLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //Now, the linear sugar (a small, 4-carbon-membered one) gets removed and disconnects the molecule
         Assertions.assertEquals(
@@ -924,7 +917,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         SmilesGenerator smiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer originalMolecule;
         String smilesCode;
-        SugarRemovalUtility sugarRemovalUtil = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
+        SugarRemovalUtility sugarRemovalUtil = this.getSugarRemovalUtilityV1200DefaultSettings();
         sugarRemovalUtil.setDetectLinearSugarsInRingsSetting(true);
         sugarRemovalUtil.setRemoveOnlyTerminalSugarsSetting(false);
         sugarRemovalUtil.setDetectLinearAcidicSugarsSetting(true);
@@ -932,7 +925,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
                 //CNP0189711
                 "O=C(NC1C(O)OC(CO)C(O)C1OC2OC(CO)C(OC)C(O)C2OC3OC(C)C(O)C(O)C3OC)C");
         sugarRemovalUtil.removeLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //Nothing should be removed because this molecule has only circular sugars (was a problem before)
         Assertions.assertEquals(
@@ -954,7 +947,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         SmilesGenerator smiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer originalMolecule;
         String smilesCode;
-        SugarRemovalUtility sugarRemovalUtil = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
+        SugarRemovalUtility sugarRemovalUtil = this.getSugarRemovalUtilityV1200DefaultSettings();
         sugarRemovalUtil.setDetectCircularSugarsOnlyWithOGlycosidicBondSetting(true);
         sugarRemovalUtil.setDetectLinearAcidicSugarsSetting(true);
         //a molecule containing 2 circular sugars and 2 linear sugars (sugar acids), in both cases 1 terminal and 1 non-terminal
@@ -962,7 +955,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
                 //imaginary molecule created for demonstration purposes
                 "O=C(O)CC(C)(O)CC(=O)OCc1ccc(cc1)OC1C(CO)OC(OC(C(=O)OCc2ccc(OC3OC(CO)CC(O)C3O)cc2)C(O)(CC(C)C)C(=O)OC2CCc3cc4cc(O)c(C)c(O)c4c(O)c3C2=O)C(O)C1O");
         sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //the terminal linear and circular sugar moieties are removed
         Assertions.assertEquals(
@@ -970,7 +963,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
                 smilesCode);
         sugarRemovalUtil.setRemoveOnlyTerminalSugarsSetting(false);
         sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //all 4 sugar moieties are removed, the two non-terminal sugar moieties included
         Assertions.assertEquals(
@@ -983,7 +976,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         //back to default setting
         sugarRemovalUtil.setRemoveOnlyTerminalSugarsSetting(true);
         sugarRemovalUtil.removeLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //only the terminal linear sugar is removed
         Assertions.assertEquals(
@@ -991,7 +984,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
                 smilesCode);
         sugarRemovalUtil.setRemoveOnlyTerminalSugarsSetting(false);
         sugarRemovalUtil.removeLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //the two linear sugar moieties are removed, disconnecting the molecule
         Assertions.assertEquals(
@@ -1002,7 +995,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
                 //imaginary molecule created for demonstration purposes
                 "O=C(O)CC(C)(O)CC(=O)OCc1ccc(cc1)OC1C(CO)OC(OC(C(=O)OCc2ccc(OC3OC(CO)CC(O)C3O)cc2)C(O)(CC(C)C)C(=O)OC2CCc3cc4cc(O)c(C)c(O)c4c(O)c3C2=O)C(O)C1O");
         sugarRemovalUtil.removeCircularSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //the two circular sugar moieties are removed, disconnecting the molecule
         Assertions.assertEquals(
@@ -1015,7 +1008,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         //back to default setting
         sugarRemovalUtil.setRemoveOnlyTerminalSugarsSetting(true);
         sugarRemovalUtil.removeCircularSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //only the terminal circular sugar moiety is removed
         Assertions.assertEquals(
@@ -1038,17 +1031,17 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         SmilesGenerator smiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer originalMolecule;
         String smilesCode;
-        SugarRemovalUtility sugarRemovalUtil = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
+        SugarRemovalUtility sugarRemovalUtil = this.getSugarRemovalUtilityV1200DefaultSettings();
 
         originalMolecule = smiPar.parseSmiles("OC1(OCCC21OC3(O)CCOC3(O2)C)C"); //CNP0017501
         sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //Nothing should be removed because the sugar is a spiro ring (before, these were not filtered)
         Assertions.assertEquals("OC1(OCCC21OC3(O)CCOC3(O2)C)C", smilesCode);
         sugarRemovalUtil.setDetectSpiroRingsAsCircularSugarsSetting(true);
         sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //Now that the spiro rings are detected, the sugar ring is removed; BUT the adjacent ring is left intact!
         Assertions.assertEquals("OC12OCOC2(OCC1)C", smilesCode);
@@ -1057,13 +1050,13 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
 
         originalMolecule = smiPar.parseSmiles("OCC1OC2(OC3C(O)C(OC3(OC2)CO)CO)C(O)C1O"); //CNP0306895
         sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //Nothing should be removed because the sugar is a spiro ring (before, these were not filtered)
         Assertions.assertEquals("OCC1OC2(OC3C(O)C(OC3(OC2)CO)CO)C(O)C1O", smilesCode);
         sugarRemovalUtil.setDetectSpiroRingsAsCircularSugarsSetting(true);
         sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //Now that the spiro rings are detected, the sugar ring is removed; BUT the adjacent ring is left intact!
         Assertions.assertEquals("OCC1OC2(OCCOC2C1O)CO", smilesCode);
@@ -1072,13 +1065,13 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
 
         originalMolecule = smiPar.parseSmiles("OCC1OC2(OCC3OC(OC2)(CO)C(O)C3O)C(O)C1O"); //CNP0341963
         sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //Nothing should be removed because the sugar is a spiro ring (before, these were not filtered)
         Assertions.assertEquals("OCC1OC2(OCC3OC(OC2)(CO)C(O)C3O)C(O)C1O", smilesCode);
         sugarRemovalUtil.setDetectSpiroRingsAsCircularSugarsSetting(true);
         sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //Now that the spiro rings are detected, the sugar ring is removed; BUT the adjacent ring is left intact!
         Assertions.assertEquals("OCC12OCCOCC(O1)C(O)C2O", smilesCode);
@@ -1099,7 +1092,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         SmilesGenerator smiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer originalMolecule;
         String smilesCode;
-        SugarRemovalUtility sugarRemovalUtil = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
+        SugarRemovalUtility sugarRemovalUtil = this.getSugarRemovalUtilityV1200DefaultSettings();
 
         //A molecule consisting entirely of one circular and one linear sugar
         originalMolecule = smiPar.parseSmiles("OCC(O)C(O)C(O)C(O)C1OC(CO)C(O)C(O)C1O"); //CNP0119227
@@ -1107,21 +1100,21 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         Assertions.assertEquals(1, sugarRemovalUtil.getNumberOfCircularSugars(originalMolecule));
         Assertions.assertEquals(1, sugarRemovalUtil.getNumberOfLinearSugars(originalMolecule));
         sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //Completely removed
         Assertions.assertEquals("", smilesCode);
 
         originalMolecule = smiPar.parseSmiles("OCC(O)C(O)C(O)C(O)C1OC(CO)C(O)C(O)C1O"); //CNP0119227
         sugarRemovalUtil.removeCircularSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //Only the linear sugar remains
         Assertions.assertEquals("OCC(O)C(O)C(O)CO", smilesCode);
 
         originalMolecule = smiPar.parseSmiles("OCC(O)C(O)C(O)C(O)C1OC(CO)C(O)C(O)C1O"); //CNP0119227
         sugarRemovalUtil.removeLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //Only the circular sugar remains
         Assertions.assertEquals("OCC1OCC(O)C(O)C1O", smilesCode);
@@ -1132,21 +1125,21 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         Assertions.assertEquals(1, sugarRemovalUtil.getNumberOfCircularSugars(originalMolecule));
         Assertions.assertEquals(1, sugarRemovalUtil.getNumberOfLinearSugars(originalMolecule));
         sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //Completely removed
         Assertions.assertEquals("", smilesCode);
 
         originalMolecule = smiPar.parseSmiles("OCC(O)C(O)C(O)C(O)C(O)C1OC(O)C(O)C(O)C1N"); //CNP0183311
         sugarRemovalUtil.removeCircularSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //Only the linear sugar remains
         Assertions.assertEquals("OCC(O)C(O)C(O)C(O)CO", smilesCode);
 
         originalMolecule = smiPar.parseSmiles("OCC(O)C(O)C(O)C(O)C(O)C1OC(O)C(O)C(O)C1N"); //CNP0183311
         sugarRemovalUtil.removeLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //Only the circular sugar remains
         Assertions.assertEquals("OC1OCC(N)C(O)C1O", smilesCode);
@@ -1167,12 +1160,12 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         SmilesGenerator smiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer originalMolecule;
         String smilesCode;
-        SugarRemovalUtility sugarRemovalUtil = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
+        SugarRemovalUtility sugarRemovalUtil = this.getSugarRemovalUtilityV1200DefaultSettings();
         originalMolecule = smiPar.parseSmiles(
                 //CNP0346956
                 "OCC1OC2OC3C(O)C(O)C(OC3CO)OC4C(O)C(O)C(OC4CO)OC5C(O)C(O)C(OC5CO)OC6C(O)C(O)C(OC6CO)OC7C(O)C(O)C(OC7CO)OC1C(O)C2O");
         sugarRemovalUtil.removeCircularSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //The circular sugars do not get recognized as such because they are fused in the macrocycle
         Assertions.assertEquals(
@@ -1180,7 +1173,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
                 smilesCode);
         sugarRemovalUtil.setDetectLinearSugarsInRingsSetting(true);
         sugarRemovalUtil.removeLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //But the removal of linear sugars (also in cycles) also does not work because the algorithm to split ether bonds
         // (the glycosidic bonds between the sugars) protects bonds in cycles and therefore, the whole molecule gets returned
@@ -1190,7 +1183,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
                 smilesCode);
         sugarRemovalUtil.setLinearSugarCandidateMaxSizeSetting(36);
         sugarRemovalUtil.removeLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //Only now, with the linear sugar maximum size vastly increased, the sugar molecule can be removed
         Assertions.assertEquals("", smilesCode);
@@ -1209,10 +1202,10 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         SmilesGenerator smiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer originalMolecule;
         String smilesCode;
-        SugarRemovalUtility sugarRemovalUtil = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
+        SugarRemovalUtility sugarRemovalUtil = this.getSugarRemovalUtilityV1200DefaultSettings();
         originalMolecule = smiPar.parseSmiles("O(*)C1OC(CN)CCC1N");
         sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //Nothing should be removed because the cycle has not enough oxygen atoms attached
         Assertions.assertEquals("*OC1OC(CN)CCC1N", smilesCode);
@@ -1230,12 +1223,12 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         SmilesGenerator smiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer originalMolecule;
         String smilesCode;
-        SugarRemovalUtility sugarRemovalUtil = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
+        SugarRemovalUtility sugarRemovalUtil = this.getSugarRemovalUtilityV1200DefaultSettings();
         originalMolecule = smiPar.parseSmiles(
                 //CNP0254143
                 "O=C(O)C1=CC(O)C(O)C(OC(=O)C2C(=CC=3C=C(O)C(OC4OC(CO)C(O)C(O)C4O)=CC3C2C5=CC=C(O)C(O)=C5)C(=O)OCC(O)C(O)C(O)C(O)C(O)CO)C1");
         sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //Both, the terminal circular sugar and the terminal linear sugar are removed
         Assertions.assertEquals(
@@ -1257,12 +1250,12 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         SmilesGenerator smiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer originalMolecule;
         String smilesCode;
-        SugarRemovalUtility sugarRemovalUtil = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
+        SugarRemovalUtility sugarRemovalUtil = this.getSugarRemovalUtilityV1200DefaultSettings();
         originalMolecule = smiPar.parseSmiles(
                 //CNP0320551
                 "O=C1N=C2C(=NC=3C=C(C(=CC3N2CC(O)C(O)C(O)COC4OC(CO)C(O)C(O)C4O)C)C)C(=O)N1");
         sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //The circular sugar and the linear sugar are removed
         Assertions.assertEquals("O=C1N=C2C(=NC=3C=C(C(=CC3N2C)C)C)C(=O)N1", smilesCode);
@@ -1272,7 +1265,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
                 "O=C1N=C2C(=NC=3C=C(C(=CC3N2CC(O)C(O)C(O)COC4OC(CO)C(O)C(O)C4O)C)C)C(=O)N1");
         sugarRemovalUtil.setLinearSugarCandidateMinSizeSetting(5);
         sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //The linear sugar is not removed because it is too small
         Assertions.assertEquals("O=C1N=C2C(=NC=3C=C(C(=CC3N2CC(O)C(O)C(O)CO)C)C)C(=O)N1", smilesCode);
@@ -1290,12 +1283,12 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         SmilesGenerator smiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer originalMolecule;
         String smilesCode;
-        SugarRemovalUtility sugarRemovalUtil = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
+        SugarRemovalUtility sugarRemovalUtil = this.getSugarRemovalUtilityV1200DefaultSettings();
         originalMolecule = smiPar.parseSmiles(
                 //CNP0321545
                 "O=C(OCC(O)C(O)C(O)C(O)COC1=C(OC2=CC(O)=CC(OCC(O)C(O)C(O)C(O)CO)=C2C1)C=3C=C(O)C(O)=C(O)C3)C=CC4=CC=C(O)C=C4");
         sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //Only the one terminal linear sugar is removed
         Assertions.assertEquals(
@@ -1303,7 +1296,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
                 smilesCode);
         sugarRemovalUtil.setRemoveOnlyTerminalSugarsSetting(false);
         sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //Now, both linear sugar moieties are removed
         Assertions.assertEquals(
@@ -1323,12 +1316,12 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         SmilesGenerator smiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer originalMolecule;
         String smilesCode;
-        SugarRemovalUtility sugarRemovalUtil = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
+        SugarRemovalUtility sugarRemovalUtil = this.getSugarRemovalUtilityV1200DefaultSettings();
         originalMolecule = smiPar.parseSmiles(
                 //CNP0149497
                 "O=C(OCC(O)C(O)C(O)CO)C1(C)CC2=C3C=CC4C5(C)CCC(OC6OC(C)C(O)C(OC7OC(CO)C(O)C(O)C7O)C6O)C(C)(CO)C5CCC4(C)C3(C)CC(O)C2(CO)CC1");
         sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //the two terminal circular sugars and the terminal linear sugar are removed
         Assertions.assertEquals(
@@ -1348,12 +1341,12 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         SmilesGenerator smiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer originalMolecule;
         String smilesCode;
-        SugarRemovalUtility sugarRemovalUtil = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
+        SugarRemovalUtility sugarRemovalUtil = this.getSugarRemovalUtilityV1200DefaultSettings();
         originalMolecule = smiPar.parseSmiles(
                 //CNP0083402
                 "CC(CCC=C(C)CCC=C(C)CCC=C(C)CCC=C(C)C)CCOP(=O)(O)OP(=O)(O)OC1C(C(C(C(O1)CO)OC2C(C(C(C(O2)CO)OC3C(C(C(C(O3)COC4C(C(C(C(O4)COC5C(C(C(C(O5)CO)OC6C(C(C(C(O6)CO)O)O)O)O)O)O)OC7C(C(C(C(O7)CO)OC8C(C(C(C(O8)CO)O)O)O)O)O)O)O)OC9C(C(C(C(O9)CO)O)O)OC1C(C(C(C(O1)CO)O)O)OC1C(C(C(C(O1)CO)O)OC1C(C(C(C(O1)CO)O)OC1C(C(C(C(O1)CO)O)O)OC1C(C(C(C(O1)CO)O)O)O)O)O)O)O)NC(=O)C)O)NC(=O)C");
         sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //All 14 circular sugar moieties are correctly removed
         Assertions.assertEquals(
@@ -1373,7 +1366,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.Canonical);
         IAtomContainer originalMolecule;
-        SugarRemovalUtility sugarRemovalUtil = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
+        SugarRemovalUtility sugarRemovalUtil = this.getSugarRemovalUtilityV1200DefaultSettings();
         //the molecule has three interlinked linear sugars, illustrating why splitting ether, ester, and peroxide bonds
         // makes sense in some cases, such as this one
         originalMolecule = smiPar.parseSmiles(
@@ -1407,10 +1400,10 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
     @Test
     void specificTest35() throws Exception {
         SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
-        SugarRemovalUtility sugarRemovalUtil = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
+        SugarRemovalUtility sugarRemovalUtil = this.getSugarRemovalUtilityV1200DefaultSettings();
         sugarRemovalUtil.setDetectLinearSugarsInRingsSetting(true);
         sugarRemovalUtil.setRemoveOnlyTerminalSugarsSetting(false);
-        sugarRemovalUtil.setPreservationModeSetting(PreservationMode.ALL);
+        sugarRemovalUtil.setPreservationModeSetting(SugarRemovalUtility.PreservationMode.ALL);
         float loadFactor = 0.75f;
         int testMoleculesCNPtoSMILESMapInitCapacity = (int)(4.0f * (1.0f / loadFactor) + 2.0f);
         HashMap<String, String> testMoleculesCNPtoSMILESMap = new HashMap<>(testMoleculesCNPtoSMILESMapInitCapacity, loadFactor);
@@ -1451,7 +1444,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         SmilesGenerator smiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer originalMolecule;
         String smilesCode;
-        SugarRemovalUtility sugarRemovalUtil = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
+        SugarRemovalUtility sugarRemovalUtil = this.getSugarRemovalUtilityV1200DefaultSettings();
         sugarRemovalUtil.setDetectLinearSugarsInRingsSetting(true);
         originalMolecule = smiPar.parseSmiles(
                 //CNP0008636
@@ -1461,7 +1454,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         //no linear sugar is detected inside the spiro ring
         Assertions.assertFalse(sugarRemovalUtil.hasLinearSugars(originalMolecule));
         sugarRemovalUtil.removeCircularSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //nothing is removed due to the above reasons and because the circular spiro sugar is non-terminal
         Assertions.assertEquals(
@@ -1473,7 +1466,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         //now, spiro sugar rings are detected
         Assertions.assertTrue(sugarRemovalUtil.hasCircularSugars(originalMolecule));
         sugarRemovalUtil.removeCircularSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //still, nothing is removed because the circular spiro sugar is non-terminal
         Assertions.assertEquals(
@@ -1481,7 +1474,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
                 smilesCode);
         sugarRemovalUtil.setRemoveOnlyTerminalSugarsSetting(false);
         sugarRemovalUtil.removeCircularSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //now, the non-terminal spiro sugar ring is removed
         Assertions.assertEquals(
@@ -1511,12 +1504,12 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         SmilesGenerator smiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer originalMolecule;
         String smilesCode;
-        SugarRemovalUtility sugarRemovalUtil = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
+        SugarRemovalUtility sugarRemovalUtil = this.getSugarRemovalUtilityV1200DefaultSettings();
         originalMolecule = smiPar.parseSmiles(
                 //CNP0310964
                 "O=C(OC1C2=C(O)C=3C(=O)C=4C=CC=C(O)C4C(=O)C3C(O)=C2C(OC5OC(C)C(OC6OC(C)C(OC7OC(C(=O)CC7O)C)C(O)C6)C(N(C)C)C5)CC1(O)CC)C");
         sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //Nothing is removed because the terminal sugar-like moiety has a keto group and the option to detect those is turned off
         Assertions.assertEquals(
@@ -1524,7 +1517,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
                 smilesCode);
         sugarRemovalUtil.setDetectCircularSugarsWithKetoGroupsSetting(true);
         sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //Now, two sugar moieties are removed; the third sugar-like moiety does not have enough exocyclic oxygen atoms
         Assertions.assertEquals(
@@ -1532,7 +1525,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
                 smilesCode);
         sugarRemovalUtil.setExocyclicOxygenAtomsToAtomsInRingRatioThresholdSetting(0.3);
         sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //Now, with the exocyclic oxygen ratio threshold lowered, this moiety is also removed
         Assertions.assertEquals(
@@ -1543,7 +1536,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
                 //through manipulation of the SMILES string, the keto group was transformed into a double bound carbon atom (O -> C)
                 "O=C(OC1C2=C(O)C=3C(=O)C=4C=CC=C(O)C4C(=O)C3C(O)=C2C(OC5OC(C)C(OC6OC(C)C(OC7OC(C(=C)CC7O)C)C(O)C6)C(N(C)C)C5)CC1(O)CC)C");
         sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //Nothing should be removed because the double bound carbon atom does not qualify as a keto group
         Assertions.assertEquals(
@@ -1592,14 +1585,14 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         SmilesGenerator smiGen = new SmilesGenerator((SmiFlavor.Canonical));
         IAtomContainer originalMolecule;
         String smilesCode;
-        SugarRemovalUtility sugarRemovalUtil = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
+        SugarRemovalUtility sugarRemovalUtil = this.getSugarRemovalUtilityV1200DefaultSettings();
         sugarRemovalUtil.setDetectCircularSugarsOnlyWithOGlycosidicBondSetting(true);
         originalMolecule = smiPar.parseSmiles(
                 //CNP0220816 and CNP0218440
                 "CC1=CC(OC2OC(CO)C(O)C(O)C2O)=C2C3=C(CCC3)C(=O)OC2=C1" +
                         ".O=C(O)CC(OC1OC(CO)C(O)C(O)C1O)(C)CC(=O)OCC=CC2=CC(OC)=C(OC3OC(CO)C(O)C(O)C3O)C(OC)=C2");
         sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //the sugar moieties are correctly removed from both parts
         Assertions.assertEquals(
@@ -1610,7 +1603,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
                 //CNP0220816 plus an unconnected propane
                 "CC1=CC(OC2OC(CO)C(O)C(O)C2O)=C2C3=C(CCC3)C(=O)OC2=C1.CCC");
         sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //the sugar is removed and the propane is also still there
         Assertions.assertEquals(
@@ -1622,7 +1615,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
                 // plus an unconnected propane
                 "OCC(O)C(O)C(O)C(O)C1OC(CO)C(O)C(O)C1O.CCC");
         sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //the sugar is removed completely but the propane is still there
         Assertions.assertEquals(
@@ -1633,7 +1626,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
                 //just the propane
                 "CCC");
         sugarRemovalUtil.removeCircularAndLinearSugars(originalMolecule);
-        SugarRemovalUtilityTest.saturate(originalMolecule);
+        this.saturate(originalMolecule);
         smilesCode = smiGen.create(originalMolecule);
         //the propane is still there
         Assertions.assertEquals(
@@ -1650,7 +1643,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
     void sugarExtractionTestOld() throws Exception {
         SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.Stereo);
-        SugarRemovalUtility sru = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
+        SugarRemovalUtility sru = this.getSugarRemovalUtilityV1200DefaultSettings();
         String[] glycosidicNP = new String[] {
                 "CC(=O)N[C@H]1[C@H](O[C@H]2[C@H](O)[C@@H](NC(C)=O)[C@@H](OP(=O)(O)OP(=O)(O)OCCC(C)CC/C=C(\\C)CC/C=C(\\C)CC/C=C(\\C)CCC=C(C)C)O[C@@H]2CO)O[C@H](CO)[C@@H](O[C@@H]2O[C@H](CO[C@H]3O[C@H](CO[C@H]4O[C@H](CO)[C@@H](O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]5O)[C@H](O)[C@@H]4O)[C@@H](O)[C@H](O[C@H]4O[C@H](CO)[C@@H](O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]5O)[C@H](O)[C@@H]4O)[C@@H]3O)[C@@H](O)[C@H](O[C@H]3O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]3O[C@H]3O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]3O[C@H]3O[C@H](CO)[C@@H](O)[C@H](O[C@H]4O[C@H](CO)[C@@H](O)[C@H](O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@H]5O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@H]5O)[C@H]4O)[C@@H]3O)[C@@H]2O)[C@@H]1O",
                 "C=CC1C(C[C@@H]2NCCC3=C2NC2=CC=CC=C32)C(C(=O)O)=CO[C@H]1O[C@@H]1O[C@H](CO)[C@@H](O)[C@H](O)[C@H]1O",
@@ -1734,10 +1727,10 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
     void sugarExtractionTest() throws Exception {
         SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.Stereo);
-        SugarRemovalUtility sru = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
+        SugarRemovalUtility sru = this.getSugarRemovalUtilityV1200DefaultSettings();
 
         // Map of input SMILES codes to list of expected aglycone and sugar SMILES codes
-        Map<String, List<String>> testCases = new HashMap<>((int) (40.0/0.75));
+        Map<String, List<String>> testCases = new HashMap<>((int) ((40.0/0.75) + 3.0));
 
         testCases.put(
                 "CC(=O)N[C@H]1[C@H](O[C@H]2[C@H](O)[C@@H](NC(C)=O)[C@@H](OP(=O)(O)OP(=O)(O)OCCC(C)CC/C=C(\\C)CC/C=C(\\C)CC/C=C(\\C)CCC=C(C)C)O[C@@H]2CO)O[C@H](CO)[C@@H](O[C@@H]2O[C@H](CO[C@H]3O[C@H](CO[C@H]4O[C@H](CO)[C@@H](O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]5O)[C@H](O)[C@@H]4O)[C@@H](O)[C@H](O[C@H]4O[C@H](CO)[C@@H](O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]5O)[C@H](O)[C@@H]4O)[C@@H]3O)[C@@H](O)[C@H](O[C@H]3O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]3O[C@H]3O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]3O[C@H]3O[C@H](CO)[C@@H](O)[C@H](O[C@H]4O[C@H](CO)[C@@H](O)[C@H](O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@H]5O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@H]5O)[C@H]4O)[C@@H]3O)[C@@H]2O)[C@@H]1O",
@@ -1790,63 +1783,63 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
 
         testCases.put(
                 "O=C(OC1C(OCC2=COC(OC(=O)CC(C)C)C3C2CC(O)C3(O)COC(=O)C)OC(CO)C(O)C1O)C=CC4=CC=C(O)C=C4",
-                Arrays.asList(
+                Collections.singletonList(
                         "O=C(OC1C(OCC2=COC(OC(=O)CC(C)C)C3C2CC(O)C3(O)COC(=O)C)OC(CO)C(O)C1O)C=CC4=CC=C(O)C=C4"
                 )
         );
 
         testCases.put(
                 "O=P(O)(O)OCC1OC(OP(=O)(O)O)C(O)C1O",
-                Arrays.asList(
+                Collections.singletonList(
                         "O=P(O)(O)OCC1OC(OP(=O)(O)O)C(O)C1O"
                 )
         );
 
         testCases.put(
                 "O=C1OC2C(CCO)CCC3(C=C4C=CCC5C(C=CC(C45)C23)CCCC(C)(CC6=CN=C(N)C=C6)CC=7C=CC=C8C(=O)C9(OC19C(=O)C87)CC(=C(C)CC%10C=%11C=CN=C%12NC(NC)CC(C%12%11)CC%10)CO)NCC",
-                Arrays.asList(
+                Collections.singletonList(
                         "O=C1OC2C(CCO)CCC3(C=C4C=CCC5C(C=CC(C45)C23)CCCC(C)(CC6=CN=C(N)C=C6)CC=7C=CC=C8C(=O)C9(OC19C(=O)C87)CC(=C(C)CC%10C=%11C=CN=C%12NC(NC)CC(C%12%11)CC%10)CO)NCC"
                 )
         );
 
         testCases.put(
                 "O=CCC12OC(OC1=O)C3(C)C(C)CCC3(C)C2",
-                Arrays.asList(
+                Collections.singletonList(
                         "O=CCC12OC(OC1=O)C3(C)C(C)CCC3(C)C2"
                 )
         );
 
         testCases.put(
                 "O=C(O)C12OC(OC3=CC=4OCC5C6=C(OC5C4C(=C3)C7=CC=CC(O)=C7)C(OC)=C(OC)C=C6CNC)(CO)C(O)C(O)(NCC1NC)C2O",
-                Arrays.asList(
+                Collections.singletonList(
                         "O=C(O)C12OC(OC3=CC=4OCC5C6=C(OC5C4C(=C3)C7=CC=CC(O)=C7)C(OC)=C(OC)C=C6CNC)(CO)C(O)C(O)(NCC1NC)C2O"
                 )
         );
 
         testCases.put(
                 "O=C(O)C1OC(OC=2C=CC=3C(=O)[C-](C=[O+]C3C2)C4=CC=C(O)C=C4)C(O)(CNCC(CC=5C=NCC5)C(C)C)C(O)C1O",
-                Arrays.asList(
+                Collections.singletonList(
                         "O=C(O)C1OC(OC=2C=CC=3C(=O)[C-](C=[O+]C3C2)C4=CC=C(O)C=C4)C(O)(CNCC(CC=5C=NCC5)C(C)C)C(O)C1O"
                 )
         );
 
         testCases.put(
                 "O=C1OC(C2=COC=C2)CC3(C)C1CCC4(C)C3C5OC(=O)C4(O)C=C5",
-                Arrays.asList(
+                Collections.singletonList(
                         "O=C1OC(C2=COC=C2)CC3(C)C1CCC4(C)C3C5OC(=O)C4(O)C=C5"
                 )
         );
 
         testCases.put(
                 "O=C1OC2CC3(OC4(O)C(CC5(OC45C(=O)OC)CCCCCCCCCCCCCCCC)C2(O3)C1)CCCCCCCCCCCCCCCC",
-                Arrays.asList(
+                Collections.singletonList(
                         "O=C1OC2CC3(OC4(O)C(CC5(OC45C(=O)OC)CCCCCCCCCCCCCCCC)C2(O3)C1)CCCCCCCCCCCCCCCC"
                 )
         );
 
         testCases.put(
                 "O=C1C2=CC=CC3=C2CN1CC(=O)C4=C(O)C5=C6OC7OC(COC(C=CC6=C(OC)C8=C5C=9C(=CC%10CCCC%10C49)CC8)C%11=CNC=%12C=CC(=CC%12%11)CNC)C(O)C(OC#CC3)C7(O)CO",
-                Arrays.asList(
+                Collections.singletonList(
                         "O=C1C2=CC=CC3=C2CN1CC(=O)C4=C(O)C5=C6OC7OC(COC(C=CC6=C(OC)C8=C5C=9C(=CC%10CCCC%10C49)CC8)C%11=CNC=%12C=CC(=CC%12%11)CNC)C(O)C(OC#CC3)C7(O)CO"
                 )
         );
@@ -1870,7 +1863,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
 
         testCases.put(
                 "O=C(O)CC(C(=O)O)C(OCC1C(=C)CCC2C(C)(COC(=O)C(CC(=O)O)C(OCC3C(=C)CCC4C(C)(C)CCCC34C)C(=O)OC)CCCC12C)C(=O)OC",
-                Arrays.asList(
+                Collections.singletonList(
                         "O=C(O)CC(C(=O)O)C(OCC1C(=C)CCC2C(C)(COC(=O)C(CC(=O)O)C(OCC3C(=C)CCC4C(C)(C)CCCC34C)C(=O)OC)CCCC12C)C(=O)OC"
                 )
         );
@@ -1895,14 +1888,14 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
 
         testCases.put(
                 "O=C(O)CC(O)(C)CC(=O)OC1C(O)C(OC2C3=C(O)C(=CC=C3OC2C(=C)CO)C(=O)C)OC(CO)C1O",
-                Arrays.asList(
+                Collections.singletonList(
                         "O=C(O)CC(O)(C)CC(=O)OC1C(O)C(OC2C3=C(O)C(=CC=C3OC2C(=C)CO)C(=O)C)OC(CO)C1O"
                 )
         );
 
         testCases.put(
                 "O=C(O)CC(O)(C)CC(=O)OCC1OC(C=2C(O)=CC(O)=C3C(=O)C=C(OC32)C=4C=CC(O)=C(O)C4)C(O)C(O)C1O",
-                Arrays.asList(
+                Collections.singletonList(
                         "O=C(O)CC(O)(C)CC(=O)OCC1OC(C=2C(O)=CC(O)=C3C(=O)C=C(OC32)C=4C=CC(O)=C(O)C4)C(O)C(O)C1O"
                 )
         );
@@ -1927,21 +1920,21 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
 
         testCases.put(
                 "O=C(O)CC(C(=O)O)C(OCC1C(=C)CCC2C(C)(C)CCCC12C)C(=O)O",
-                Arrays.asList(
+                Collections.singletonList(
                         "O=C(O)CC(C(=O)O)C(OCC1C(=C)CCC2C(C)(C)CCCC12C)C(=O)O"
                 )
         );
 
         testCases.put(
                 "O=C1C=C(OC=2C=C3OC(C)(CCC4CNC(=O)C4)C(OOCC(O)C(O)C(O)C(O)CO)CC3=CC12)C",
-                Arrays.asList(
+                Collections.singletonList(
                         "O=C1C=C(OC=2C=C3OC(C)(CCC4CNC(=O)C4)C(OOCC(O)C(O)C(O)C(O)CO)CC3=CC12)C"
                 )
         );
 
         testCases.put(
                 "O=C1C=C(OC=2C1=CC3=C(OC(C)(C)C(OOCC(O)C(O)C(O)C(O)CO)C3)C2[N+]=4C=C5N=CC=C5C4CC)C",
-                Arrays.asList(
+                Collections.singletonList(
                         "O=C1C=C(OC=2C1=CC3=C(OC(C)(C)C(OOCC(O)C(O)C(O)C(O)CO)C3)C2[N+]=4C=C5N=CC=C5C4CC)C"
                 )
         );
@@ -1956,7 +1949,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
 
         testCases.put(
                 "O=C(O)CC(O)(C(=O)O)C(C(=O)O)CCCCCCCCCCCCCC",
-                Arrays.asList(
+                Collections.singletonList(
                         "O=C(O)CC(O)(C(=O)O)C(C(=O)O)CCCCCCCCCCCCCC"
                 )
         );
@@ -2053,7 +2046,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
             List<String> expectedSmilesList = entry.getValue();
 
             List<IAtomContainer> candidates = sru.copyAndExtractAglyconeAndCircularSugars(smiPar.parseSmiles(inputSmiles), false);
-            List<String> generatedSmilesList = SugarRemovalUtilityTest.generateSmilesList(candidates, smiGen);
+            List<String> generatedSmilesList = this.generateSmilesList(candidates, smiGen);
             Assertions.assertLinesMatch(expectedSmilesList, generatedSmilesList);
         }
     }
@@ -2069,7 +2062,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.Stereo);
         //CNP0225072.2
         IAtomContainer mol = smiPar.parseSmiles("C=CC1C(C[C@@H]2NCCC3=C2NC2=CC=CC=C32)C(C(=O)O)=CO[C@H]1O[C@@H]1O[C@H](CO)[C@@H](O)[C@H](O)[C@H]1O");
-        SugarRemovalUtility sru = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
+        SugarRemovalUtility sru = this.getSugarRemovalUtilityV1200DefaultSettings();
         List<IAtomContainer> candidates = sru.copyAndExtractAglyconeAndCircularSugars(mol, false);
         Assertions.assertEquals(2, candidates.size());
         //aglycone
@@ -2089,7 +2082,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.Stereo);
         //CNP0580945.1
         IAtomContainer mol = smiPar.parseSmiles("CC(=O)N[C@H]1[C@H](O[C@@H]2C3CO[C@H](O3)[C@H](NC(C)=O)[C@H]2O[C@H](C)C(=O)N[C@@H](C)C(=O)N[C@H](CCC(=O)N[C@@H](CCC[C@@H](N)C(=O)O)C(=O)N[C@H](C)C(=O)O)C(=O)O)O[C@H](CO)[C@@H](O)[C@@H]1O");
-        SugarRemovalUtility sru = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
+        SugarRemovalUtility sru = this.getSugarRemovalUtilityV1200DefaultSettings();
         List<IAtomContainer> candidates = sru.copyAndExtractAglyconeAndCircularSugars(mol, false);
         Assertions.assertEquals(2, candidates.size());
         //aglycone
@@ -2109,7 +2102,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.Stereo);
         //CNP0295326.2
         IAtomContainer mol = smiPar.parseSmiles("CCCCC/C=C/C=C/C(O)C/C=C/C=C/C(=O)O[C@@H]1[C@@H](O)[C@H](C2=C(O)C=C(O)C=C2CO)O[C@H](CO)[C@H]1O[C@@H]1O[C@H](CO)[C@H](O)[C@H](O)[C@H]1O[C@@H]1O[C@H](CO)[C@H](O)[C@H](O)[C@H]1O");
-        SugarRemovalUtility sru = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
+        SugarRemovalUtility sru = this.getSugarRemovalUtilityV1200DefaultSettings();
         List<IAtomContainer> candidates = sru.copyAndExtractAglyconeAndCircularSugars(mol, false);
         Assertions.assertEquals(2, candidates.size());
         //aglycone
@@ -2129,7 +2122,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.Stereo);
         //CID	131999265
         IAtomContainer mol = smiPar.parseSmiles("CCCCCCCCCCCCOCC(COCCOCC(COCCCCCCCCCCCC)O[C@H]1[C@H](C([C@@H](C(O1)CO)O)O)O)O[C@H]2[C@H](C([C@@H](C(O2)CO)O)O)O");
-        SugarRemovalUtility sru = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
+        SugarRemovalUtility sru = this.getSugarRemovalUtilityV1200DefaultSettings();
         List<IAtomContainer> candidates = sru.copyAndExtractAglyconeAndCircularSugars(mol, false);
         Assertions.assertEquals(3, candidates.size());
         //aglycone
@@ -2151,7 +2144,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.Stereo);
         //CNP0381981.2
         IAtomContainer mol = smiPar.parseSmiles("CC1=C(O[C@@H]2O[C@H](CO)[C@@H](O)[C@H](O)[C@H]2O)C=CC2=C1OC(=O)C1=C2CCCC1");
-        SugarRemovalUtility sru = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
+        SugarRemovalUtility sru = this.getSugarRemovalUtilityV1200DefaultSettings();
         List<IAtomContainer> candidates = sru.copyAndExtractAglyconeAndCircularSugars(mol, false);
         Assertions.assertEquals(2, candidates.size());
         //aglycone
@@ -2171,7 +2164,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.Stereo);
         //CNP0151033.2
         IAtomContainer mol = smiPar.parseSmiles("CC(=O)OC[C@]1(O)[C@H]2[C@H](OC(=O)CC(C)C)OC=C(CO[C@@H]3O[C@H](CO)[C@@H](O)[C@H](O)[C@H]3OC(=O)/C=C/C3=CC=C(O)C=C3)[C@H]2C[C@@H]1O");
-        SugarRemovalUtility sru = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
+        SugarRemovalUtility sru = this.getSugarRemovalUtilityV1200DefaultSettings();
         sru.setRemoveOnlyTerminalSugarsSetting(false);
         List<IAtomContainer> candidates = sru.copyAndExtractAglyconeAndCircularSugars(mol, false);
         Assertions.assertEquals(2, candidates.size());
@@ -2192,7 +2185,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.Stereo);
         //CNP0125332.1
         IAtomContainer mol = smiPar.parseSmiles("O=P(O)(O)OC[C@H]1O[C@H](OP(=O)(O)O)[C@H](O)[C@@H]1O");
-        SugarRemovalUtility sru = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
+        SugarRemovalUtility sru = this.getSugarRemovalUtilityV1200DefaultSettings();
         sru.setPreservationModeThresholdSetting(7);
         List<IAtomContainer> candidates = sru.copyAndExtractAglyconeAndCircularSugars(mol, false);
         Assertions.assertEquals(2, candidates.size());
@@ -2213,7 +2206,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.Stereo);
         //CNP0104886.1
         IAtomContainer mol = smiPar.parseSmiles("CNC(=N)NC[C@H](CNC[C@]1(O)[C@H](OC2=CC=C3C(=O)C(C4=CC=C(O)C=C4)=COC3=C2)O[C@H](C(=O)O)[C@@H](O)[C@@H]1O)C(C)C");
-        SugarRemovalUtility sru = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
+        SugarRemovalUtility sru = this.getSugarRemovalUtilityV1200DefaultSettings();
         sru.setRemoveOnlyTerminalSugarsSetting(false);
         List<IAtomContainer> candidates = sru.copyAndExtractAglyconeAndCircularSugars(mol, false);
         Assertions.assertEquals(2, candidates.size());
@@ -2234,7 +2227,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.Stereo);
         //CNP0218440.3
         IAtomContainer mol = smiPar.parseSmiles("COC1=CC(/C=C/COC(=O)C[C@](C)(CC(=O)O)O[C@@H]2O[C@H](CO)[C@@H](O)[C@H](O)[C@H]2O)=CC(OC)=C1O[C@@H]1O[C@H](CO)[C@@H](O)[C@H](O)[C@H]1O");
-        SugarRemovalUtility sru = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
+        SugarRemovalUtility sru = this.getSugarRemovalUtilityV1200DefaultSettings();
         List<IAtomContainer> candidates = sru.copyAndExtractAglyconeAndCircularSugars(mol, false);
         Assertions.assertEquals(3, candidates.size());
         //aglycone
@@ -2256,7 +2249,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.Stereo);
         //CNP0209335.4
         IAtomContainer mol = smiPar.parseSmiles("C[C@@H]1CC[C@@]2(OC1)O[C@H]1C[C@H]3[C@@H]4CC[C@H]5C[C@@H](O[C@@H]6O[C@H](CO)[C@H](O[C@@H]7O[C@H](CO)[C@@H](O)[C@H](O[C@@H]8OC[C@@H](O)[C@H](O)[C@H]8O)[C@H]7O[C@@H]7O[C@H](CO)[C@H](O)[C@H](O)[C@H]7O)[C@H](O)[C@H]6O)[C@H](O)C[C@]5(C)[C@H]4CC[C@]3(C)[C@H]1[C@@H]2C");
-        SugarRemovalUtility sru = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
+        SugarRemovalUtility sru = this.getSugarRemovalUtilityV1200DefaultSettings();
         List<IAtomContainer> candidates = sru.copyAndExtractAglyconeAndCircularSugars(mol, false);
         Assertions.assertEquals(2, candidates.size());
         //aglycone
@@ -2276,7 +2269,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.Stereo);
         //CNP0171089.22
         IAtomContainer mol = smiPar.parseSmiles("O=C(O)[C@@H]1O[C@@H](O)[C@H](O)[C@H](O)[C@H]1O");
-        SugarRemovalUtility sru = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
+        SugarRemovalUtility sru = this.getSugarRemovalUtilityV1200DefaultSettings();
         List<IAtomContainer> candidates = sru.copyAndExtractAglyconeAndCircularSugars(mol, false);
         Assertions.assertEquals(2, candidates.size());
         //empty aglycone
@@ -2296,7 +2289,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.Stereo);
         //CNP0083402.1
         IAtomContainer mol = smiPar.parseSmiles("CC(=O)N[C@H]1[C@H](O[C@H]2[C@H](O)[C@@H](NC(C)=O)[C@@H](OP(=O)(O)OP(=O)(O)OCCC(C)CC/C=C(\\C)CC/C=C(\\C)CC/C=C(\\C)CCC=C(C)C)O[C@@H]2CO)O[C@H](CO)[C@@H](O[C@@H]2O[C@H](CO[C@H]3O[C@H](CO[C@H]4O[C@H](CO)[C@@H](O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]5O)[C@H](O)[C@@H]4O)[C@@H](O)[C@H](O[C@H]4O[C@H](CO)[C@@H](O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]5O)[C@H](O)[C@@H]4O)[C@@H]3O)[C@@H](O)[C@H](O[C@H]3O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]3O[C@H]3O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]3O[C@H]3O[C@H](CO)[C@@H](O)[C@H](O[C@H]4O[C@H](CO)[C@@H](O)[C@H](O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@H]5O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@H]5O)[C@H]4O)[C@@H]3O)[C@@H]2O)[C@@H]1O");
-        SugarRemovalUtility sru = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
+        SugarRemovalUtility sru = this.getSugarRemovalUtilityV1200DefaultSettings();
         List<IAtomContainer> candidates = sru.copyAndExtractAglyconeAndCircularSugars(mol, false);
         Assertions.assertEquals(2, candidates.size());
         //aglycone
@@ -2314,7 +2307,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
     void sugarExtractionTestEster() throws Exception {
         SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.Stereo);
-        SugarRemovalUtility sru = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
+        SugarRemovalUtility sru = this.getSugarRemovalUtilityV1200DefaultSettings();
         String[] glycosidicNP = new String[] {"O=C1C=C(OC2=CC(OC(=O)C3OC(O)C(O)C(O)C3O)=C(O)C(O)=C12)C=4C=CC(O)=CC4"};
         for (String smiles : glycosidicNP) {
             System.out.println(smiles + " input mol");
@@ -2338,7 +2331,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
     void sugarExtractionTestBug() throws Exception {
         SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.Stereo);
-        SugarRemovalUtility sru = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
+        SugarRemovalUtility sru = this.getSugarRemovalUtilityV1200DefaultSettings();
         String glycosidicNP = "OCC(O)C(O)C(O)C(O)C(O)C1OC(O)C(O)C(O)C1N";
         List<String> expectedSmilesList = Arrays.asList(
                 "OCC(O)C(O)C(O)C(O)CO",
@@ -2346,7 +2339,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
         );
         IAtomContainer molecule = smiPar.parseSmiles(glycosidicNP);
         List<IAtomContainer> candidates = sru.copyAndExtractAglyconeAndCircularSugars(molecule, false);
-        List<String> generatedSmilesList = SugarRemovalUtilityTest.generateSmilesList(candidates, smiGen);
+        List<String> generatedSmilesList = this.generateSmilesList(candidates, smiGen);
         Assertions.assertLinesMatch(expectedSmilesList, generatedSmilesList);
     }
 
@@ -2359,13 +2352,13 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
     void sugarExtractionTestBug2() throws Exception {
         SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.Stereo);
-        SugarRemovalUtility sru = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
+        SugarRemovalUtility sru = this.getSugarRemovalUtilityV1200DefaultSettings();
         String smiles = "O=C(O)CC(O)(C(=O)O)C(C(=O)O)CCCCCCCCCCCCCC";
         List<IAtomContainer> candidates = sru.copyAndExtractAglyconeAndCircularSugars(smiPar.parseSmiles(smiles), false);
         List<String> expectedSmilesList = Arrays.asList(
                 "O=C(O)CC(O)(C(=O)O)C(C(=O)O)CCCCCCCCCCCCCC"
         );
-        List<String> generatedSmilesList = SugarRemovalUtilityTest.generateSmilesList(candidates, smiGen);
+        List<String> generatedSmilesList = this.generateSmilesList(candidates, smiGen);
         Assertions.assertLinesMatch(expectedSmilesList, generatedSmilesList);
     }
 
@@ -2378,14 +2371,14 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
     void sugarExtractionTestBug3() throws Exception {
         SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.Stereo);
-        SugarRemovalUtility sru = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
+        SugarRemovalUtility sru = this.getSugarRemovalUtilityV1200DefaultSettings();
         String smiles = "OCC(O)C(O)C(O)C(O)C1OC(CO)C(O)C(O)C1O";
         List<IAtomContainer> candidates = sru.copyAndExtractAglyconeAndCircularSugars(smiPar.parseSmiles(smiles), false);
         List<String> expectedSmilesList = Arrays.asList(
                 "OCC(O)C(O)C(O)CO",
                 "C1(OC(CO)C(O)C(O)C1O)C"
         );
-        List<String> generatedSmilesList = SugarRemovalUtilityTest.generateSmilesList(candidates, smiGen);
+        List<String> generatedSmilesList = this.generateSmilesList(candidates, smiGen);
         Assertions.assertLinesMatch(expectedSmilesList, generatedSmilesList);
     }
 
@@ -2398,7 +2391,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
     void sugarExtractionTestBug4() throws Exception {
         SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.Stereo);
-        SugarRemovalUtility sru = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
+        SugarRemovalUtility sru = this.getSugarRemovalUtilityV1200DefaultSettings();
         String smiles = "O=C(C=CC1=CC=C(O)C=C1)C=2C(=O)C(C(=O)C(O)(C2O)C3OC(CO)C(O)C(O)C3O)C(O)C4OCC(O)C(O)C4O";
         List<IAtomContainer> candidates = sru.copyAndExtractAglyconeAndCircularSugars(smiPar.parseSmiles(smiles), false);
         List<String> expectedSmilesList = Arrays.asList(
@@ -2406,7 +2399,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
                 "C1(OC(CO)C(O)C(O)C1O)C",
                 "C1(OCC(O)C(O)C1O)C"
         );
-        List<String> generatedSmilesList = SugarRemovalUtilityTest.generateSmilesList(candidates, smiGen);
+        List<String> generatedSmilesList = this.generateSmilesList(candidates, smiGen);
         Assertions.assertLinesMatch(expectedSmilesList, generatedSmilesList);
     }
 
@@ -2419,14 +2412,14 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
     void sugarExtractionTestBug5() throws Exception {
         SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.Stereo);
-        SugarRemovalUtility sru = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
+        SugarRemovalUtility sru = this.getSugarRemovalUtilityV1200DefaultSettings();
         String smiles = "CC(N)C(=O)NC(CCC(N)=O)C(=O)NOC1OC(O)C(O)C(O)C1O";
         List<IAtomContainer> candidates = sru.copyAndExtractAglyconeAndCircularSugars(smiPar.parseSmiles(smiles), false);
         List<String> expectedSmilesList = Arrays.asList(
                 "CC(N)C(=O)NC(CCC(N)=O)C(=O)NO",
                 "C1(OC(O)C(O)C(O)C1O)O"
         );
-        List<String> generatedSmilesList = SugarRemovalUtilityTest.generateSmilesList(candidates, smiGen);
+        List<String> generatedSmilesList = this.generateSmilesList(candidates, smiGen);
         Assertions.assertLinesMatch(expectedSmilesList, generatedSmilesList);
     }
 
@@ -2439,7 +2432,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
     void sugarExtractionTestBug6() throws Exception {
         SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.Stereo);
-        SugarRemovalUtility sru = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
+        SugarRemovalUtility sru = this.getSugarRemovalUtilityV1200DefaultSettings();
         String smiles = "OC1OC(O)C(O)C1OC1C(OCCCCCCCCCCCCCCCCC)OC(OCCCCCCCCCCC)C(O)C1OC1C(O)C(O)C(O)OC(O)C1O";
         List<IAtomContainer> candidates = sru.copyAndExtractAglyconeAndCircularSugars(smiPar.parseSmiles(smiles), false);
         List<String> expectedSmilesList = Arrays.asList(
@@ -2447,7 +2440,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
                 "OC1OC(O)C(O)C1O",
                 "C1(C(O)C(O)C(O)OC(O)C1O)O"
         );
-        List<String> generatedSmilesList = SugarRemovalUtilityTest.generateSmilesList(candidates, smiGen);
+        List<String> generatedSmilesList = this.generateSmilesList(candidates, smiGen);
         Assertions.assertLinesMatch(expectedSmilesList, generatedSmilesList);
     }
 
@@ -2460,14 +2453,14 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
     void sugarExtractionTestBug7() throws Exception {
         SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.Stereo);
-        SugarRemovalUtility sru = SugarRemovalUtilityTest.getSugarRemovalUtilityV1200DefaultSettings();
+        SugarRemovalUtility sru = this.getSugarRemovalUtilityV1200DefaultSettings();
         String smiles = "CCCCCC=CC=CC(O)CC=CC=CC(=O)OC1C(O)C(C2=C(O)C=C(O)C=C2CO)OC(CO)C1OC1OC(C)C(O)C(O)C1OC1OC(O)C(O)C(O)C1O";
         List<IAtomContainer> candidates = sru.copyAndExtractAglyconeAndCircularSugars(smiPar.parseSmiles(smiles), false);
         List<String> expectedSmilesList = Arrays.asList(
                 "CCCCCC=CC=CC(O)CC=CC=CC(=O)OC1C(O)C(C2=C(O)C=C(O)C=C2CO)OC(CO)C1O",
                 "C1(OC(C)C(O)C(O)C1OC2OC(O)C(O)C(O)C2O)O"
         );
-        List<String> generatedSmilesList = SugarRemovalUtilityTest.generateSmilesList(candidates, smiGen);
+        List<String> generatedSmilesList = this.generateSmilesList(candidates, smiGen);
         Assertions.assertLinesMatch(expectedSmilesList, generatedSmilesList);
     }
 
@@ -2479,7 +2472,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
      * @throws CDKException if atom type perception or hydrogen atom addition
      *                      fails
      */
-    protected static void saturate(IAtomContainer molecule) throws CDKException {
+    protected void saturate(IAtomContainer molecule) throws CDKException {
         if (!molecule.isEmpty()) {
             AtomContainerManipulator.percieveAtomTypesAndConfigureAtoms(molecule);
             CDKHydrogenAdder.getInstance(SilentChemObjectBuilder.getInstance()).addImplicitHydrogens(molecule);
@@ -2493,7 +2486,7 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
      * @param smiGen SMILES generator to use for conversion
      * @return List of SMILES strings
      */
-    protected static List<String> generateSmilesList(List<IAtomContainer> candidates, SmilesGenerator smiGen) {
+    protected List<String> generateSmilesList(List<IAtomContainer> candidates, SmilesGenerator smiGen) {
         return candidates.stream()
                 .map(mol -> {
                     try {
@@ -2513,11 +2506,11 @@ class SugarRemovalUtilityTest extends SugarRemovalUtility {
      *
      * @return a SugarRemovalUtility object with version 1.2.0.0 default settings
      */
-    protected static SugarRemovalUtility getSugarRemovalUtilityV1200DefaultSettings() {
+    protected SugarRemovalUtility getSugarRemovalUtilityV1200DefaultSettings() {
         SugarRemovalUtility sugarRemovalUtil = new SugarRemovalUtility(SilentChemObjectBuilder.getInstance());
         sugarRemovalUtil.setDetectCircularSugarsOnlyWithOGlycosidicBondSetting(false);
         sugarRemovalUtil.setRemoveOnlyTerminalSugarsSetting(true);
-        sugarRemovalUtil.setPreservationModeSetting(PreservationMode.HEAVY_ATOM_COUNT);
+        sugarRemovalUtil.setPreservationModeSetting(SugarRemovalUtility.PreservationMode.HEAVY_ATOM_COUNT);
         sugarRemovalUtil.setPreservationModeThresholdSetting(5);
         sugarRemovalUtil.setDetectCircularSugarsOnlyWithEnoughExocyclicOxygenAtomsSetting(true);
         sugarRemovalUtil.setExocyclicOxygenAtomsToAtomsInRingRatioThresholdSetting(0.5);

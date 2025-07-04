@@ -508,41 +508,24 @@ public class SugarRemovalUtility {
     public List<IAtomContainer> copyAndExtractAglyconeAndCircularSugars(IAtomContainer mol, boolean markAttachPointsByR) {
         //setup and copying
         float loadFactor = 0.75f;
-        int atomMapInitCapacity = (int)(mol.getAtomCount() * (1.0f / loadFactor) + 3.0f);
-        int bondMapInitCapacity = (int)(mol.getBondCount() * (1.0f / loadFactor) + 3.0f);
+        int atomMapInitCapacity = (int)((mol.getAtomCount() / loadFactor) + 3.0f);
+        int bondMapInitCapacity = (int)((mol.getBondCount() / loadFactor) + 3.0f);
         HashMap<IAtom, IAtom> origAtomToAtomAglycone = new HashMap<>(atomMapInitCapacity);
         HashMap<IBond, IBond> origBondToBondAglycone = new HashMap<>(bondMapInitCapacity);
         HashMap<IAtom, IAtom> origAtomToAtomSugars = new HashMap<>(atomMapInitCapacity);
         HashMap<IBond, IBond> origBondToBondSugars = new HashMap<>(bondMapInitCapacity);
-        IAtomContainer copyForAglcone = this.deeperCopy(mol, origAtomToAtomAglycone, origBondToBondAglycone);
+        IAtomContainer copyForAglycone = this.deeperCopy(mol, origAtomToAtomAglycone, origBondToBondAglycone);
         IAtomContainer copyForSugars = this.deeperCopy(mol, origAtomToAtomSugars, origBondToBondSugars);
-        //remove aglycone atoms from sugar container
-        int bondCountBefore = mol.getBondCount();
-        boolean wasSugarRemoved = this.removeCircularSugars(copyForAglcone);
-        int bondCountAfter = mol.getBondCount();
-        if (bondCountBefore != bondCountAfter) {
-            SugarRemovalUtility.LOGGER.error("molecule instance was changed!");
-        }
+        boolean wasSugarRemoved = this.removeCircularSugars(copyForAglycone);
         if (!wasSugarRemoved) {
             List<IAtomContainer> results = new ArrayList<>(1);
-            results.add(copyForAglcone);
+            results.add(copyForAglycone);
             return results;
         }
+        //remove aglycone atoms from sugar container
         for (IAtom atom : mol.atoms()) {
-            if (copyForAglcone.contains(origAtomToAtomAglycone.get(atom))) {
+            if (copyForAglycone.contains(origAtomToAtomAglycone.get(atom))) {
                 copyForSugars.removeAtom(origAtomToAtomSugars.get(atom));
-            }
-        }
-        for (IBond bond: copyForAglcone.bonds()) {
-            if (!copyForAglcone.contains(bond.getBegin()) || !copyForAglcone.contains(bond.getEnd())) {
-                copyForAglcone.removeBond(bond);
-                SugarRemovalUtility.LOGGER.error("Removed incomplete bond");
-            }
-        }
-        for (IBond bond: copyForSugars.bonds()) {
-            if (!copyForSugars.contains(bond.getBegin()) || !copyForSugars.contains(bond.getEnd())) {
-                copyForSugars.removeBond(bond);
-                SugarRemovalUtility.LOGGER.error("Removed incomplete bond");
             }
         }
         boolean identifiedBrockenBond = false;
@@ -551,23 +534,23 @@ public class SugarRemovalUtility {
         // -> copy the connection atom (glycosidic O/N/S/C etc.) from the aglycone to the sugar, along with its stereo element
         for (IBond bond : mol.bonds()) {
             //bond not in aglycone or sugars, so it was broken during sugar removal
-            if (!copyForAglcone.contains(origBondToBondAglycone.get(bond)) && !copyForSugars.contains(origBondToBondSugars.get(bond))) {
+            if (!copyForAglycone.contains(origBondToBondAglycone.get(bond)) && !copyForSugars.contains(origBondToBondSugars.get(bond))) {
                 identifiedBrockenBond = true;
                 for (IAtom atom : bond.atoms()) {
                     //bond atom in aglycone -> saturate with H or R
-                    if (copyForAglcone.contains(origAtomToAtomAglycone.get(atom))) {
+                    if (copyForAglycone.contains(origAtomToAtomAglycone.get(atom))) {
                         if (markAttachPointsByR) {
                             IPseudoAtom tmpRAtom = atom.getBuilder().newInstance(IPseudoAtom.class, "R");
                             tmpRAtom.setAttachPointNum(1);
                             tmpRAtom.setImplicitHydrogenCount(0);
-                            copyForAglcone.addAtom(tmpRAtom);
+                            copyForAglycone.addAtom(tmpRAtom);
                             IBond tmpNewBond;
                             if (bond.getBegin().equals(atom)) {
                                 tmpNewBond = atom.getBuilder().newInstance(IBond.class, origAtomToAtomAglycone.get(atom), tmpRAtom, bond.getOrder());
                             } else {
                                 tmpNewBond = atom.getBuilder().newInstance(IBond.class, tmpRAtom, origAtomToAtomAglycone.get(atom), bond.getOrder());
                             }
-                            copyForAglcone.addBond(tmpNewBond);
+                            copyForAglycone.addBond(tmpNewBond);
                         } else {
                             IAtom bondAtomInAglycone = origAtomToAtomAglycone.get(atom);
                             int implHCount = bondAtomInAglycone.getImplicitHydrogenCount();
@@ -576,7 +559,7 @@ public class SugarRemovalUtility {
                     //bond atom in sugar -> get the formerly connected atom from the aglycone and copy it
                     } else if (copyForSugars.contains(origAtomToAtomSugars.get(atom))) {
                         IAtom otherAtom = bond.getOther(atom);
-                        if (!copyForAglcone.contains(origAtomToAtomAglycone.get(otherAtom))) {
+                        if (!copyForAglycone.contains(origAtomToAtomAglycone.get(otherAtom))) {
                             SugarRemovalUtility.LOGGER.error("Other atom of broken bond not found in aglycone, this should not happen!");
                         }
                         IAtom cpyOtherAtom = this.deeperCopy(otherAtom, copyForSugars);
@@ -613,12 +596,12 @@ public class SugarRemovalUtility {
                 }
             }
         }
-        if (!identifiedBrockenBond && !copyForAglcone.isEmpty()) {
+        if (!identifiedBrockenBond && !copyForAglycone.isEmpty()) {
             SugarRemovalUtility.LOGGER.error("No broken bonds found between aglycone and sugars, no saturation performed, this should not happen!");
         }
         //return value preparations, partition disconnected sugars
         List<IAtomContainer> results = new ArrayList<>(mol.getAtomCount());
-        results.add(0, copyForAglcone);
+        results.add(0, copyForAglycone);
         if (ConnectivityChecker.isConnected(copyForSugars)) {
             results.add(copyForSugars);
         } else {
