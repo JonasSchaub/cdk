@@ -346,7 +346,7 @@ public class SugarRemovalUtility {
      * connected to another aliphatic carbon atom via a single bond. The oxygen
      * atom must not be in a ring to avoid breaking circular sugars.
      */
-    protected static final SmartsPattern ESTER_SMARTS_PATTERN = SmartsPattern.create("[C](=O)-[O!R]-[C]");
+    protected static final String ESTER_SMARTS_PATTERN = "[C](=O)-[O!R]-[C]";
 
     /**
      * Daylight SMARTS pattern for matching ether bonds between linear sugars.
@@ -356,7 +356,7 @@ public class SugarRemovalUtility {
      * breaking circular sugars. This pattern also matches ester bonds which is
      * why esters must be detected and processed before ethers.
      */
-    protected static final SmartsPattern ETHER_SMARTS_PATTERN = SmartsPattern.create("[C]-[O!R]-[C]");
+    protected static final String ETHER_SMARTS_PATTERN = "[C]-[O!R]-[C]";
 
     /**
      * Daylight SMARTS pattern for matching peroxide bonds between linear
@@ -366,7 +366,7 @@ public class SugarRemovalUtility {
      * tough it is highly unlikely for a peroxide bond to be in a ring, every
      * ring should be preserved.
      */
-    protected static final SmartsPattern PEROXIDE_SMARTS_PATTERN = SmartsPattern.create("[C]-[O!R]-[O!R]-[C]");
+    protected static final String PEROXIDE_SMARTS_PATTERN = "[C]-[O!R]-[O!R]-[C]";
 
     /**
      * Logger of this class.
@@ -1565,7 +1565,7 @@ public class SugarRemovalUtility {
         if (moleculeParam.isEmpty()) {
             return false;
         }
-        SugarRemovalUtility.addUniqueIndicesToAtoms(moleculeParam);
+        this.addUniqueIndicesToAtoms(moleculeParam);
         List<IAtomContainer> sugarCandidates = this.getLinearSugarCandidates(moleculeParam);
         return !sugarCandidates.isEmpty();
     }
@@ -1589,7 +1589,7 @@ public class SugarRemovalUtility {
         if (moleculeParam.isEmpty()) {
             return false;
         }
-        SugarRemovalUtility.addUniqueIndicesToAtoms(moleculeParam);
+        this.addUniqueIndicesToAtoms(moleculeParam);
         List<IAtomContainer> sugarCandidates = this.getCircularSugarCandidates(moleculeParam);
         return !sugarCandidates.isEmpty();
     }
@@ -1614,7 +1614,7 @@ public class SugarRemovalUtility {
         if (moleculeParam.isEmpty()) {
             return false;
         }
-        SugarRemovalUtility.addUniqueIndicesToAtoms(moleculeParam);
+        this.addUniqueIndicesToAtoms(moleculeParam);
         List<IAtomContainer> circularSugarCandidates = this.getCircularSugarCandidates(moleculeParam);
         boolean containsCircularSugar = !circularSugarCandidates.isEmpty();
         List<IAtomContainer> linearSugarCandidates = this.getLinearSugarCandidates(moleculeParam);
@@ -1647,7 +1647,7 @@ public class SugarRemovalUtility {
         if (moleculeParam.isEmpty()) {
             return false;
         }
-        SugarRemovalUtility.addUniqueIndicesToAtoms(moleculeParam);
+        this.addUniqueIndicesToAtoms(moleculeParam);
         List<IAtomContainer> potentialSugarRings = this.detectPotentialSugarCycles(
                 moleculeParam,
                 this.detectSpiroRingsAsCircularSugarsSetting,
@@ -1656,7 +1656,7 @@ public class SugarRemovalUtility {
             return false;
         }
         IAtomContainer potentialSugarRing = potentialSugarRings.get(0);
-        boolean hasGlycosidicBond = SugarRemovalUtility.hasGlycosidicBond(potentialSugarRing, moleculeParam);
+        boolean hasGlycosidicBond = this.hasGlycosidicBond(potentialSugarRing, moleculeParam);
         boolean moleculeIsOnlyOneSugarRing;
         if (!hasGlycosidicBond) {
             //special exemption for molecules that only consist of a sugar ring and nothing else:
@@ -1853,7 +1853,7 @@ public class SugarRemovalUtility {
             returnList.add(0, moleculeParam);
             return returnList;
         }
-        SugarRemovalUtility.addUniqueIndicesToAtoms(moleculeParam);
+        this.addUniqueIndicesToAtoms(moleculeParam);
         if (this.preservationModeSetting != PreservationMode.ALL && !ConnectivityChecker.isConnected(moleculeParam)) {
             this.flagTooSmallDisconnectedPartsToPreserve(moleculeParam);
         }
@@ -1975,7 +1975,7 @@ public class SugarRemovalUtility {
             returnList.add(0, moleculeParam);
             return returnList;
         }
-        SugarRemovalUtility.addUniqueIndicesToAtoms(moleculeParam);
+        this.addUniqueIndicesToAtoms(moleculeParam);
         if (this.preservationModeSetting != PreservationMode.ALL && !ConnectivityChecker.isConnected(moleculeParam)) {
             this.flagTooSmallDisconnectedPartsToPreserve(moleculeParam);
         }
@@ -2115,7 +2115,7 @@ public class SugarRemovalUtility {
             returnList.add(0, moleculeParam);
             return returnList;
         }
-        SugarRemovalUtility.addUniqueIndicesToAtoms(moleculeParam);
+        this.addUniqueIndicesToAtoms(moleculeParam);
         if (this.preservationModeSetting != PreservationMode.ALL && !ConnectivityChecker.isConnected(moleculeParam)) {
             this.flagTooSmallDisconnectedPartsToPreserve(moleculeParam);
         }
@@ -2183,9 +2183,9 @@ public class SugarRemovalUtility {
         if (moleculeParam.isEmpty()) {
             return new ArrayList<>(0);
         }
-        boolean areIndicesSet = SugarRemovalUtility.checkUniqueIndicesOfAtoms(moleculeParam);
+        boolean areIndicesSet = this.checkUniqueIndicesOfAtoms(moleculeParam);
         if (!areIndicesSet) {
-            SugarRemovalUtility.addUniqueIndicesToAtoms(moleculeParam);
+            this.addUniqueIndicesToAtoms(moleculeParam);
         }
         List<IAtomContainer> potentialSugarRings = this.detectPotentialSugarCycles(moleculeParam,
                 this.detectSpiroRingsAsCircularSugarsSetting, this.detectCircularSugarsWithKetoGroupsSetting);
@@ -2204,7 +2204,7 @@ public class SugarRemovalUtility {
              */
             //do not remove rings without an attached glycosidic bond if this option is set
             if (this.detectCircularSugarsOnlyWithOGlycosidicBondSetting) {
-                boolean hasGlycosidicBond = SugarRemovalUtility.hasGlycosidicBond(potentialSugarRing, moleculeParam);
+                boolean hasGlycosidicBond = this.hasGlycosidicBond(potentialSugarRing, moleculeParam);
                 if (!hasGlycosidicBond) {
                     //special exemption for molecules that only consist of a sugar ring and nothing else:
                     // they should also be seen as candidate even though they do not have a glycosidic bond
@@ -2226,7 +2226,7 @@ public class SugarRemovalUtility {
             }
             //do not remove rings with 'too few' attached oxygens if this option is set
             if (this.detectCircularSugarsOnlyWithEnoughExocyclicOxygenAtomsSetting) {
-                int exocyclicOxygenCount = SugarRemovalUtility.getExocyclicOxygenAtomCount(potentialSugarRing, moleculeParam);
+                int exocyclicOxygenCount = this.getExocyclicOxygenAtomCount(potentialSugarRing, moleculeParam);
                 int atomsInRingCount = potentialSugarRing.getAtomCount();
                 boolean areEnoughOxygensAttached = this.doesRingHaveEnoughExocyclicOxygenAtoms(atomsInRingCount,
                         exocyclicOxygenCount);
@@ -2259,19 +2259,19 @@ public class SugarRemovalUtility {
         if (moleculeParam.isEmpty()) {
             return new ArrayList<>(0);
         }
-        boolean areIndicesSet = SugarRemovalUtility.checkUniqueIndicesOfAtoms(moleculeParam);
+        boolean areIndicesSet = this.checkUniqueIndicesOfAtoms(moleculeParam);
         if (!areIndicesSet) {
-            SugarRemovalUtility.addUniqueIndicesToAtoms(moleculeParam);
+            this.addUniqueIndicesToAtoms(moleculeParam);
         }
         List<IAtomContainer> sugarCandidates = this.detectLinearSugarCandidatesByPatternMatching(moleculeParam);
         //alternative ideas: SMARTS or matching the biggest patterns first and exclude the matched atoms
         if (!sugarCandidates.isEmpty()) {
-            sugarCandidates = SugarRemovalUtility.combineOverlappingCandidates(sugarCandidates);
-            sugarCandidates = SugarRemovalUtility.splitEtherEsterAndPeroxideBonds(sugarCandidates);
+            sugarCandidates = this.combineOverlappingCandidates(sugarCandidates);
+            sugarCandidates = this.splitEtherEsterAndPeroxideBonds(sugarCandidates);
             this.removeAtomsOfCircularSugarsFromCandidates(sugarCandidates, moleculeParam);
         }
         if (!this.detectLinearSugarsInRingsSetting && !sugarCandidates.isEmpty()) {
-            SugarRemovalUtility.removeCyclicAtomsFromSugarCandidates(sugarCandidates, moleculeParam);
+            this.removeCyclicAtomsFromSugarCandidates(sugarCandidates, moleculeParam);
         }
         if (!sugarCandidates.isEmpty()) {
             sugarCandidates = this.removeTooSmallAndTooLargeCandidates(sugarCandidates);
@@ -2289,9 +2289,9 @@ public class SugarRemovalUtility {
      * @param moleculeParam the disconnected input molecule to check
      */
     protected void flagTooSmallDisconnectedPartsToPreserve(IAtomContainer moleculeParam) {
-        boolean areIndicesSet = SugarRemovalUtility.checkUniqueIndicesOfAtoms(moleculeParam);
+        boolean areIndicesSet = this.checkUniqueIndicesOfAtoms(moleculeParam);
         if (!areIndicesSet) {
-            SugarRemovalUtility.addUniqueIndicesToAtoms(moleculeParam);
+            this.addUniqueIndicesToAtoms(moleculeParam);
         }
         float loadFactor = 0.75f;
         int indexToAtomMapInitCapacity = (int)(moleculeParam.getAtomCount() * (1.0f / loadFactor) + 2.0f);
@@ -2412,21 +2412,21 @@ public class SugarRemovalUtility {
     protected boolean isTerminal(IAtomContainer substructure,
                                IAtomContainer parentMolecule,
                                List<IAtomContainer> candidateList) {
-        if (!SugarRemovalUtility.checkUniqueIndicesOfAtoms(parentMolecule)) {
-            SugarRemovalUtility.addUniqueIndicesToAtoms(parentMolecule);
+        if (!this.checkUniqueIndicesOfAtoms(parentMolecule)) {
+            this.addUniqueIndicesToAtoms(parentMolecule);
         }
-        if (!SugarRemovalUtility.checkUniqueIndicesOfAtoms(substructure)) {
-            SugarRemovalUtility.addUniqueIndicesToAtoms(substructure);
+        if (!this.checkUniqueIndicesOfAtoms(substructure)) {
+            this.addUniqueIndicesToAtoms(substructure);
         }
         for (IAtomContainer candidate : candidateList) {
-            boolean areIndicesSet = SugarRemovalUtility.checkUniqueIndicesOfAtoms(candidate);
+            boolean areIndicesSet = this.checkUniqueIndicesOfAtoms(candidate);
             if (!areIndicesSet) {
-                SugarRemovalUtility.addUniqueIndicesToAtoms(candidate);
+                this.addUniqueIndicesToAtoms(candidate);
             }
         }
 
         boolean isTerminal;
-        IAtomContainer moleculeCopy = SugarRemovalUtility.basicCopy(parentMolecule);
+        IAtomContainer moleculeCopy = this.basicCopy(parentMolecule);
         if (!ConnectivityChecker.isConnected(moleculeCopy)) {
             //since we are using isConnected() to determine whether the substructure
             // is terminal, the structure to start with needs to be connected; if
@@ -2630,7 +2630,7 @@ public class SugarRemovalUtility {
      * @param molecule atom container to copy
      * @return basic copy of the molecule
      */
-    protected static IAtomContainer basicCopy(IAtomContainer molecule) {
+    protected IAtomContainer basicCopy(IAtomContainer molecule) {
         IAtomContainer copy = molecule.getBuilder().newInstance(IAtomContainer.class);
         if (molecule.isEmpty()) {
             return copy;
@@ -2663,7 +2663,7 @@ public class SugarRemovalUtility {
      *
      * @param moleculeParam the molecule that will be processed by the class
      */
-    protected static void addUniqueIndicesToAtoms(IAtomContainer moleculeParam) {
+    protected void addUniqueIndicesToAtoms(IAtomContainer moleculeParam) {
         if (moleculeParam.isEmpty()) {
             return;
         }
@@ -2683,7 +2683,7 @@ public class SugarRemovalUtility {
      * @param substructure the substructure to create an identifier for
      * @return the identifier string
      */
-    protected static String generateSubstructureIdentifier(IAtomContainer substructure) {
+    protected String generateSubstructureIdentifier(IAtomContainer substructure) {
         if (substructure.isEmpty()) {
             return "";
         }
@@ -2711,7 +2711,7 @@ public class SugarRemovalUtility {
      * @return true if every atom has an index property that is unique in the
      *         given molecule
      */
-    protected static boolean checkUniqueIndicesOfAtoms(IAtomContainer moleculeParam) {
+    protected boolean checkUniqueIndicesOfAtoms(IAtomContainer moleculeParam) {
         if (moleculeParam.isEmpty()) {
             return true;
         }
@@ -2769,9 +2769,9 @@ public class SugarRemovalUtility {
         if (moleculeParam.isEmpty()) {
             return new ArrayList<>(0);
         }
-        boolean areIndicesSet = SugarRemovalUtility.checkUniqueIndicesOfAtoms(moleculeParam);
+        boolean areIndicesSet = this.checkUniqueIndicesOfAtoms(moleculeParam);
         if (!areIndicesSet) {
-            SugarRemovalUtility.addUniqueIndicesToAtoms(moleculeParam);
+            this.addUniqueIndicesToAtoms(moleculeParam);
         }
         int[][] adjList = GraphUtil.toAdjList(moleculeParam);
         //efficient computation/partitioning of the ring systems
@@ -2794,7 +2794,7 @@ public class SugarRemovalUtility {
         /* Every atom of every ring is visited; If one atom is visited multiple times, it is in a fused ring or a spiro
          * atom connecting two spiro rings */
         for (IAtomContainer ring : ringFragments) {
-            String ringID = SugarRemovalUtility.generateSubstructureIdentifier(ring);
+            String ringID = this.generateSubstructureIdentifier(ring);
             //initial value false until one atom of the ring is visited more than once
             ringIdentifierToIsFusedOrSpiroMap.put(ringID, false);
             for (IAtom atom : ring.atoms()) {
@@ -2829,7 +2829,7 @@ public class SugarRemovalUtility {
             }
             if (!includeSpiroRings) {
                 //Filtering spiro rings if they should not be detected as sugars
-                String ringID = SugarRemovalUtility.generateSubstructureIdentifier(isolatedRing);
+                String ringID = this.generateSubstructureIdentifier(isolatedRing);
                 //if true, the ring is fused or spiro according to the map; but since only isolated cycles are queried,
                 // they are definitely spiro if the map returns true
                 if (Boolean.TRUE.equals(ringIdentifierToIsFusedOrSpiroMap.get(ringID))) {
@@ -2849,7 +2849,7 @@ public class SugarRemovalUtility {
                     /* note: another requirement of a suspected sugar ring should be that it contains only single bonds.
                      * This is not tested here because all the structures in the reference rings do meet this criterion.
                      * But a structure that does not meet this criterion could be added to the references by the user.*/
-                    boolean areAllExocyclicBondsSingle = SugarRemovalUtility.areAllExocyclicBondsSingle(isolatedRing, moleculeParam, ignoreKetoGroups);
+                    boolean areAllExocyclicBondsSingle = this.areAllExocyclicBondsSingle(isolatedRing, moleculeParam, ignoreKetoGroups);
                     if (!areAllExocyclicBondsSingle) {
                         //do not remove rings with non-single exocyclic bonds, they are not sugars (not an option!)
                         break;
@@ -2907,7 +2907,7 @@ public class SugarRemovalUtility {
      * @return true, if all exocyclic bonds connected to the ring are of single
      *         order
      */
-    protected static boolean areAllExocyclicBondsSingle(IAtomContainer ringToTest, IAtomContainer originalMolecule, boolean ignoreKetoGroups) {
+    protected boolean areAllExocyclicBondsSingle(IAtomContainer ringToTest, IAtomContainer originalMolecule, boolean ignoreKetoGroups) {
         if (ringToTest.isEmpty() || originalMolecule.isEmpty()) {
             return true;
         }
@@ -2981,7 +2981,7 @@ public class SugarRemovalUtility {
      *                         substructure to query the connected atoms from
      * @return true, if a glycosidic bond is detected
      */
-    protected static boolean hasGlycosidicBond(IAtomContainer ringToTest, IAtomContainer originalMolecule) {
+    protected boolean hasGlycosidicBond(IAtomContainer ringToTest, IAtomContainer originalMolecule) {
         if (ringToTest.isEmpty() || originalMolecule.isEmpty()) {
             return false;
         }
@@ -3041,12 +3041,12 @@ public class SugarRemovalUtility {
      *         ring and subsequent removal of too small remaining fragments
      */
     protected boolean isMoleculeEmptyAfterRemovalOfThisRing(IAtomContainer ringParam, IAtomContainer moleculeParam) {
-        if (!SugarRemovalUtility.checkUniqueIndicesOfAtoms(moleculeParam)) {
-            SugarRemovalUtility.addUniqueIndicesToAtoms(moleculeParam);
+        if (!this.checkUniqueIndicesOfAtoms(moleculeParam)) {
+            this.addUniqueIndicesToAtoms(moleculeParam);
         }
 
         boolean isMoleculeEmptyAfterRemoval;
-        IAtomContainer moleculeCopy = SugarRemovalUtility.basicCopy(moleculeParam);
+        IAtomContainer moleculeCopy = this.basicCopy(moleculeParam);
         float loadFactor = 0.75f;
         int indexToAtomMapInitCapacity = (int)(moleculeCopy.getAtomCount() * (1.0f / loadFactor) + 2.0f);
         HashMap<Integer, IAtom> indexToAtomMap = new HashMap<>(indexToAtomMapInitCapacity, loadFactor);
@@ -3094,7 +3094,7 @@ public class SugarRemovalUtility {
      *                         queried from it
      * @return number of attached exocyclic oxygen atoms of the given ring
      */
-    protected static int getExocyclicOxygenAtomCount(IAtomContainer ringToTest, IAtomContainer originalMolecule) {
+    protected int getExocyclicOxygenAtomCount(IAtomContainer ringToTest, IAtomContainer originalMolecule) {
         int exocyclicOxygenCounter = 0;
         Iterable<IAtom> ringAtoms = ringToTest.atoms();
         for (IAtom ringAtom : ringAtoms) {
@@ -3219,7 +3219,7 @@ public class SugarRemovalUtility {
      * @return a list of distinct, non-overlapping substructures after combining
      *         every formerly overlapping structure
      */
-    protected static List<IAtomContainer> combineOverlappingCandidates(List<IAtomContainer> candidateList) {
+    protected List<IAtomContainer> combineOverlappingCandidates(List<IAtomContainer> candidateList) {
         if (candidateList == null || candidateList.isEmpty()) {
             return new ArrayList<>(0);
         }
@@ -3259,7 +3259,7 @@ public class SugarRemovalUtility {
      * @return a new list of candidates where all ether, ester, and peroxide
      *         bonds have been split and disconnected candidates separated
      */
-    protected static List<IAtomContainer> splitEtherEsterAndPeroxideBonds(List<IAtomContainer> candidateList) {
+    protected List<IAtomContainer> splitEtherEsterAndPeroxideBonds(List<IAtomContainer> candidateList) {
         if (candidateList == null ||candidateList.isEmpty()) {
             return new ArrayList<>(0);
         }
@@ -3274,7 +3274,7 @@ public class SugarRemovalUtility {
             // the ether pattern also matches esters
             //note 2: here, which bond is removed is specifically defined. This
             // is not the case for the ether
-            Mappings esterMappings = SugarRemovalUtility.ESTER_SMARTS_PATTERN.matchAll(candidate).uniqueAtoms();
+            Mappings esterMappings = SmartsPattern.create(SugarRemovalUtility.ESTER_SMARTS_PATTERN).matchAll(candidate).uniqueAtoms();
             if (esterMappings.atLeast(1)) {
                 for (IAtomContainer esterGroup : esterMappings.toSubstructures()) {
                     IAtom doubleBondedOxygen = null;
@@ -3296,7 +3296,7 @@ public class SugarRemovalUtility {
 
             //note: which bond is actually removed is 'pseudo-random', i.e. not
             // predictable by a human
-            Mappings etherMappings = SugarRemovalUtility.ETHER_SMARTS_PATTERN.matchAll(candidate).uniqueAtoms();
+            Mappings etherMappings = SmartsPattern.create(SugarRemovalUtility.ETHER_SMARTS_PATTERN).matchAll(candidate).uniqueAtoms();
             if (etherMappings.atLeast(1)) {
                 for (IAtomContainer etherGroup : etherMappings.toSubstructures()) {
                     IAtom carbon1 = null;
@@ -3315,7 +3315,7 @@ public class SugarRemovalUtility {
                 }
             }
 
-            Mappings peroxideMappings = SugarRemovalUtility.PEROXIDE_SMARTS_PATTERN.matchAll(candidate).uniqueAtoms();
+            Mappings peroxideMappings = SmartsPattern.create(SugarRemovalUtility.PEROXIDE_SMARTS_PATTERN).matchAll(candidate).uniqueAtoms();
             if (peroxideMappings.atLeast(1)) {
                 for (IAtomContainer peroxideGroup : peroxideMappings.toSubstructures()) {
                     IAtom oxygen1 = null;
@@ -3368,8 +3368,8 @@ public class SugarRemovalUtility {
         if (candidateList == null || candidateList.isEmpty()) {
             return;
         }
-        if (!SugarRemovalUtility.checkUniqueIndicesOfAtoms(parentMolecule)) {
-            SugarRemovalUtility.addUniqueIndicesToAtoms(parentMolecule);
+        if (!this.checkUniqueIndicesOfAtoms(parentMolecule)) {
+            this.addUniqueIndicesToAtoms(parentMolecule);
         }
 
         //generating set of atom ids of atoms that are part of the circular sugars in the molecule
@@ -3396,8 +3396,8 @@ public class SugarRemovalUtility {
                 i = i - 1;
                 continue;
             }
-            if (!SugarRemovalUtility.checkUniqueIndicesOfAtoms(candidate)) {
-                SugarRemovalUtility.addUniqueIndicesToAtoms(candidate);
+            if (!this.checkUniqueIndicesOfAtoms(candidate)) {
+                this.addUniqueIndicesToAtoms(candidate);
             }
             for (IAtom candidateAtom : candidate.atoms()) {
                 int atomIndex = candidateAtom.getProperty(SugarRemovalUtility.INDEX_PROPERTY_KEY);
@@ -3440,7 +3440,7 @@ public class SugarRemovalUtility {
      * @param moleculeParam the molecule that is currently scanned for linear
      *                      sugars to detect its cycles
      */
-    protected static void removeCyclicAtomsFromSugarCandidates(List<IAtomContainer> candidateList,
+    protected void removeCyclicAtomsFromSugarCandidates(List<IAtomContainer> candidateList,
                                                         IAtomContainer moleculeParam) {
         if (candidateList == null || candidateList.isEmpty()) {
             return;

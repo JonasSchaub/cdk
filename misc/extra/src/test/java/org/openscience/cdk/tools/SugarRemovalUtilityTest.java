@@ -1559,7 +1559,8 @@ class SugarRemovalUtilityTest {
                 "O=CC(O)C(O)C(O)C(O)COC(O)(C(O)COC(=O)C(O)C(O)C(O)C(O)COC1=CC=CC=2C(=O)C3=CC(=CC(O)=C3C(=O)C12)C)C(O)C(O)C=O");
         List<IAtomContainer> beforeSplittingList = new ArrayList<>(1);
         beforeSplittingList.add(originalMolecule);
-        List<IAtomContainer> afterSplittingList = SugarRemovalUtility.splitEtherEsterAndPeroxideBonds(beforeSplittingList);
+        SugarRemovalUtility sru = this.getSugarRemovalUtilityV1200DefaultSettings();
+        List<IAtomContainer> afterSplittingList = sru.splitEtherEsterAndPeroxideBonds(beforeSplittingList);
         List<String> smilesAfterSplittingList = new ArrayList<>(3);
         for (IAtomContainer fragment : afterSplittingList) {
             String smilesCode = smiGen.create(fragment);
@@ -1706,6 +1707,11 @@ class SugarRemovalUtilityTest {
                 "O=C(OC1C2=C(O)C=3C(=O)C=4C=CC=C(O)C4C(=O)C3C(O)=C2C(OC5OC(C)C(OC6OC(C)C(OC7OC(C(=O)CC7O)C)C(O)C6)C(N(C)C)C5)CC1(O)CC)C"
         };
         for (String smiles : glycosidicNP) {
+            if (smiles.equals("CCCCCC=CC=CC(O)CC=CC=CC(=O)OC1C(O)C(C2=C(O)C=C(O)C=C2CO)OC(CO)C1OC1OC(C)C(O)C(O)C1OC1OC(O)C(O)C(O)C1O")) {
+                System.out.println("Hello");
+                //Thread.sleep(10000);
+                System.out.println("Let's go");
+            }
             System.out.println(smiles + " input mol");
             List<IAtomContainer> candidates = sru.copyAndExtractAglyconeAndCircularSugars(smiPar.parseSmiles(smiles), false);
             for (IAtomContainer candidate : candidates) {
