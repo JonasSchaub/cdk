@@ -491,6 +491,7 @@ public class SugarRemovalUtility {
 
     //TODO: add option to only copy O or don't copy C when it is the connecting atom
     //TODO: add treatment of linear sugars
+    //TODO: add special treatment for esters?
     /**
       * Extracts the aglycone and circular sugar components from a molecule.
       *
