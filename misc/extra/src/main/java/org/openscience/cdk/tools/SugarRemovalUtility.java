@@ -490,6 +490,7 @@ public class SugarRemovalUtility {
     }
 
     //TODO: add option to only copy O or don't copy C when it is the connecting atom
+    //TODO: add treatment of linear sugars
     /**
       * Extracts the aglycone and circular sugar components from a molecule.
       *
@@ -507,36 +508,39 @@ public class SugarRemovalUtility {
       *         detected/removed, the list contains only the copy of the original molecule.
       */
     public List<IAtomContainer> copyAndExtractAglyconeAndCircularSugars(IAtomContainer mol, boolean markAttachPointsByR) {
+        if (mol == null || mol.isEmpty()) {
+            return Collections.emptyList();
+        }
         //setup and copying
         float loadFactor = 0.75f;
         int atomMapInitCapacity = (int)((mol.getAtomCount() / loadFactor) + 3.0f);
         int bondMapInitCapacity = (int)((mol.getBondCount() / loadFactor) + 3.0f);
         HashMap<IAtom, IAtom> origAtomToAtomAglycone = new HashMap<>(atomMapInitCapacity);
         HashMap<IBond, IBond> origBondToBondAglycone = new HashMap<>(bondMapInitCapacity);
-        HashMap<IAtom, IAtom> origAtomToAtomSugars = new HashMap<>(atomMapInitCapacity);
-        HashMap<IBond, IBond> origBondToBondSugars = new HashMap<>(bondMapInitCapacity);
         IAtomContainer copyForAglycone = this.deeperCopy(mol, origAtomToAtomAglycone, origBondToBondAglycone);
-        IAtomContainer copyForSugars = this.deeperCopy(mol, origAtomToAtomSugars, origBondToBondSugars);
         boolean wasSugarRemoved = this.removeCircularSugars(copyForAglycone);
         if (!wasSugarRemoved) {
             List<IAtomContainer> results = new ArrayList<>(1);
             results.add(copyForAglycone);
             return results;
         }
+        HashMap<IAtom, IAtom> origAtomToAtomSugars = new HashMap<>(atomMapInitCapacity);
+        HashMap<IBond, IBond> origBondToBondSugars = new HashMap<>(bondMapInitCapacity);
+        IAtomContainer copyForSugars = this.deeperCopy(mol, origAtomToAtomSugars, origBondToBondSugars);
         //remove aglycone atoms from sugar container
         for (IAtom atom : mol.atoms()) {
             if (copyForAglycone.contains(origAtomToAtomAglycone.get(atom))) {
                 copyForSugars.removeAtom(origAtomToAtomSugars.get(atom));
             }
         }
-        boolean identifiedBrockenBond = false;
+        boolean identifiedBrokenBond = false;
         //identify bonds that were broken between sugar moieties and aglycone
         // -> saturate them with R or H
         // -> copy the connection atom (glycosidic O/N/S/C etc.) from the aglycone to the sugar, along with its stereo element
         for (IBond bond : mol.bonds()) {
             //bond not in aglycone or sugars, so it was broken during sugar removal
             if (!copyForAglycone.contains(origBondToBondAglycone.get(bond)) && !copyForSugars.contains(origBondToBondSugars.get(bond))) {
-                identifiedBrockenBond = true;
+                identifiedBrokenBond = true;
                 for (IAtom atom : bond.atoms()) {
                     //bond atom in aglycone -> saturate with H or R
                     if (copyForAglycone.contains(origAtomToAtomAglycone.get(atom))) {
@@ -587,8 +591,27 @@ public class SugarRemovalUtility {
                         }
                         //copy stereo elements for the broken bond to preserve the configuration in the sugar
                         for (IStereoElement elem : mol.stereoElements()) {
-                            if (elem.contains(bond.getBegin()) && elem.contains(bond.getEnd())) {
-                                copyForSugars.addStereoElement(elem.map(origAtomToAtomSugars, origBondToBondSugars));
+                            if (elem.contains(bond.getBegin()) && elem.contains(bond.getEnd()) && copyForSugars.contains(origAtomToAtomSugars.get(elem.getFocus()))) {
+                                boolean carriersInSugar = true;
+                                for (Object object : elem.getCarriers()) {
+                                    if (object instanceof IAtom) {
+                                        if (!copyForSugars.contains(origAtomToAtomSugars.get(object))) {
+                                            carriersInSugar = false;
+                                            break;
+                                        }
+                                    } else if (object instanceof IBond) {
+                                        if (!copyForSugars.contains(origBondToBondSugars.get(object))) {
+                                            carriersInSugar = false;
+                                            break;
+                                        }
+                                    } else {
+                                        carriersInSugar = false;
+                                        break;
+                                    }
+                                }
+                                if (carriersInSugar) {
+                                    copyForSugars.addStereoElement(elem.map(origAtomToAtomSugars, origBondToBondSugars));
+                                }
                             }
                         }
                     } else {
@@ -597,7 +620,8 @@ public class SugarRemovalUtility {
                 }
             }
         }
-        if (!identifiedBrockenBond && !copyForAglycone.isEmpty()) {
+        if (!identifiedBrokenBond && !copyForAglycone.isEmpty() && ConnectivityChecker.isConnected(mol)) {
+            //note for disconnected glycosides, one could process each component separately, but this seems like unnecessary overhead just for the sake of this check
             SugarRemovalUtility.LOGGER.error("No broken bonds found between aglycone and sugars, no saturation performed, this should not happen!");
         }
         //return value preparations, partition disconnected sugars

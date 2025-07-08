@@ -27,12 +27,14 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.openscience.cdk.exception.CDKException;
 import org.openscience.cdk.interfaces.IAtomContainer;
+import org.openscience.cdk.io.iterator.IteratingSDFReader;
 import org.openscience.cdk.silent.SilentChemObjectBuilder;
 import org.openscience.cdk.smiles.SmiFlavor;
 import org.openscience.cdk.smiles.SmilesGenerator;
 import org.openscience.cdk.smiles.SmilesParser;
 import org.openscience.cdk.tools.manipulator.AtomContainerManipulator;
 
+import java.io.FileReader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -1704,14 +1706,27 @@ class SugarRemovalUtilityTest {
                 "O=C(C=CC1=CC=C(O)C=C1)C=2C(=O)C(C(=O)C(O)(C2O)C3OC(CO)C(O)C(O)C3O)C(O)C4OCC(O)C(O)C4O",
                 "O=C(O)C=1C(=O)C(O)(CC(=O)C1N)C2OC(COC(=O)C)C(OC(=O)C(N=C(S)SCC(N=C(O)C)C(=O)O)C(SCC(N=C(O)C)C(=O)O)C)C(OC3OC(C)C(O)(C(OC(=O)C(C)CC)C)C(OC)C3)C2O",
                 "O=C(O)CC1C(=CC2CCC=CC1C2OC3OC(CO)C4(OC(=C5N=C([CH-]C5=C4)C(C)C)CCCO)C(O)C3(O)CC)C(=O)OC",
-                "O=C(OC1C2=C(O)C=3C(=O)C=4C=CC=C(O)C4C(=O)C3C(O)=C2C(OC5OC(C)C(OC6OC(C)C(OC7OC(C(=O)CC7O)C)C(O)C6)C(N(C)C)C5)CC1(O)CC)C"
+                "O=C(OC1C2=C(O)C=3C(=O)C=4C=CC=C(O)C4C(=O)C3C(O)=C2C(OC5OC(C)C(OC6OC(C)C(OC7OC(C(=O)CC7O)C)C(O)C6)C(N(C)C)C5)CC1(O)CC)C",
+                //CNP0194094.4
+                "N[C@H]1C(O)O[C@H](CO)[C@@H](O)[C@@H]1O.N[C@H]1C(O)O[C@H](CO)[C@@H](O)[C@@H]1O.O=S(=O)(O)O.[Cl-].[Cl-].[K+].[K+]",
+                //CNP0194094.5
+                "N[C@H]1C(O)O[C@H](CO)[C@@H](O)[C@@H]1O.N[C@H]1C(O)O[C@H](CO)[C@@H](O)[C@@H]1O.O=S(=O)(O)O.[Cl-].[Cl-].[Na+].[Na+]",
+                //CNP0491043.0
+                "CCC(O)COCC1OC(OC2C(COCC(O)CC)OC(OCC(O)CC)C(OCC(O)CC)C2OCC(O)CC)C(OCC(O)CC)C(OCC(O)CC)C1OCC(O)CC.COCC1OC(OC2C(COC)OC(OC)C(OC)C2OC)C(OC)C(OC)C1OC",
+                //CNP0585724.0
+                "COC1=CC(C(=O)OC2C3C=COC(C)C3C3(CO)OC23)=CC=C1O.OCC1OC(O)C(O)C(O)C1O",
+                //CNP0570079.0
+                "CC(=O)OCC1OC(OC2C(COC(C)=O)OC(OC(C)=O)C(OC(C)=O)C2OC(C)=O)C(OC(C)=O)C(OC(C)=O)C1OC(C)=O.CCC(=O)OCC1OC(OC2C(COC(=O)CC)OC(OC(=O)CC)C(OC(=O)CC)C2OC(=O)CC)C(OC(=O)CC)C(OC(=O)CC)C1OC(=O)CC.OCC1OC(OC2C(CO)OC(O)C(O)C2O)C(O)C(O)C1O",
+                //CNP0577894.0
+                "O=C([O-])C1OC(O)C(O)C(O)C1O.[Na+]",
+                //CNP0495754.0
+                "CC1OC(O)C(O)C(N)C1O.CNC1=CC=C(C(C)=O)C=C1",
+                //CNP0305679.8
+                "CCCCCC(=O)O.OC[C@H]1O[C@@H](O[C@@H]2[C@@H](O)[C@H](O)[C@@H](CO)O[C@H]2O)[C@H](O)[C@@H](O)[C@@H]1O",
+                //CNP0305679.9
+                "CCCCCCCC(=O)O.OC[C@H]1O[C@@H](O[C@@H]2[C@@H](O)[C@H](O)[C@@H](CO)O[C@H]2O)[C@H](O)[C@@H](O)[C@@H]1O"
         };
         for (String smiles : glycosidicNP) {
-            if (smiles.equals("CCCCCC=CC=CC(O)CC=CC=CC(=O)OC1C(O)C(C2=C(O)C=C(O)C=C2CO)OC(CO)C1OC1OC(C)C(O)C(O)C1OC1OC(O)C(O)C(O)C1O")) {
-                System.out.println("Hello");
-                //Thread.sleep(10000);
-                System.out.println("Let's go");
-            }
             System.out.println(smiles + " input mol");
             List<IAtomContainer> candidates = sru.copyAndExtractAglyconeAndCircularSugars(smiPar.parseSmiles(smiles), false);
             for (IAtomContainer candidate : candidates) {
@@ -1736,7 +1751,7 @@ class SugarRemovalUtilityTest {
         SugarRemovalUtility sru = this.getSugarRemovalUtilityV1200DefaultSettings();
 
         // Map of input SMILES codes to list of expected aglycone and sugar SMILES codes
-        Map<String, List<String>> testCases = new HashMap<>((int) ((40.0/0.75) + 3.0));
+        Map<String, List<String>> testCases = new HashMap<>((int) ((60.0/0.75) + 3.0));
 
         testCases.put(
                 "CC(=O)N[C@H]1[C@H](O[C@H]2[C@H](O)[C@@H](NC(C)=O)[C@@H](OP(=O)(O)OP(=O)(O)OCCC(C)CC/C=C(\\C)CC/C=C(\\C)CC/C=C(\\C)CCC=C(C)C)O[C@@H]2CO)O[C@H](CO)[C@@H](O[C@@H]2O[C@H](CO[C@H]3O[C@H](CO[C@H]4O[C@H](CO)[C@@H](O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]5O)[C@H](O)[C@@H]4O)[C@@H](O)[C@H](O[C@H]4O[C@H](CO)[C@@H](O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]5O)[C@H](O)[C@@H]4O)[C@@H]3O)[C@@H](O)[C@H](O[C@H]3O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]3O[C@H]3O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]3O[C@H]3O[C@H](CO)[C@@H](O)[C@H](O[C@H]4O[C@H](CO)[C@@H](O)[C@H](O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@H]5O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@H]5O)[C@H]4O)[C@@H]3O)[C@@H]2O)[C@@H]1O",
@@ -2043,12 +2058,92 @@ class SugarRemovalUtilityTest {
                 )
         );
 
+        // CNP0194094.4
+        testCases.put(
+                "N[C@H]1C(O)O[C@H](CO)[C@@H](O)[C@@H]1O.N[C@H]1C(O)O[C@H](CO)[C@@H](O)[C@@H]1O.O=S(=O)(O)O.[Cl-].[Cl-].[K+].[K+]",
+                Arrays.asList(
+                        "O=S(=O)(O)O.[Cl-].[Cl-].[K+].[K+]",
+                        "N[C@H]1C(O)O[C@H](CO)[C@@H](O)[C@@H]1O",
+                        "N[C@H]1C(O)O[C@H](CO)[C@@H](O)[C@@H]1O"
+                )
+        );
+
+        // CNP0194094.5
+        testCases.put(
+                "N[C@H]1C(O)O[C@H](CO)[C@@H](O)[C@@H]1O.N[C@H]1C(O)O[C@H](CO)[C@@H](O)[C@@H]1O.O=S(=O)(O)O.[Cl-].[Cl-].[Na+].[Na+]",
+                Arrays.asList(
+                        "O=S(=O)(O)O.[Cl-].[Cl-].[Na+].[Na+]",
+                        "N[C@H]1C(O)O[C@H](CO)[C@@H](O)[C@@H]1O",
+                        "N[C@H]1C(O)O[C@H](CO)[C@@H](O)[C@@H]1O"
+                )
+        );
+
+        // CNP0491043.0
+        testCases.put(
+                "CCC(O)COCC1OC(OC2C(COCC(O)CC)OC(OCC(O)CC)C(OCC(O)CC)C2OCC(O)CC)C(OCC(O)CC)C(OCC(O)CC)C1OCC(O)CC.COCC1OC(OC2C(COC)OC(OC)C(OC)C2OC)C(OC)C(OC)C1OC",
+                Arrays.asList(
+                        "CCC(O)COCC1OC(OC2C(COCC(O)CC)OC(OCC(O)CC)C(OCC(O)CC)C2OCC(O)CC)C(OCC(O)CC)C(OCC(O)CC)C1OCC(O)CC",
+                        "COCC1OC(OC2C(COC)OC(OC)C(OC)C2OC)C(OC)C(OC)C1OC"
+                )
+        );
+
+        // CNP0585724.0
+        testCases.put(
+                "COC1=CC(C(=O)OC2C3C=COC(C)C3C3(CO)OC23)=CC=C1O.OCC1OC(O)C(O)C(O)C1O",
+                Arrays.asList(
+                        "COC1=CC(C(=O)OC2C3C=COC(C)C3C4(CO)OC24)=CC=C1O",
+                        "OCC1OC(O)C(O)C(O)C1O"
+                )
+        );
+
+        // CNP0570079.0
+        testCases.put(
+                "CC(=O)OCC1OC(OC2C(COC(C)=O)OC(OC(C)=O)C(OC(C)=O)C2OC(C)=O)C(OC(C)=O)C(OC(C)=O)C1OC(C)=O.CCC(=O)OCC1OC(OC2C(COC(=O)CC)OC(OC(=O)CC)C(OC(=O)CC)C2OC(=O)CC)C(OC(=O)CC)C(OC(=O)CC)C1OC(=O)CC.OCC1OC(OC2C(CO)OC(O)C(O)C2O)C(O)C(O)C1O",
+                Arrays.asList(
+                        "CC(=O)OCC1OC(OC2C(COC(C)=O)OC(OC(C)=O)C(OC(C)=O)C2OC(C)=O)C(OC(C)=O)C(OC(C)=O)C1OC(C)=O.CCC(=O)OCC1OC(OC2C(COC(=O)CC)OC(OC(=O)CC)C(OC(=O)CC)C2OC(=O)CC)C(OC(=O)CC)C(OC(=O)CC)C1OC(=O)CC",
+                        "OCC1OC(OC2C(CO)OC(O)C(O)C2O)C(O)C(O)C1O"
+                )
+        );
+
+        // CNP0577894.0
+        testCases.put(
+                "O=C([O-])C1OC(O)C(O)C(O)C1O.[Na+]",
+                Arrays.asList(
+                        "[Na+]",
+                        "O=C([O-])C1OC(O)C(O)C(O)C1O"
+                )
+        );
+
+        // CNP0495754.0
+        testCases.put(
+                "CC1OC(O)C(O)C(N)C1O.CNC1=CC=C(C(C)=O)C=C1",
+                Arrays.asList(
+                        "CNC1=CC=C(C(C)=O)C=C1",
+                        "CC1OC(O)C(O)C(N)C1O"
+                )
+        );
+
+        // CNP0305679.8
+        testCases.put(
+                "CCCCCC(=O)O.OC[C@H]1O[C@@H](O[C@@H]2[C@@H](O)[C@H](O)[C@@H](CO)O[C@H]2O)[C@H](O)[C@@H](O)[C@@H]1O",
+                Arrays.asList(
+                        "CCCCCC(=O)O",
+                        "OC[C@H]1O[C@@H](O[C@@H]2[C@@H](O)[C@H](O)[C@@H](CO)O[C@H]2O)[C@H](O)[C@@H](O)[C@@H]1O"
+                )
+        );
+
+        // CNP0305679.9
+        testCases.put(
+                "CCCCCCCC(=O)O.OC[C@H]1O[C@@H](O[C@@H]2[C@@H](O)[C@H](O)[C@@H](CO)O[C@H]2O)[C@H](O)[C@@H](O)[C@@H]1O",
+                Arrays.asList(
+                        "CCCCCCCC(=O)O",
+                        "OC[C@H]1O[C@@H](O[C@@H]2[C@@H](O)[C@H](O)[C@@H](CO)O[C@H]2O)[C@H](O)[C@@H](O)[C@@H]1O"
+                )
+        );
+
         // Process each test case
         for (Map.Entry<String, List<String>> entry : testCases.entrySet()) {
             String inputSmiles = entry.getKey();
-            if (inputSmiles.equals("CCCCCC=CC=CC(O)CC=CC=CC(=O)OC1C(O)C(C2=C(O)C=C(O)C=C2CO)OC(CO)C1OC1OC(C)C(O)C(O)C1OC1OC(O)C(O)C(O)C1O")) {
-                System.out.println("Hello");
-            }
             List<String> expectedSmilesList = entry.getValue();
 
             List<IAtomContainer> candidates = sru.copyAndExtractAglyconeAndCircularSugars(smiPar.parseSmiles(inputSmiles), false);
@@ -2469,6 +2564,28 @@ class SugarRemovalUtilityTest {
         List<String> generatedSmilesList = this.generateSmilesList(candidates, smiGen);
         Assertions.assertLinesMatch(expectedSmilesList, generatedSmilesList);
     }
+
+//    @Test
+//    void testCOCONUT() throws Exception {
+//        IteratingSDFReader reader = new IteratingSDFReader(
+//                new FileReader("C:\\Users\\jonas\\Research\\Projects\\Project_COCONUT_Curation\\COCONUT_versions\\coconut_sdf_2d_lite-03-2025.sdf"),
+//                SilentChemObjectBuilder.getInstance());
+//        SugarRemovalUtility sru = this.getSugarRemovalUtilityV1200DefaultSettings();
+//        while (reader.hasNext()) {
+//            IAtomContainer molecule = reader.next();
+//            try {
+//                List<IAtomContainer> candidates = sru.copyAndExtractAglyconeAndCircularSugars(molecule, false);
+////            if (candidates.size() > 1) {
+////                System.out.println("COCONUT ID: " + molecule.getProperty("COCONUT_ID"));
+////                System.out.println("Aglycone: " + candidates.get(0));
+////                System.out.println("Sugar: " + candidates.get(1));
+////            }
+//            } catch (Exception e) {
+//                System.err.println("Error processing molecule with COCONUT ID: " + molecule.getProperty("identifier"));
+//                e.printStackTrace();
+//            }
+//        }
+//    }
 
     /**
      * Perceives atom types and adds implicit hydrogen atoms to open valences of
