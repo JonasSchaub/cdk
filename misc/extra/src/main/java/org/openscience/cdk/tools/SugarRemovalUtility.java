@@ -489,9 +489,9 @@ public class SugarRemovalUtility {
         this.restoreDefaultSettings();
     }
 
-    //TODO: add option to only copy O or don't copy C when it is the connecting atom
-    //TODO: add treatment of linear sugars
-    //TODO: add special treatment for esters?
+    //TODO: add option to not copy C when it is the connecting atom
+    //TODO: improve extraction of linear sugars
+    //TODO: add special treatment for esters (on the sugar side and on the aglycone side, respectively)?
     /**
       * Extracts the aglycone and circular sugar components from a molecule.
       *
@@ -508,7 +508,11 @@ public class SugarRemovalUtility {
       *         subsequent elements are the separated sugar fragments. If no sugar was
       *         detected/removed, the list contains only the copy of the original molecule.
       */
-    public List<IAtomContainer> copyAndExtractAglyconeAndCircularSugars(IAtomContainer mol, boolean markAttachPointsByR) {
+    public List<IAtomContainer> copyAndExtractAglyconeAndCircularSugars(
+            IAtomContainer mol,
+            boolean markAttachPointsByR,
+            boolean extractCircularSugars,
+            boolean extractLinearSugars) {
         if (mol == null || mol.isEmpty()) {
             return Collections.emptyList();
         }
@@ -519,7 +523,14 @@ public class SugarRemovalUtility {
         HashMap<IAtom, IAtom> origAtomToAtomAglycone = new HashMap<>(atomMapInitCapacity);
         HashMap<IBond, IBond> origBondToBondAglycone = new HashMap<>(bondMapInitCapacity);
         IAtomContainer copyForAglycone = this.deeperCopy(mol, origAtomToAtomAglycone, origBondToBondAglycone);
-        boolean wasSugarRemoved = this.removeCircularSugars(copyForAglycone);
+        boolean wasSugarRemoved = false;
+        if (extractCircularSugars && extractLinearSugars) {
+            wasSugarRemoved = this.removeCircularAndLinearSugars(copyForAglycone);
+        } else if (extractCircularSugars) {
+            wasSugarRemoved = this.removeCircularSugars(copyForAglycone);
+        } else if (extractLinearSugars) {
+            wasSugarRemoved = this.removeLinearSugars(copyForAglycone);
+        } //else: wasSugarRemoved remains false, and input structure is returned
         if (!wasSugarRemoved) {
             List<IAtomContainer> results = new ArrayList<>(1);
             results.add(copyForAglycone);
