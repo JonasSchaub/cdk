@@ -23,6 +23,7 @@
 
 package org.openscience.cdk.tools;
 
+import org.openscience.cdk.Bond;
 import org.openscience.cdk.exception.CDKException;
 import org.openscience.cdk.exception.InvalidSmilesException;
 import org.openscience.cdk.graph.ConnectivityChecker;
@@ -346,7 +347,7 @@ public class SugarRemovalUtility {
      * connected to another aliphatic carbon atom via a single bond. The oxygen
      * atom must not be in a ring to avoid breaking circular sugars.
      */
-    protected static final String ESTER_SMARTS_PATTERN = "[C](=O)-[O!R]-[C]";
+    public static final String ESTER_SMARTS_PATTERN = "[C](=O)-[O!R]-[C]";
 
     /**
      * Daylight SMARTS pattern for matching ether bonds between linear sugars.
@@ -356,7 +357,7 @@ public class SugarRemovalUtility {
      * breaking circular sugars. This pattern also matches ester bonds which is
      * why esters must be detected and processed before ethers.
      */
-    protected static final String ETHER_SMARTS_PATTERN = "[C]-[O!R]-[C]";
+    public static final String ETHER_SMARTS_PATTERN = "[C]-[O!R]-[C]";
 
     /**
      * Daylight SMARTS pattern for matching peroxide bonds between linear
@@ -366,7 +367,7 @@ public class SugarRemovalUtility {
      * tough it is highly unlikely for a peroxide bond to be in a ring, every
      * ring should be preserved.
      */
-    protected static final String PEROXIDE_SMARTS_PATTERN = "[C]-[O!R]-[O!R]-[C]";
+    public static final String PEROXIDE_SMARTS_PATTERN = "[C]-[O!R]-[O!R]-[C]";
 
     /**
      * Logger of this class.
@@ -3552,6 +3553,7 @@ public class SugarRemovalUtility {
             if (beg == null || end == null || beg.getContainer() != end.getContainer())
                 continue;
             IBond newBond = this.deeperCopy(bond, beg, end);
+            copy.addBond(newBond);
             origToCopyBondMap.put(bond, newBond);
         }
         // single electrons
@@ -3605,7 +3607,8 @@ public class SugarRemovalUtility {
      * @return
      */
     protected IBond deeperCopy(IBond bond, IAtom begin, IAtom end) {
-        IBond newBond = begin.getContainer().newBond(begin, end, bond.getOrder());
+        //using begin.getContainer().newBond() here caused weird issues sometimes
+        IBond newBond = new Bond(begin, end, bond.getOrder());
         newBond.setIsAromatic(bond.isAromatic());
         newBond.setStereo(bond.getStereo());
         newBond.setDisplay(bond.getDisplay());
