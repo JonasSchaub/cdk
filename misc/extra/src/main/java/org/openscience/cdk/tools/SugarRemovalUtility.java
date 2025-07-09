@@ -491,6 +491,9 @@ public class SugarRemovalUtility {
 
     //TODO: add option to not copy C when it is the connecting atom
     //TODO: improve extraction of linear sugars
+    //=> idea: for both, circular and linear sugars, check whether the broken bond has a hetereo atom on one side and a
+    // carbon atom on the other side. If yes, copy the hetero atom to the other side (no matter whether it is a sugar or aglycone)
+    // -> this should produce nice results for both types of sugars and resolve the problem whether to copy carbon atoms or not
     //TODO: add special treatment for esters (on the sugar side and on the aglycone side, respectively)?
     /**
       * Extracts the aglycone and circular sugar components from a molecule.
