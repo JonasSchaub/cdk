@@ -491,7 +491,7 @@ public class SugarRemovalUtility {
 
     //TODO: add special treatment for esters (on the sugar side and on the aglycone side, respectively)?
     //TODO: option to only extract sugars, so don't copy the aglycone? And vice-versa
-    //TODO: only copy sugar parts instead removing them?
+    //TODO: only copy sugar parts instead removing the aglycon from a copy?
     /**
       * Extracts the aglycone and circular sugar components from a molecule.
       *

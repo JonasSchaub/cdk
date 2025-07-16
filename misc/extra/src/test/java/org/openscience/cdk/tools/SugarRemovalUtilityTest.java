@@ -1727,9 +1727,7 @@ class SugarRemovalUtilityTest {
                 "CCCCCCCC(=O)O.OC[C@H]1O[C@@H](O[C@@H]2[C@@H](O)[C@H](O)[C@@H](CO)O[C@H]2O)[C@H](O)[C@@H](O)[C@@H]1O"
         };
         for (String smiles : glycosidicNP) {
-            if (smiles.equals("O=C(O)C1=CC(O)C(O)C(OC(=O)C2C(=CC=3C=C(O)C(OC4OC(CO)C(O)C(O)C4O)=CC3C2C5=CC=C(O)C(O)=C5)C(=O)OCC(O)C(O)C(O)C(O)C(O)CO)C1"))
-                System.out.println("Hello");
-            List<IAtomContainer> candidates = sru.copyAndExtractAglyconeAndCircularSugars(smiPar.parseSmiles(smiles), true, false, true);
+            List<IAtomContainer> candidates = sru.copyAndExtractAglyconeAndCircularSugars(smiPar.parseSmiles(smiles), true, true, true);
             if (candidates.size() < 2) {
                 continue;
             }
@@ -1977,7 +1975,7 @@ class SugarRemovalUtilityTest {
                 "OCC(O)C(O)C(O)C(O)C1OC(CO)C(O)C(O)C1O",
                 Arrays.asList(
                         "OCC(O)C(O)C(O)CO",
-                        "C1(OC(CO)C(O)C(O)C1O)C"
+                        "C1OC(CO)C(O)C(O)C1O"
                 )
         );
         testCases.put(
@@ -2019,8 +2017,8 @@ class SugarRemovalUtilityTest {
                 "O=C(C=CC1=CC=C(O)C=C1)C=2C(=O)C(C(=O)C(O)(C2O)C3OC(CO)C(O)C(O)C3O)C(O)C4OCC(O)C(O)C4O",
                 Arrays.asList(
                         "O=C(C=CC1=CC=C(O)C=C1)C=2C(=O)C(C(=O)C(O)C2O)CO",
-                        "C1(OC(CO)C(O)C(O)C1O)C",
-                        "C1(OCC(O)C(O)C1O)C"
+                        "C1OC(CO)C(O)C(O)C1O",
+                        "C1OCC(O)C(O)C1O"
                 )
         );
         // CNP0194094.4
@@ -2242,7 +2240,7 @@ class SugarRemovalUtilityTest {
                 "OCC(O)C(O)C(O)C(O)C1OC(CO)C(O)C(O)C1O",
                 Arrays.asList(
                         "OCC(O)C(O)C(O)C(O)*",
-                        "C1(OC(CO)C(O)C(O)C1O)C*"
+                        "C1(OC(CO)C(O)C(O)C1O)*"
                 )
         );
         testCases.put(
@@ -2284,8 +2282,8 @@ class SugarRemovalUtilityTest {
                 "O=C(C=CC1=CC=C(O)C=C1)C=2C(=O)C(C(=O)C(O)(C2O)C3OC(CO)C(O)C(O)C3O)C(O)C4OCC(O)C(O)C4O",
                 Arrays.asList(
                         "O=C(C=CC1=CC=C(O)C=C1)C=2C(=O)C(C(=O)C(O)(C2O)*)C(O)*",
-                        "C1(OC(CO)C(O)C(O)C1O)C*",
-                        "C1(OCC(O)C(O)C1O)C*"
+                        "C1(OC(CO)C(O)C(O)C1O)*",
+                        "C1(OCC(O)C(O)C1O)*"
                 )
         );
         testCases.put(
