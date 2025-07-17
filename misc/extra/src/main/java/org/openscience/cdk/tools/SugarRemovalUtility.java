@@ -490,8 +490,7 @@ public class SugarRemovalUtility {
         this.restoreDefaultSettings();
     }
 
-    //TODO: investigate failing COCONUT molecules (CNP0336316.1, CNP0595604.0, CNP0521238.0, CNP0346858.0, CNP0520251.1,
-    // CNP0520251.2, CNP0187996.1, CNP0133170.1, CNP0046826.1, CNP0002323.1, CNP0137377.1, CNP0105768.1, CNP0346824.1, CNP0023878.1, CNP0288678.1, CNP0520251.3)
+    //TODO: test COCONUT again
     //TODO: simplify this method by encapsulating more code
     //TODO: add special treatment for esters (on the sugar side and on the aglycone side, respectively)?
     //TODO: add postprocessing for sugars, e.g. split glycosidic bonds and ether, ester, peroxide bonds
@@ -2515,11 +2514,15 @@ public class SugarRemovalUtility {
                 //note: careful with removing things from sets/lists while
                 // iterating over it! But here it is ok because elements
                 // are not removed from the same set that is iterated
-                for (IAtom atom : component.atoms()) {
+                for (int j = 0; j < component.getAtomCount(); j++) {
+                    IAtom atom = component.getAtom(j);
                     //check to avoid exceptions
                     if (moleculeParam.contains(atom)) {
                         moleculeParam.removeAtom(atom);
+                    } else {
+                        continue;
                     }
+                    j = j - 1;
                 }
             }
         }

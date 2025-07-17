@@ -2781,6 +2781,48 @@ class SugarRemovalUtilityTest {
         Assertions.assertLinesMatch(expectedSmilesList, generatedSmilesList);
     }
 
+    /**
+     * See above.
+     *
+     * @throws Exception if anything goes wrong
+     */
+    @Test
+    void sugarExtractionIndividualTest8() throws Exception {
+        SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
+        SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.Stereo);
+        SugarRemovalUtility sru = this.getSugarRemovalUtilityV1200DefaultSettings();
+        //CNP0336316.1
+        String smiles = "NC(=O)N[C@@H](C=O)[C@@H](O)[C@H](O)[C@H](O)CO";
+        List<IAtomContainer> candidates = sru.copyAndExtractAglyconeAndSugars(smiPar.parseSmiles(smiles), false, true, true);
+        List<String> expectedSmilesList = Arrays.asList(
+                "",
+                "NC(=O)N[C@@H](C=O)[C@@H](O)[C@H](O)[C@H](O)CO"
+        );
+        List<String> generatedSmilesList = this.generateSmilesList(candidates, smiGen);
+        Assertions.assertLinesMatch(expectedSmilesList, generatedSmilesList);
+    }
+
+    /**
+     * See above.
+     *
+     * @throws Exception if anything goes wrong
+     */
+    @Test
+    void sugarExtractionIndividualTest9() throws Exception {
+        SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
+        SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.Stereo);
+        SugarRemovalUtility sru = this.getSugarRemovalUtilityV1200DefaultSettings();
+        //CNP0595604.0
+        String smiles = "CC(=O)NC(C=O)C(O)C(OC1OC(CO)C(OC2OC(COC3OC(CO)C(O)C(O)C3O)C(O)C(OC3OC(CO)C(O)C(O)C3O)C2O)C(O)C1NC(C)=O)C(O)CO";
+        List<IAtomContainer> candidates =sru.copyAndExtractAglyconeAndSugars(smiPar.parseSmiles(smiles), false, true, true);
+        List<String> expectedSmilesList = Arrays.asList(
+                "",
+                "CC(=O)NC(C=O)C(O)C(OC1OC(CO)C(OC2OC(COC3OC(CO)C(O)C(O)C3O)C(O)C(OC4OC(CO)C(O)C(O)C4O)C2O)C(O)C1NC(C)=O)C(O)CO"
+        );
+        List<String> generatedSmilesList = this.generateSmilesList(candidates, smiGen);
+        Assertions.assertLinesMatch(expectedSmilesList, generatedSmilesList);
+    }
+
     //TODO: remove this before starting the PR
     /**
      * Test for processing the COCONUT database. This method reads the COCONUT SDF file and processes each molecule to
