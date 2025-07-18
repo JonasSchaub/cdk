@@ -2841,7 +2841,7 @@ class SugarRemovalUtilityTest {
         while (reader.hasNext()) {
             IAtomContainer molecule = reader.next();
             try {
-                List<IAtomContainer> candidates = sru.copyAndExtractAglyconeAndSugars(molecule, false, true, true);
+                List<IAtomContainer> candidates = sru.copyAndExtractAglyconeAndSugars(molecule, true, true, true);
 //            if (candidates.size() > 1) {
 //                System.out.println("COCONUT ID: " + molecule.getProperty("COCONUT_ID"));
 //                System.out.println("Aglycone: " + candidates.get(0));

@@ -490,14 +490,13 @@ public class SugarRemovalUtility {
         this.restoreDefaultSettings();
     }
 
-    //TODO: test COCONUT again
     //TODO: simplify this method by encapsulating more code
     //TODO: add special treatment for esters (on the sugar side and on the aglycone side, respectively)?
     //TODO: add postprocessing for sugars, e.g. split glycosidic bonds and ether, ester, peroxide bonds
     //TODO: look at other special cases in the test class that might require additional postprocessing
     /**
      * Extracts copies of the aglycone and (specified) sugar parts of the given molecule (if there are any).
-     *
+     * <p>
      * This method creates a deep copy of the input molecule and removes the specified
      * sugar moieties (circular and/or linear) to produce an aglycone. It then creates
      * a second copy to extract the sugar fragments that were removed. The attachment
@@ -2512,8 +2511,8 @@ public class SugarRemovalUtility {
             boolean isTooSmall = this.isTooSmallToPreserve(component);
             if (isTooSmall) {
                 //note: careful with removing things from sets/lists while
-                // iterating over it! But here it is ok because elements
-                // are not removed from the same set that is iterated
+                // iterating over it! Here, using the iterator caused issues,
+                // even though elements are not removed from the same set that is iterated
                 for (int j = 0; j < component.getAtomCount(); j++) {
                     IAtom atom = component.getAtom(j);
                     //check to avoid exceptions
