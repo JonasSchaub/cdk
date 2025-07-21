@@ -490,10 +490,90 @@ public class SugarRemovalUtility {
         this.restoreDefaultSettings();
     }
 
-    //TODO: simplify this method by encapsulating more code
-    //TODO: add special treatment for esters (on the sugar side and on the aglycone side, respectively)?
-    //TODO: add postprocessing for sugars, e.g. split glycosidic bonds and ether, ester, peroxide bonds
-    //TODO: look at other special cases in the test class that might require additional postprocessing
+    /**
+     * Extracts copies of the aglycone and (specified) sugar parts of the given molecule (if there are any).
+     * <p>
+     * This method creates a deep copy of the input molecule and removes the specified
+     * sugar moieties (circular and/or linear) to produce an aglycone. It then creates
+     * a second copy to extract the sugar fragments that were removed. The attachment
+     * points between the aglycone and sugars are handled by either adding R-groups
+     * (pseudo atoms) or implicit hydrogens to saturate the broken bonds.
+     *
+     * <p>The method preserves stereochemistry information at connection points and
+     * handles glycosidic bonds appropriately. When bonds are broken between sugar
+     * moieties and the aglycone, connecting heteroatoms (such as glycosidic oxygen,
+     * nitrogen, or sulfur atoms) are copied to both the aglycone and sugar fragments
+     * to maintain chemical validity.
+     *
+     * <p>The extraction process respects all current sugar detection settings of this
+     * SugarRemovalUtility instance, including terminal vs. non-terminal sugar removal,
+     * preservation mode settings, and various detection thresholds.
+     *
+     * @param mol The input molecule to separate into aglycone and sugar components.
+     *            Must not be null but can be empty; a list containing only the empty given
+     *            atom container is returned in the latter case.
+     * @return A list of atom containers where the first element is the aglycone
+     *         (copy molecule with sugars removed) and subsequent elements are the
+     *         individual sugar fragments that were extracted (also copies). If no sugars were
+     *         detected or removed, returns a list containing only a copy of the
+     *         original molecule. Sugar fragments may be disconnected from each
+     *         other if they were not directly linked in the original structure.
+     * @throws NullPointerException if the input molecule is null
+     * @see #removeCircularSugars(IAtomContainer)
+     * @see #removeLinearSugars(IAtomContainer)
+     * @see #removeCircularAndLinearSugars(IAtomContainer)
+     */
+    public List<IAtomContainer> copyAndExtractAglyconeAndSugars(
+            IAtomContainer mol) {
+        return this.copyAndExtractAglyconeAndSugars(
+                mol, true, false, false, false);
+    }
+
+    /**
+     * Extracts copies of the aglycone and (specified) sugar parts of the given molecule (if there are any).
+     * <p>
+     * This method creates a deep copy of the input molecule and removes the specified
+     * sugar moieties (circular and/or linear) to produce an aglycone. It then creates
+     * a second copy to extract the sugar fragments that were removed. The attachment
+     * points between the aglycone and sugars are handled by either adding R-groups
+     * (pseudo atoms) or implicit hydrogens to saturate the broken bonds.
+     *
+     * <p>The method preserves stereochemistry information at connection points and
+     * handles glycosidic bonds appropriately. When bonds are broken between sugar
+     * moieties and the aglycone, connecting heteroatoms (such as glycosidic oxygen,
+     * nitrogen, or sulfur atoms) are copied to both the aglycone and sugar fragments
+     * to maintain chemical validity.
+     *
+     * <p>The extraction process respects all current sugar detection settings of this
+     * SugarRemovalUtility instance, including terminal vs. non-terminal sugar removal,
+     * preservation mode settings, and various detection thresholds.
+     *
+     * @param mol The input molecule to separate into aglycone and sugar components.
+     *            Must not be null but can be empty; a list containing only the empty given
+     *            atom container is returned in the latter case.
+     * @param extractCircularSugars If true, circular sugar moieties will be detected
+     *                             and extracted according to current settings.
+     * @param extractLinearSugars If true, linear sugar moieties will be detected
+     *                           and extracted according to current settings.
+     * @return A list of atom containers where the first element is the aglycone
+     *         (copy molecule with sugars removed) and subsequent elements are the
+     *         individual sugar fragments that were extracted (also copies). If no sugars were
+     *         detected or removed, returns a list containing only a copy of the
+     *         original molecule. Sugar fragments may be disconnected from each
+     *         other if they were not directly linked in the original structure.
+     * @throws NullPointerException if the input molecule is null
+     * @see #removeCircularSugars(IAtomContainer)
+     * @see #removeLinearSugars(IAtomContainer)
+     * @see #removeCircularAndLinearSugars(IAtomContainer)
+     */
+    public List<IAtomContainer> copyAndExtractAglyconeAndSugars(
+            IAtomContainer mol,
+            boolean extractCircularSugars,
+            boolean extractLinearSugars) {
+        return this.copyAndExtractAglyconeAndSugars(
+                mol, extractCircularSugars, extractLinearSugars, false, false);
+    }
+
     /**
      * Extracts copies of the aglycone and (specified) sugar parts of the given molecule (if there are any).
      * <p>
@@ -536,9 +616,65 @@ public class SugarRemovalUtility {
      */
     public List<IAtomContainer> copyAndExtractAglyconeAndSugars(
             IAtomContainer mol,
-            boolean markAttachPointsByR,
             boolean extractCircularSugars,
-            boolean extractLinearSugars) {
+            boolean extractLinearSugars,
+            boolean markAttachPointsByR) {
+        return this.copyAndExtractAglyconeAndSugars(
+                mol, extractCircularSugars, extractLinearSugars, markAttachPointsByR, false);
+    }
+
+    //TODO: simplify this method by encapsulating more code
+    //TODO: add special treatment for esters (on the sugar side and on the aglycone side, respectively)?
+    //TODO: add postprocessing for sugars, e.g. split glycosidic bonds and ether, ester, peroxide bonds
+    //TODO: look at other special cases in the test class that might require additional postprocessing
+    //TODO: check doc of all overloaded methods and ensure that they are consistent
+    /**
+     * Extracts copies of the aglycone and (specified) sugar parts of the given molecule (if there are any).
+     * <p>
+     * This method creates a deep copy of the input molecule and removes the specified
+     * sugar moieties (circular and/or linear) to produce an aglycone. It then creates
+     * a second copy to extract the sugar fragments that were removed. The attachment
+     * points between the aglycone and sugars are handled by either adding R-groups
+     * (pseudo atoms) or implicit hydrogens to saturate the broken bonds.
+     *
+     * <p>The method preserves stereochemistry information at connection points and
+     * handles glycosidic bonds appropriately. When bonds are broken between sugar
+     * moieties and the aglycone, connecting heteroatoms (such as glycosidic oxygen,
+     * nitrogen, or sulfur atoms) are copied to both the aglycone and sugar fragments
+     * to maintain chemical validity.
+     *
+     * <p>The extraction process respects all current sugar detection settings of this
+     * SugarRemovalUtility instance, including terminal vs. non-terminal sugar removal,
+     * preservation mode settings, and various detection thresholds.
+     *
+     * @param mol The input molecule to separate into aglycone and sugar components.
+     *            Must not be null but can be empty; a list containing only the empty given
+     *            atom container is returned in the latter case.
+     * @param extractCircularSugars If true, circular sugar moieties will be detected
+     *                             and extracted according to current settings.
+     * @param extractLinearSugars If true, linear sugar moieties will be detected
+     *                           and extracted according to current settings.
+     * @param markAttachPointsByR If true, attachment points where sugars and the aglycone were connected
+     *                           are marked with R-groups (pseudo atoms). If false,
+     *                           implicit hydrogens are added to saturate the connections.
+     * @param postProcessSugars TODO
+     * @return A list of atom containers where the first element is the aglycone
+     *         (copy molecule with sugars removed) and subsequent elements are the
+     *         individual sugar fragments that were extracted (also copies). If no sugars were
+     *         detected or removed, returns a list containing only a copy of the
+     *         original molecule. Sugar fragments may be disconnected from each
+     *         other if they were not directly linked in the original structure.
+     * @throws NullPointerException if the input molecule is null
+     * @see #removeCircularSugars(IAtomContainer)
+     * @see #removeLinearSugars(IAtomContainer)
+     * @see #removeCircularAndLinearSugars(IAtomContainer)
+     */
+    public List<IAtomContainer> copyAndExtractAglyconeAndSugars(
+            IAtomContainer mol,
+            boolean extractCircularSugars,
+            boolean extractLinearSugars,
+            boolean markAttachPointsByR,
+            boolean postProcessSugars) {
         //checks
         if (mol == null) {
             throw new NullPointerException("Given molecule is null.");
@@ -769,6 +905,14 @@ public class SugarRemovalUtility {
             //note for disconnected glycosides, one could process each component separately, but this seems like
             // unnecessary overhead just for the sake of this check
             SugarRemovalUtility.LOGGER.error("No broken bonds found between aglycone and sugars, no saturation performed, this should not happen!");
+        }
+        if (postProcessSugars) {
+            if (extractLinearSugars) {
+                //postprocess linear sugars, e.g. split ether, ester, peroxide bonds
+            }
+            if (extractCircularSugars) {
+                //postprocess circular sugars, e.g. split glycosidic bonds
+            }
         }
         //return value preparations, partition disconnected sugars
         List<IAtomContainer> resultsList = new ArrayList<>(5);
