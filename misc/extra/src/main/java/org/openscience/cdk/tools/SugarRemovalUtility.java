@@ -40,10 +40,13 @@ import org.openscience.cdk.interfaces.ISingleElectron;
 import org.openscience.cdk.interfaces.IStereoElement;
 import org.openscience.cdk.isomorphism.DfPattern;
 import org.openscience.cdk.isomorphism.Mappings;
+import org.openscience.cdk.isomorphism.Transform;
 import org.openscience.cdk.isomorphism.UniversalIsomorphismTester;
 import org.openscience.cdk.ringsearch.RingSearch;
 import org.openscience.cdk.smarts.SmartsPattern;
 import org.openscience.cdk.smiles.SmilesParser;
+import org.openscience.cdk.smirks.Smirks;
+import org.openscience.cdk.smirks.SmirksTransform;
 import org.openscience.cdk.tools.manipulator.AtomContainerComparator;
 import org.openscience.cdk.tools.manipulator.AtomContainerManipulator;
 import org.openscience.cdk.tools.manipulator.BondManipulator;
@@ -623,11 +626,15 @@ public class SugarRemovalUtility {
                 mol, extractCircularSugars, extractLinearSugars, markAttachPointsByR, false);
     }
 
+    //TODO: add a way to return atom indices of sugar moeities in the original structure? Or return the maps?
+    //remove this method after all and incorporate the new behaviour into the existing methods? -> better to keep the original behaviour of the original methods
+    //do not copy the aglycone? -> too much of a hassle because for postprocessing, we repeatedly need the original structure
     //TODO: simplify this method by encapsulating more code
     //TODO: add special treatment for esters (on the sugar side and on the aglycone side, respectively)?
     //TODO: add postprocessing for sugars, e.g. split glycosidic bonds and ether, ester, peroxide bonds
     //TODO: look at other special cases in the test class that might require additional postprocessing
     //TODO: check doc of all overloaded methods and ensure that they are consistent
+    //TODO: move this to a new class that extends SugarRemovalUtility?
     /**
      * Extracts copies of the aglycone and (specified) sugar parts of the given molecule (if there are any).
      * <p>
@@ -911,7 +918,7 @@ public class SugarRemovalUtility {
                 //postprocess linear sugars, e.g. split ether, ester, peroxide bonds
             }
             if (extractCircularSugars) {
-                //postprocess circular sugars, e.g. split glycosidic bonds
+                copyForSugars = this.splitOGlycosidicBonds(copyForSugars, markAttachPointsByR);
             }
         }
         //return value preparations, partition disconnected sugars
@@ -2583,7 +2590,7 @@ public class SugarRemovalUtility {
         //alternative ideas: SMARTS or matching the biggest patterns first and exclude the matched atoms
         if (!sugarCandidates.isEmpty()) {
             sugarCandidates = this.combineOverlappingCandidates(sugarCandidates);
-            sugarCandidates = this.splitEtherEsterAndPeroxideBonds(sugarCandidates);
+            sugarCandidates = this.splitEtherEsterAndPeroxideBondsExtraction(sugarCandidates);
             this.removeAtomsOfCircularSugarsFromCandidates(sugarCandidates, moleculeParam);
         }
         if (!this.detectLinearSugarsInRingsSetting && !sugarCandidates.isEmpty()) {
@@ -3579,7 +3586,7 @@ public class SugarRemovalUtility {
      * @return a new list of candidates where all ether, ester, and peroxide
      *         bonds have been split and disconnected candidates separated
      */
-    protected List<IAtomContainer> splitEtherEsterAndPeroxideBonds(List<IAtomContainer> candidateList) {
+    protected List<IAtomContainer> splitEtherEsterAndPeroxideBondsExtraction(List<IAtomContainer> candidateList) {
         if (candidateList == null ||candidateList.isEmpty()) {
             return new ArrayList<>(0);
         }
@@ -4031,5 +4038,74 @@ public class SugarRemovalUtility {
         }
         int tmpAtomicNumberInt = tmpAtomicNr;
         return tmpAtomicNumberInt == IElement.C;
+    }
+
+    /**
+     *
+     */
+    protected IAtomContainer splitOGlycosidicBonds(IAtomContainer molecule, boolean markAttachPointsByR) {
+        //an aliphatic C in a ring with degree 3 and no charge, connected to an aliphatic O not in a ring with degree 2 and no charge,
+        // connected to an aliphatic C with no charge (this side is left more promiscuous)
+        String eductPattern = "[C;R;D3;+0:1]-!@[O;!R;D2;+0:2]-!@[C;+0:3]";
+        SmirksTransform transformation;
+        if (markAttachPointsByR) {
+            //transformed into two hydroxy groups with R atoms
+            transformation = Smirks.compile(eductPattern + ">>([C:1]-O-*).(*-O-[C:3])");
+        } else {
+            //transformed into two saturated hydroxy groups
+            transformation = Smirks.compile(eductPattern + ">>([C:1]-[OH1]).([OH1]-[C:3])");
+        }
+        //to detect rings
+        transformation.setPrepare(true);
+        for (IAtomContainer result : transformation.apply(molecule, Transform.Mode.Exclusive)) {
+            //the iterable is empty if the educt pattern does not match, so this is not reached;
+            // if it matches, only one result is in the iterable because of Mode.Exclusive, so this one result should be returned
+            return result;
+        }
+        //return the original molecule if no transformation was applied
+        return molecule;
+    }
+
+    /**
+     *
+     */
+    protected IAtomContainer splitEtherEsterAndPeroxideBondsPostProcessing(IAtomContainer molecule, boolean markAttachPointsByR) {
+        String esterEductPattern = "[C;!R;+0:1](=!@[O;!R;+0:2])-!@[O;!R;D2;+0:3]-!@[C;!R;+0:4]";
+        String etherEductPattern = "[C;!R;+0:1]-!@[O;!R;D2;+0:2]-!@[C;!R;+0:3]-!@[OH1;!R;+0:4]";
+        String peroxideEductPattern = "[C;!R;+0:1]-!@[O;!R;D2;+0:2]-!@[O;!R;D2;+0:3]-!@[C;!R;+0:4]";
+        SmirksTransform esterTransformation;
+        SmirksTransform etherTransformation;
+        SmirksTransform peroxideTransformation;
+        if (markAttachPointsByR) {
+            //transformed into two hydroxy groups with R atoms
+            esterTransformation = Smirks.compile(esterEductPattern + ">>([C:1](=[O:2])-O-*).(*-O-[C:4])");
+            etherTransformation = Smirks.compile(etherEductPattern + ">>([C:1]-[O:2]-*).(*-[C:3]-[OH1:4])");
+            peroxideTransformation = Smirks.compile(peroxideEductPattern + ">>([C:1]-[O:2]-*).(*-[O:3]-[C:4])");
+        } else {
+            //transformed into two saturated hydroxy groups
+            esterTransformation = Smirks.compile(esterEductPattern + ">>([C:1](=[O:2])-[OH1]).([OH1]-[C:4])");
+            etherTransformation = Smirks.compile(etherEductPattern + ">>([C:1]-[OH1:2]).([H][C:3]-[OH1:4])");
+            peroxideTransformation = Smirks.compile(peroxideEductPattern + ">>([C:1]-[OH1:2]).([OH1:3]-[C:4])");
+        }
+        //to detect rings
+        esterTransformation.setPrepare(true);
+        etherTransformation.setPrepare(true);
+        peroxideTransformation.setPrepare(true);
+        for (IAtomContainer result : esterTransformation.apply(molecule, Transform.Mode.Exclusive)) {
+            //the iterable is empty if the educt pattern does not match, so this is not reached;
+            // if it matches, only one result is in the iterable because of Mode.Exclusive, so this one result should be returned
+            molecule = result;
+        }
+        for (IAtomContainer result : etherTransformation.apply(molecule, Transform.Mode.Exclusive)) {
+            //the iterable is empty if the educt pattern does not match, so this is not reached;
+            // if it matches, only one result is in the iterable because of Mode.Exclusive, so this one result should be returned
+            molecule = result;
+        }
+        for (IAtomContainer result : peroxideTransformation.apply(molecule, Transform.Mode.Exclusive)) {
+            //the iterable is empty if the educt pattern does not match, so this is not reached;
+            // if it matches, only one result is in the iterable because of Mode.Exclusive, so this one result should be returned
+            molecule = result;
+        }
+        return molecule;
     }
 }
