@@ -37,7 +37,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * JUnit test class for testing the functionalities of the SugarRemovalUtility
@@ -47,6 +46,8 @@ import java.util.stream.Collectors;
  *     <a href="https://www.ebi.ac.uk/chembl/">ChEMBL database</a>.
  *     <br>Identifiers starting with 'CNP' refer to molecules in the
  *     <a href="https://coconut.naturalproducts.net">COCONUT database</a>.
+ *     <br>Identifiers starting with 'CID' refer to molecules in the
+ *     <a href="https://pubchem.ncbi.nlm.nih.gov">PubChem database</a>.
  * </p>
  *
  * @author Jonas Schaub

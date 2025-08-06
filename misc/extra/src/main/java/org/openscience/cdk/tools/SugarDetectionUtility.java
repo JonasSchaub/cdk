@@ -130,7 +130,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
     public List<IAtomContainer> copyAndExtractAglyconeAndSugars(
             IAtomContainer mol) {
         return this.copyAndExtractAglyconeAndSugars(
-                mol, true, false, false, false);
+                mol, true, false, false, false, null, null, null, null);
     }
 
     /**
@@ -177,7 +177,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
             boolean extractCircularSugars,
             boolean extractLinearSugars) {
         return this.copyAndExtractAglyconeAndSugars(
-                mol, extractCircularSugars, extractLinearSugars, false, false);
+                mol, extractCircularSugars, extractLinearSugars, false, false, null, null, null, null);
     }
 
     /**
@@ -228,16 +228,9 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
             boolean extractLinearSugars,
             boolean markAttachPointsByR) {
         return this.copyAndExtractAglyconeAndSugars(
-                mol, extractCircularSugars, extractLinearSugars, markAttachPointsByR, false);
+                mol, extractCircularSugars, extractLinearSugars, markAttachPointsByR, false, null, null, null, null);
     }
 
-    //TODO: add a way to return atom indices of sugar moeities in the original structure? Or return the maps?
-    //remove this method after all and incorporate the new behaviour into the existing methods? -> better to keep the original behaviour of the original methods
-    //do not copy the aglycone? -> too much of a hassle because for postprocessing, we repeatedly need the original structure
-    //TODO: simplify this method by encapsulating more code
-    //TODO: add special treatment for esters (on the sugar side and on the aglycone side, respectively)?
-    //TODO: look at other special cases in the test class that might require additional postprocessing
-    //TODO: check doc of all overloaded methods and ensure that they are consistent
     /**
      * Extracts copies of the aglycone and (specified) sugar parts of the given molecule (if there are any).
      * <p>
@@ -288,6 +281,76 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
             boolean extractLinearSugars,
             boolean markAttachPointsByR,
             boolean postProcessSugars) {
+        return this.copyAndExtractAglyconeAndSugars(
+                mol, extractCircularSugars, extractLinearSugars, markAttachPointsByR, postProcessSugars,
+                null, null, null, null);
+    }
+
+    //TODO: the postprocessing of sugars destroys the mapping, do the SMIRKSTransformations generate completely new atoms?
+    //remove this method after all and incorporate the new behaviour into the existing methods? -> better to keep the original behaviour of the original methods
+    //do not copy the aglycone? -> too much of a hassle because for postprocessing, we repeatedly need the original structure
+    //TODO: simplify this method by encapsulating more code
+    //TODO: add special treatment for esters (on the sugar side and on the aglycone side, respectively)?
+    //TODO: look at other special cases in the test class that might require additional postprocessing
+    //TODO: check doc of all overloaded methods and ensure that they are consistent
+    /**
+     * Extracts copies of the aglycone and (specified) sugar parts of the given molecule (if there are any).
+     * <p>
+     * This method creates a deep copy of the input molecule and removes the specified
+     * sugar moieties (circular and/or linear) to produce an aglycone. It then creates
+     * a second copy to extract the sugar fragments that were removed. The attachment
+     * points between the aglycone and sugars are handled by either adding R-groups
+     * (pseudo atoms) or implicit hydrogens to saturate the broken bonds.
+     *
+     * <p>The method preserves stereochemistry information at connection points and
+     * handles glycosidic bonds appropriately. When bonds are broken between sugar
+     * moieties and the aglycone, connecting heteroatoms (such as glycosidic oxygen,
+     * nitrogen, or sulfur atoms) are copied to both the aglycone and sugar fragments
+     * to maintain chemical validity.
+     *
+     * <p>The extraction process respects all current sugar detection settings as described in
+     * {@link SugarRemovalUtility}, including terminal vs. non-terminal sugar removal,
+     * preservation mode settings, and various detection thresholds.
+     *
+     * <p>Note that atom types are not copied, they have to be re-perceived if needed.</p>
+     *
+     * <p>This method additionally gives you the option to supply four maps as parameters that will be filled with a
+     * mapping of atoms and bonds in the original molecule to the atoms and bonds in the aglycone and sugar copies. They
+     * should be of sufficient size and empty when given.</p>
+     *
+     * @param mol The input molecule to separate into aglycone and sugar components.
+     *            Must not be null but can be empty; a list containing only the empty given
+     *            atom container is returned in the latter case.
+     * @param extractCircularSugars If true, circular sugar moieties will be detected
+     *                             and extracted according to current settings.
+     * @param extractLinearSugars If true, linear sugar moieties will be detected
+     *                           and extracted according to current settings.
+     * @param markAttachPointsByR If true, attachment points where sugars and the aglycone were connected
+     *                           are marked with R-groups (pseudo atoms). If false,
+     *                           implicit hydrogens are added to saturate the connections.
+     * @param postProcessSugars If true, postprocessing of sugar fragments is performed, i.e. splitting O-glycosidic
+     *                          bonds in circular and splitting ether, ester, and peroxide bonds in linear sugar moieties
+     * @return A list of atom containers where the first element is the aglycone
+     *         (copy molecule with sugars removed) and subsequent elements are the
+     *         individual sugar fragments that were extracted (also copies). If no sugars were
+     *         detected or removed, returns a list containing only a copy of the
+     *         original molecule. Sugar fragments may be disconnected from each
+     *         other if they were not directly linked in the original structure or were disconnected in postprocessing.
+     * @throws NullPointerException if the input molecule is null
+     * @see SugarRemovalUtility#removeCircularSugars(IAtomContainer)
+     * @see SugarRemovalUtility#removeLinearSugars(IAtomContainer)
+     * @see SugarRemovalUtility#removeCircularAndLinearSugars(IAtomContainer)
+     */
+    public List<IAtomContainer> copyAndExtractAglyconeAndSugars(
+            IAtomContainer mol,
+            boolean extractCircularSugars,
+            boolean extractLinearSugars,
+            boolean markAttachPointsByR,
+            boolean postProcessSugars,
+            Map<IAtom, IAtom> inputAtomToAtomCopyInAglyconeMap,
+            Map<IBond, IBond> inputBondToBondCopyInAglyconeMap,
+            Map<IAtom, IAtom> inputAtomToAtomCopyInSugarsMap,
+            Map<IBond, IBond> inputBondToBondCopyInSugarsMap) {
         //checks
         if (mol == null) {
             throw new NullPointerException("Given molecule is null.");
@@ -302,9 +365,13 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
         //ensuring sufficient initial capacity
         int atomMapInitCapacity = (int)((mol.getAtomCount() / loadFactor) + 3.0f);
         int bondMapInitCapacity = (int)((mol.getBondCount() / loadFactor) + 3.0f);
-        HashMap<IAtom, IAtom> origAtomToAtomAglyconeMap = new HashMap<>(atomMapInitCapacity);
-        HashMap<IBond, IBond> origBondToBondAglyconeMap = new HashMap<>(bondMapInitCapacity);
-        IAtomContainer copyForAglycone = this.deeperCopy(mol, origAtomToAtomAglyconeMap, origBondToBondAglyconeMap);
+        if (inputAtomToAtomCopyInAglyconeMap == null) {
+            inputAtomToAtomCopyInAglyconeMap = new HashMap<>(atomMapInitCapacity);
+        }
+        if (inputBondToBondCopyInAglyconeMap == null) {
+            inputBondToBondCopyInAglyconeMap = new HashMap<>(bondMapInitCapacity);
+        }
+        IAtomContainer copyForAglycone = this.deeperCopy(mol, inputAtomToAtomCopyInAglyconeMap, inputBondToBondCopyInAglyconeMap);
         boolean wasSugarRemoved = false;
         if (extractCircularSugars && extractLinearSugars) {
             wasSugarRemoved = this.removeCircularAndLinearSugars(copyForAglycone);
@@ -319,20 +386,24 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
             return results;
         }
         //copying for sugars
-        HashMap<IAtom, IAtom> origAtomToAtomSugarsMap = new HashMap<>(atomMapInitCapacity);
-        HashMap<IBond, IBond> origBondToBondSugarsMap = new HashMap<>(bondMapInitCapacity);
-        IAtomContainer copyForSugars = this.deeperCopy(mol, origAtomToAtomSugarsMap, origBondToBondSugarsMap);
+        if (inputAtomToAtomCopyInSugarsMap == null) {
+            inputAtomToAtomCopyInSugarsMap = new HashMap<>(atomMapInitCapacity);
+        }
+        if (inputBondToBondCopyInSugarsMap == null) {
+            inputBondToBondCopyInSugarsMap = new HashMap<>(bondMapInitCapacity);
+        }
+        IAtomContainer copyForSugars = this.deeperCopy(mol, inputAtomToAtomCopyInSugarsMap, inputBondToBondCopyInSugarsMap);
         //remove aglycone atoms from sugar container
         //note: instead of copying the whole structure and removing the aglycone atoms, one could only copy those atoms
         // and bonds that are not part of the aglycone to form the sugars to save some memory but the code would be much
         // more complicated, so we don't do it that way for now
         for (IAtom atom : mol.atoms()) {
-            if (copyForAglycone.contains(origAtomToAtomAglyconeMap.get(atom))) {
-                copyForSugars.removeAtom(origAtomToAtomSugarsMap.get(atom));
+            if (copyForAglycone.contains(inputAtomToAtomCopyInAglyconeMap.get(atom))) {
+                copyForSugars.removeAtom(inputAtomToAtomCopyInSugarsMap.get(atom));
             }
         }
         //note that the four atom and bond maps still hold references to the atoms and bonds that were removed from the
-        // two copies to get the aglycone and sugars; important for later queries
+        // two copies to get the aglycone and sugars; important for later queries; only cleared at the end of this method
         boolean hasIdentifiedBrokenBond = false;
         //identify bonds that were broken between sugar moieties and aglycone
         // -> copy connecting hetero atoms (glycosidic O/N/S etc.) from one part (sugar or aglycone) to the other,
@@ -340,8 +411,8 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
         // -> saturate with R or H, depending on the markAttachPointsByR parameter
         for (IBond bond : mol.bonds()) {
             //bond not in aglycone or sugars, so it was broken during sugar removal
-            if (!copyForAglycone.contains(origBondToBondAglyconeMap.get(bond))
-                    && !copyForSugars.contains(origBondToBondSugarsMap.get(bond))) {
+            if (!copyForAglycone.contains(inputBondToBondCopyInAglyconeMap.get(bond))
+                    && !copyForSugars.contains(inputBondToBondCopyInSugarsMap.get(bond))) {
                 hasIdentifiedBrokenBond = true;
                 //if one hetero atom connected sugar and aglycone, copy it to the other side;
                 // do nothing for C-C bonds or hetero-hetero connections like peroxides
@@ -362,8 +433,8 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
                                 "and one hetero atom found but they cannot be assigned, this should not happen!");
                         continue;
                     }
-                    boolean isHeteroAtomInAglycone = copyForAglycone.contains(origAtomToAtomAglyconeMap.get(origHeteroAtom));
-                    boolean isHeteroAtomInSugars = copyForSugars.contains(origAtomToAtomSugarsMap.get(origHeteroAtom));
+                    boolean isHeteroAtomInAglycone = copyForAglycone.contains(inputAtomToAtomCopyInAglyconeMap.get(origHeteroAtom));
+                    boolean isHeteroAtomInSugars = copyForSugars.contains(inputAtomToAtomCopyInSugarsMap.get(origHeteroAtom));
                     if (!(isHeteroAtomInAglycone || isHeteroAtomInSugars)) {
                         SugarDetectionUtility.LOGGER.error("Hetero atom not found in aglycone or sugars, this should not happen!");
                         continue;
@@ -373,7 +444,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
                             isHeteroAtomInSugars? copyForAglycone : copyForSugars);
                     IBond copyBondToHeteroAtom;
                     IAtom carbonAtomToBindTo = isHeteroAtomInSugars?
-                            origAtomToAtomAglyconeMap.get(origCarbonAtom) : origAtomToAtomSugarsMap.get(origCarbonAtom);
+                            inputAtomToAtomCopyInAglyconeMap.get(origCarbonAtom) : inputAtomToAtomCopyInSugarsMap.get(origCarbonAtom);
                     if (bond.getBegin().equals(origCarbonAtom)) {
                         copyBondToHeteroAtom = carbonAtomToBindTo.getBuilder().newInstance(
                                 IBond.class, carbonAtomToBindTo, cpyHeteroAtom, bond.getOrder());
@@ -383,12 +454,12 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
                     }
                     if (isHeteroAtomInSugars) {
                         copyForAglycone.addBond(copyBondToHeteroAtom);
-                        origAtomToAtomAglyconeMap.put(origHeteroAtom, cpyHeteroAtom);
-                        origBondToBondAglyconeMap.put(bond, copyBondToHeteroAtom);
+                        inputAtomToAtomCopyInAglyconeMap.put(origHeteroAtom, cpyHeteroAtom);
+                        inputBondToBondCopyInAglyconeMap.put(bond, copyBondToHeteroAtom);
                     } else {
                         copyForSugars.addBond(copyBondToHeteroAtom);
-                        origAtomToAtomSugarsMap.put(origHeteroAtom, cpyHeteroAtom);
-                        origBondToBondSugarsMap.put(bond, copyBondToHeteroAtom);
+                        inputAtomToAtomCopyInSugarsMap.put(origHeteroAtom, cpyHeteroAtom);
+                        inputBondToBondCopyInSugarsMap.put(bond, copyBondToHeteroAtom);
                     }
                     //saturate copied hetero atom with H or R
                     if (markAttachPointsByR) {
@@ -412,8 +483,8 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
                     }
                     //copy stereo elements for the broken bond to preserve the configuration
                     IAtomContainer receivingPart = isHeteroAtomInSugars? copyForAglycone : copyForSugars;
-                    HashMap<IAtom, IAtom> receivingPartOrigAtomToCpy = isHeteroAtomInSugars? origAtomToAtomAglyconeMap : origAtomToAtomSugarsMap;
-                    HashMap<IBond, IBond> receivingPartOrigBondToCpy = isHeteroAtomInSugars? origBondToBondAglyconeMap : origBondToBondSugarsMap;
+                    Map<IAtom, IAtom> receivingPartOrigAtomToCpy = isHeteroAtomInSugars? inputAtomToAtomCopyInAglyconeMap : inputAtomToAtomCopyInSugarsMap;
+                    Map<IBond, IBond> receivingPartOrigBondToCpy = isHeteroAtomInSugars? inputBondToBondCopyInAglyconeMap : inputBondToBondCopyInSugarsMap;
                     for (IStereoElement elem : mol.stereoElements()) {
                         if (elem.contains(bond.getBegin()) && elem.contains(bond.getEnd())
                                 && receivingPart.contains(receivingPartOrigAtomToCpy.get(elem.getFocus()))) {
@@ -446,7 +517,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
                         tmpRAtom.setImplicitHydrogenCount(0);
                         IBond tmpNewBond;
                         IAtom partHeteroAtom = isHeteroAtomInAglycone?
-                                origAtomToAtomAglyconeMap.get(origHeteroAtom) : origAtomToAtomSugarsMap.get(origHeteroAtom);
+                                inputAtomToAtomCopyInAglyconeMap.get(origHeteroAtom) : inputAtomToAtomCopyInSugarsMap.get(origHeteroAtom);
                         if (bond.getBegin().equals(origHeteroAtom)) {
                             tmpNewBond = origHeteroAtom.getBuilder().newInstance(IBond.class, partHeteroAtom, tmpRAtom, bond.getOrder());
                         } else {
@@ -461,11 +532,11 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
                         }
                     } else {
                         if (isHeteroAtomInAglycone) {
-                            IAtom bondAtomInAglycone = origAtomToAtomAglyconeMap.get(origHeteroAtom);
+                            IAtom bondAtomInAglycone = inputAtomToAtomCopyInAglyconeMap.get(origHeteroAtom);
                             int implHCount = bondAtomInAglycone.getImplicitHydrogenCount();
                             bondAtomInAglycone.setImplicitHydrogenCount(implHCount + bond.getOrder().numeric());
                         } else {
-                            IAtom bondAtomInSugars = origAtomToAtomSugarsMap.get(origHeteroAtom);
+                            IAtom bondAtomInSugars = inputAtomToAtomCopyInSugarsMap.get(origHeteroAtom);
                             int implHCount = bondAtomInSugars.getImplicitHydrogenCount();
                             bondAtomInSugars.setImplicitHydrogenCount(implHCount + bond.getOrder().numeric());
                         }
@@ -476,21 +547,21 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
                         IPseudoAtom tmpRAtom = atom.getBuilder().newInstance(IPseudoAtom.class, "R");
                         tmpRAtom.setAttachPointNum(1);
                         tmpRAtom.setImplicitHydrogenCount(0);
-                        if (copyForAglycone.contains(origAtomToAtomAglyconeMap.get(atom))) {
+                        if (copyForAglycone.contains(inputAtomToAtomCopyInAglyconeMap.get(atom))) {
                             copyForAglycone.addAtom(tmpRAtom);
                             IBond bondToR = atom.getBuilder().newInstance(
-                                    IBond.class, origAtomToAtomAglyconeMap.get(atom), tmpRAtom, bond.getOrder());
+                                    IBond.class, inputAtomToAtomCopyInAglyconeMap.get(atom), tmpRAtom, bond.getOrder());
                             copyForAglycone.addBond(bondToR);
-                            origAtomToAtomAglyconeMap.get(atom).setImplicitHydrogenCount(
-                                    origAtomToAtomAglyconeMap.get(atom).getImplicitHydrogenCount()
+                            inputAtomToAtomCopyInAglyconeMap.get(atom).setImplicitHydrogenCount(
+                                    inputAtomToAtomCopyInAglyconeMap.get(atom).getImplicitHydrogenCount()
                                             + bond.getOrder().numeric() - 1);
-                        } else if (copyForSugars.contains(origAtomToAtomSugarsMap.get(atom))) {
+                        } else if (copyForSugars.contains(inputAtomToAtomCopyInSugarsMap.get(atom))) {
                             copyForSugars.addAtom(tmpRAtom);
                             IBond bondToR = atom.getBuilder().newInstance(
-                                    IBond.class, origAtomToAtomSugarsMap.get(atom), tmpRAtom, bond.getOrder());
+                                    IBond.class, inputAtomToAtomCopyInSugarsMap.get(atom), tmpRAtom, bond.getOrder());
                             copyForSugars.addBond(bondToR);
-                            origAtomToAtomSugarsMap.get(atom).setImplicitHydrogenCount(
-                                    origAtomToAtomSugarsMap.get(atom).getImplicitHydrogenCount()
+                            inputAtomToAtomCopyInSugarsMap.get(atom).setImplicitHydrogenCount(
+                                    inputAtomToAtomCopyInSugarsMap.get(atom).getImplicitHydrogenCount()
                                             + bond.getOrder().numeric() - 1);
                         } else {
                             SugarDetectionUtility.LOGGER.error("Bond atom neither found in aglycone nor in sugars, this should not happen!");
@@ -499,12 +570,12 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
                 } else {
                     //saturate both former bond atoms with implicit hydrogens
                     for (IAtom atom : bond.atoms()) {
-                        if (copyForAglycone.contains(origAtomToAtomAglyconeMap.get(atom))) {
-                            IAtom bondAtomInAglycone = origAtomToAtomAglyconeMap.get(atom);
+                        if (copyForAglycone.contains(inputAtomToAtomCopyInAglyconeMap.get(atom))) {
+                            IAtom bondAtomInAglycone = inputAtomToAtomCopyInAglyconeMap.get(atom);
                             int implHCount = bondAtomInAglycone.getImplicitHydrogenCount();
                             bondAtomInAglycone.setImplicitHydrogenCount(implHCount + bond.getOrder().numeric());
-                        } else if (copyForSugars.contains(origAtomToAtomSugarsMap.get(atom))) {
-                            IAtom bondAtomInSugars = origAtomToAtomSugarsMap.get(atom);
+                        } else if (copyForSugars.contains(inputAtomToAtomCopyInSugarsMap.get(atom))) {
+                            IAtom bondAtomInSugars = inputAtomToAtomCopyInSugarsMap.get(atom);
                             int implHCount = bondAtomInSugars.getImplicitHydrogenCount();
                             bondAtomInSugars.setImplicitHydrogenCount(implHCount + bond.getOrder().numeric());
                         } else {
@@ -527,6 +598,27 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
                 copyForSugars = this.splitOGlycosidicBonds(copyForSugars, markAttachPointsByR);
             }
         }
+        //clean up the maps
+        for (IAtom atom : mol.atoms()) {
+            if (!copyForAglycone.contains(inputAtomToAtomCopyInAglyconeMap.get(atom))) {
+                inputAtomToAtomCopyInAglyconeMap.remove(atom);
+            }
+        }
+        for (IBond bond : mol.bonds()) {
+            if (!copyForAglycone.contains(inputBondToBondCopyInAglyconeMap.get(bond))) {
+                inputBondToBondCopyInAglyconeMap.remove(bond);
+            }
+        }
+        for (IAtom atom : mol.atoms()) {
+            if (!copyForSugars.contains(inputAtomToAtomCopyInSugarsMap.get(atom))) {
+                inputAtomToAtomCopyInSugarsMap.remove(atom);
+            }
+        }
+        for (IBond bond : mol.bonds()) {
+            if (!copyForSugars.contains(inputBondToBondCopyInSugarsMap.get(bond))) {
+                inputBondToBondCopyInSugarsMap.remove(bond);
+            }
+        }
         //return value preparations, partition disconnected sugars
         List<IAtomContainer> resultsList = new ArrayList<>(5);
         resultsList.add(0, copyForAglycone);
@@ -540,6 +632,82 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
             }
         }
         return resultsList;
+    }
+
+    /**
+     * Returns the indices of atoms in the input molecule that correspond to atoms in the given group.
+     * <p>
+     * This method iterates through all atoms in the input molecule and checks if the corresponding
+     * atom (via the provided mapping) exists in the group container. The indices of matching atoms
+     * are collected and returned as an array.
+     * <p>
+     * Note that the group may contain atoms that are not present in the input molecule mapping
+     * (e.g., R-groups added during processing), which will be ignored.
+     *
+     * @param mol The input molecule containing the original atoms
+     * @param group The group container to check for atom membership
+     * @param inputAtomToAtomCopyMap Map from original atoms to their copies in the group
+     * @return Array of atom indices in the input molecule that have corresponding atoms in the group.
+     *         Returns empty array if no matching atoms are found or if the group is empty.
+     * @throws NullPointerException if any of the parameters is null
+     */
+    public int[] getGroupAtomIndices(IAtomContainer mol, IAtomContainer group, Map<IAtom, IAtom> inputAtomToAtomCopyMap) {
+        if (mol == null || group == null || inputAtomToAtomCopyMap == null) {
+            throw new NullPointerException("Given molecule, group, or input atom to atom copy map is null.");
+        }
+        if (group.isEmpty()) {
+            return new int[0];
+        }
+        //cannot immediately use array because the group may contain atoms that are not in the input molecule, e.g. R atoms
+        ArrayList<Integer> groupAtomIndices = new ArrayList<>(group.getAtomCount());
+        for (IAtom atom : mol.atoms()) {
+            if (group.contains(inputAtomToAtomCopyMap.get(atom))) {
+                groupAtomIndices.add(atom.getIndex());
+            }
+        }
+        int[] indices = new int[groupAtomIndices.size()];
+        for (int i = 0; i < indices.length; i++) {
+            indices[i] = groupAtomIndices.get(i);
+        }
+        return indices;
+    }
+
+    /**
+     * Returns the indices of bonds in the input molecule that correspond to bonds in the given group.
+     * <p>
+     * This method iterates through all bonds in the input molecule and checks if the corresponding
+     * bond (via the provided mapping) exists in the group container. The indices of matching bonds
+     * are collected and returned as an array.
+     * <p>
+     * Note that the group may contain bonds that are not present in the input molecule mapping
+     * (e.g., bonds to R-groups added during processing), which will be ignored.
+     *
+     * @param mol The input molecule containing the original bonds
+     * @param group The group container to check for bond membership
+     * @param inputBondToBondCopyMap Map from original bonds to their copies in the group
+     * @return Array of bond indices in the input molecule that have corresponding bonds in the group.
+     *         Returns empty array if no matching bonds are found or if the group is empty.
+     * @throws NullPointerException if any of the parameters is null
+     */
+    public int[] getGroupBondIndices(IAtomContainer mol, IAtomContainer group, Map<IBond, IBond> inputBondToBondCopyMap) {
+        if (mol == null || group == null || inputBondToBondCopyMap == null) {
+            throw new NullPointerException("Given molecule, group, or input bond to bond copy map is null.");
+        }
+        if (group.isEmpty()) {
+            return new int[0];
+        }
+        //cannot immediately use array because the group may contain bonds that are not in the input molecule, e.g. bonds to R atoms
+        ArrayList<Integer> groupBondIndices = new ArrayList<>(group.getBondCount());
+        for (IBond bond : mol.bonds()) {
+            if (group.contains(inputBondToBondCopyMap.get(bond))) {
+                groupBondIndices.add(bond.getIndex());
+            }
+        }
+        int[] indices = new int[groupBondIndices.size()];
+        for (int i = 0; i < indices.length; i++) {
+            indices[i] = groupBondIndices.get(i);
+        }
+        return indices;
     }
 
     /**
@@ -562,8 +730,8 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
      */
     protected IAtomContainer deeperCopy(
             IAtomContainer mol,
-            HashMap<IAtom, IAtom> origToCopyAtomMap,
-            HashMap<IBond, IBond> origToCopyBondMap) {
+            Map<IAtom, IAtom> origToCopyAtomMap,
+            Map<IBond, IBond> origToCopyBondMap) {
         IAtomContainer copy = mol.getBuilder().newAtomContainer();
         // atoms
         for (IAtom atom : mol.atoms()) {
@@ -780,6 +948,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
      * @return An unconnected structure with the specified bonds split, or the original molecule if no transformation was applied.
      */
     protected IAtomContainer splitEtherEsterAndPeroxideBondsPostProcessing(IAtomContainer molecule, boolean markAttachPointsByR) {
+        //TODO put patterns into constants
         String esterEductPattern = "[C;!R;+0:1](=!@[O;!R;+0:2])-!@[O;!R;D2;+0:3]-!@[C;!R;+0:4]";
         String etherEductCrosslinkPattern = "[C;!R;+0:1]-!@[O;!R;D2;+0:2]-!@[C;!R;+0:3]-!@[OH1;!R;+0:4]";
         String etherEductPattern = "[C;!R;+0:1]-!@[O;!R;D2;+0:2]-!@[C;!R;+0:3]";

@@ -24,7 +24,10 @@ package org.openscience.cdk.tools;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.openscience.cdk.exception.CDKException;
+import org.openscience.cdk.interfaces.IAtom;
 import org.openscience.cdk.interfaces.IAtomContainer;
+import org.openscience.cdk.interfaces.IBond;
 import org.openscience.cdk.io.iterator.IteratingSDFReader;
 import org.openscience.cdk.silent.SilentChemObjectBuilder;
 import org.openscience.cdk.smiles.SmiFlavor;
@@ -41,7 +44,18 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * 
+ * JUnit test class for testing the functionalities of the SugarDetectionUtility
+ * class.
+ * <p>
+ *     Identifiers starting with 'CHEMBL' refer to molecules in the
+ *     <a href="https://www.ebi.ac.uk/chembl/">ChEMBL database</a>.
+ *     <br>Identifiers starting with 'CNP' refer to molecules in the
+ *     <a href="https://coconut.naturalproducts.net">COCONUT database</a>.
+ *     <br>Identifiers starting with 'CID' refer to molecules in the
+ *     <a href="https://pubchem.ncbi.nlm.nih.gov">PubChem database</a>.
+ * </p>
+ *
+ * @author Jonas Schaub
  */
 class SugarDetectionUtilityTest {
     /**
@@ -1310,21 +1324,49 @@ class SugarDetectionUtilityTest {
     }
 
     /**
+     * TODO: the postprocessing of sugars destroys the mapping, do the SMIRKSTransformations generate completely new atoms?
+     *
+     * @throws Exception
+     */
+    @Test
+    void testRetrievalOfAtomIndices() throws Exception {
+        SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
+        SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.Stereo);
+        SugarDetectionUtility sdu = new SugarDetectionUtility(SilentChemObjectBuilder.getInstance());
+        String smiles = "CCCCCC=CC=CC(O)CC=CC=CC(=O)OC1C(O)C(C2=C(O)C=C(O)C=C2CO)OC(CO)C1OC1OC(C)C(O)C(O)C1OC1OC(O)C(O)C(O)C1O";
+        IAtomContainer mol = smiPar.parseSmiles(smiles);
+        Map<IAtom, IAtom> inputAtomToAglyconeAtomMap = new HashMap<IAtom, IAtom>((int) ((mol.getAtomCount() / 0.75f) + 2), 0.75f);
+        Map<IAtom, IAtom> inputAtomToSugarAtomMap = new HashMap<IAtom, IAtom>((int) ((mol.getAtomCount() / 0.75f) + 2), 0.75f);
+        List<IAtomContainer> candidates = sdu.copyAndExtractAglyconeAndSugars(
+                mol,
+                true,
+                false,
+                false,
+                false,
+                inputAtomToAglyconeAtomMap,
+                new HashMap<IBond, IBond>((int) ((mol.getAtomCount() / 0.75f) + 2), 0.75f),
+                inputAtomToSugarAtomMap,
+                new HashMap<IBond, IBond>((int) ((mol.getAtomCount() / 0.75f) + 2), 0.75f));
+        int[] aglyconeAtomIndices = sdu.getGroupAtomIndices(mol, candidates.get(0), inputAtomToAglyconeAtomMap);
+        Assertions.assertArrayEquals(new int[]{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38}, aglyconeAtomIndices);
+        for (int i = 1; i < candidates.size(); i++) {
+            int[] sugarAtomIndices = sdu.getGroupAtomIndices(mol, candidates.get(i), inputAtomToSugarAtomMap);
+            System.out.println("Sugar " + i + ": " + Arrays.toString(sugarAtomIndices));
+        }
+    }
+
+    /**
      * Helper method to convert a list of IAtomContainer to a list of SMILES strings.
      *
      * @param candidates List of IAtomContainer molecules to convert
      * @param smiGen SMILES generator to use for conversion
      * @return List of SMILES strings
      */
-    protected List<String> generateSmilesList(List<IAtomContainer> candidates, SmilesGenerator smiGen) {
-        return candidates.stream()
-                .map(mol -> {
-                    try {
-                        return smiGen.create(mol);
-                    } catch (Exception e) {
-                        throw new RuntimeException("Error generating SMILES", e);
-                    }
-                })
-                .collect(Collectors.toList());
+    protected List<String> generateSmilesList(List<IAtomContainer> candidates, SmilesGenerator smiGen) throws CDKException {
+        List<String> result = new ArrayList<>(candidates.size());
+        for (IAtomContainer mol : candidates) {
+            result.add(smiGen.create(mol));
+        }
+        return result;
     }
 }
