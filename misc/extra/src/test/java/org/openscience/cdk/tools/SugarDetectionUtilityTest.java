@@ -41,7 +41,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * JUnit test class for testing the functionalities of the SugarDetectionUtility
@@ -1279,6 +1278,26 @@ class SugarDetectionUtilityTest {
         for (String id : coconutIds) {
             System.out.println(id);
         }
+    }
+
+    /**
+     *
+     */
+    @Test
+    void testEsterSplitting() throws Exception {
+        SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
+        SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.Canonical);
+        SugarDetectionUtility sdu = new SugarDetectionUtility(SilentChemObjectBuilder.getInstance());
+        //CNP0138295
+        String smiles = "O=CC(O)C(O)C(O)C(O)COC(O)(C(O)COC(=O)C(O)C(O)C(O)C(O)COC1=CC=CC=2C(=O)C3=CC(=CC(O)=C3C(=O)C12)C)C(O)C(O)C=O";
+        IAtomContainer molecule = smiPar.parseSmiles(smiles);
+        sdu.splitEsters(molecule, false);
+        Assertions.assertEquals("O=CC(O)C(O)C(O)C(O)COC(O)(C(O)CO)C(O)C(O)C=O.O=C(O)C(O)C(O)C(O)C(O)COC1=CC=CC=2C(=O)C3=CC(=CC(O)=C3C(=O)C12)C",
+                smiGen.create(molecule));
+        molecule = smiPar.parseSmiles(smiles);
+        sdu.splitEsters(molecule, true);
+        Assertions.assertEquals("*OC(=O)C(O)C(O)C(O)C(O)COC1=CC=CC=2C(=O)C3=CC(=CC(O)=C3C(=O)C12)C.*OCC(O)C(O)(OCC(O)C(O)C(O)C(O)C=O)C(O)C(O)C=O",
+                smiGen.create(molecule));
     }
 
     /**

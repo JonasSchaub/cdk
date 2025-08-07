@@ -32,7 +32,9 @@ import org.openscience.cdk.interfaces.ILonePair;
 import org.openscience.cdk.interfaces.IPseudoAtom;
 import org.openscience.cdk.interfaces.ISingleElectron;
 import org.openscience.cdk.interfaces.IStereoElement;
+import org.openscience.cdk.isomorphism.Mappings;
 import org.openscience.cdk.isomorphism.Transform;
+import org.openscience.cdk.smarts.SmartsPattern;
 import org.openscience.cdk.smirks.Smirks;
 import org.openscience.cdk.smirks.SmirksTransform;
 
@@ -983,5 +985,54 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
             }
         }
         return molecule;
+    }
+
+    /**
+     *
+     */
+    protected void splitEsters(IAtomContainer molecule, boolean markAttachPointsByR) {
+        //SmartsPattern.prepare should be done before calling this method
+        String esterEductPattern = "[C;!R;+0;$(C=!@[O;!R;+0]):1]-!@[O;!R;D2;+0:2]-!@[C;!R;+0:3]";
+        Mappings esterMappings = SmartsPattern.create(esterEductPattern).matchAll(molecule).uniqueAtoms();
+        if (esterMappings.atLeast(1)) {
+            for (IAtomContainer esterGroup : esterMappings.toSubstructures()) {
+                IAtom carbonOne = null;
+                IAtom connectingOxygen = null;
+                for (IAtom atom : esterGroup.atoms()) {
+                    if (atom.getAtomicNumber() == IElement.O) {
+                        connectingOxygen = atom;
+                    } else if (carbonOne == null ) {
+                        carbonOne = atom;
+                    }
+                }
+                molecule.removeBond(carbonOne, connectingOxygen);
+                IAtom newOxygen = molecule.newAtom(IElement.O);
+                molecule.newBond(carbonOne, newOxygen, IBond.Order.SINGLE);
+                IAtom[] oxygens = new IAtom[] {connectingOxygen, newOxygen};
+                for (IAtom oxygen : oxygens) {
+                    if (markAttachPointsByR) {
+                        IPseudoAtom tmpRAtom = oxygen.getBuilder().newInstance(IPseudoAtom.class, "R");
+                        tmpRAtom.setAttachPointNum(1);
+                        tmpRAtom.setImplicitHydrogenCount(0);
+                        IBond bondToR = oxygen.getBuilder().newInstance(
+                                IBond.class, oxygen, tmpRAtom, IBond.Order.SINGLE);
+                        molecule.addAtom(tmpRAtom);
+                        molecule.addBond(bondToR);
+                        oxygen.setImplicitHydrogenCount(0);
+                    } else {
+                        oxygen.setImplicitHydrogenCount(1);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     *
+     */
+    protected void splitEtherCrosslinking(IAtomContainer molecule, boolean markAttachPointsByR) {
+        String etherEductCrosslinkPattern = "[C;!R;+0:1]-!@[O;!R;D2;+0:2]-!@[C;!R;+0:3]-!@[OH1;!R;+0:4]";
+        //>>([C:1]-[O:2]-*).(*-[C:3]-[OH1:4])
+        //>>([C:1]-[OH1:2]).([H][C:3]-[OH1:4])
     }
 }
