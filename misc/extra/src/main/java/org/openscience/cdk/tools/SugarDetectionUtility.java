@@ -33,12 +33,10 @@ import org.openscience.cdk.interfaces.IPseudoAtom;
 import org.openscience.cdk.interfaces.ISingleElectron;
 import org.openscience.cdk.interfaces.IStereoElement;
 import org.openscience.cdk.isomorphism.Mappings;
-import org.openscience.cdk.isomorphism.Transform;
 import org.openscience.cdk.smarts.SmartsPattern;
-import org.openscience.cdk.smirks.Smirks;
-import org.openscience.cdk.smirks.SmirksTransform;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -288,9 +286,9 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
                 null, null, null, null);
     }
 
-    //TODO: the postprocessing of sugars destroys the mapping, do the SMIRKSTransformations generate completely new atoms?
     //remove this method after all and incorporate the new behaviour into the existing methods? -> better to keep the original behaviour of the original methods
     //do not copy the aglycone? -> too much of a hassle because for postprocessing, we repeatedly need the original structure
+    //TODO: move SMARTS patterns to constants
     //TODO: simplify this method by encapsulating more code
     //TODO: add special treatment for esters (on the sugar side and on the aglycone side, respectively)?
     //TODO: look at other special cases in the test class that might require additional postprocessing
@@ -594,10 +592,10 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
         }
         if (postProcessSugars) {
             if (extractLinearSugars) {
-                copyForSugars = this.splitEtherEsterAndPeroxideBondsPostProcessing(copyForSugars, markAttachPointsByR);
+                this.splitEtherEsterAndPeroxideBondsPostProcessing(copyForSugars, markAttachPointsByR);
             }
             if (extractCircularSugars) {
-                copyForSugars = this.splitOGlycosidicBonds(copyForSugars, markAttachPointsByR);
+                this.splitOGlycosidicBonds(copyForSugars, markAttachPointsByR);
             }
         }
         //clean up the maps
@@ -653,7 +651,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
      *         Returns empty array if no matching atoms are found or if the group is empty.
      * @throws NullPointerException if any of the parameters is null
      */
-    public int[] getGroupAtomIndices(IAtomContainer mol, IAtomContainer group, Map<IAtom, IAtom> inputAtomToAtomCopyMap) {
+    public int[] getAtomIndicesOfGroup(IAtomContainer mol, IAtomContainer group, Map<IAtom, IAtom> inputAtomToAtomCopyMap) {
         if (mol == null || group == null || inputAtomToAtomCopyMap == null) {
             throw new NullPointerException("Given molecule, group, or input atom to atom copy map is null.");
         }
@@ -691,7 +689,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
      *         Returns empty array if no matching bonds are found or if the group is empty.
      * @throws NullPointerException if any of the parameters is null
      */
-    public int[] getGroupBondIndices(IAtomContainer mol, IAtomContainer group, Map<IBond, IBond> inputBondToBondCopyMap) {
+    public int[] getBondIndicesOfGroup(IAtomContainer mol, IAtomContainer group, Map<IBond, IBond> inputBondToBondCopyMap) {
         if (mol == null || group == null || inputBondToBondCopyMap == null) {
             throw new NullPointerException("Given molecule, group, or input bond to bond copy map is null.");
         }
@@ -710,6 +708,85 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
             indices[i] = groupBondIndices.get(i);
         }
         return indices;
+    }
+
+    /**
+     * Assigns group indices to all atoms in the input molecule based on their membership in the aglycone or sugar fragments.
+     * <p>
+     * This method iterates through the atoms of the input molecule and determines which group (aglycone or sugar fragment)
+     * each atom belongs to. The group indices are assigned as follows:
+     * <ul>
+     *   <li>Index 0 corresponds to the aglycone.</li>
+     *   <li>Indices 1 and above correspond to individual sugar fragments.</li>
+     *   <li>Atoms not belonging to any group are assigned an index of -1 (should actually not happen).</li>
+     * </ul>
+     * <p>
+     * This allows you to, for example, generate SMILES strings with glycosidic moiety annotations and
+     * depictions with glycosidic moiety highlights, e.g.:
+     * <pre>{@code
+     * Map<IAtom, IAtom> inputAtomToAglyconeAtomMap = new HashMap<IAtom, IAtom>((int) ((mol.getAtomCount() / 0.75f) + 2), 0.75f);
+     * Map<IAtom, IAtom> inputAtomToSugarAtomMap = new HashMap<IAtom, IAtom>((int) ((mol.getAtomCount() / 0.75f) + 2), 0.75f);
+     * List<IAtomContainer> aglyconeAndSugarsList = sdu.copyAndExtractAglyconeAndSugars(
+     *         mol,
+     *         true,
+     *         false,
+     *         false,
+     *         true,
+     *         inputAtomToAglyconeAtomMap,
+     *         new HashMap<IBond, IBond>((int) ((mol.getAtomCount() / 0.75f) + 2), 0.75f),
+     *         inputAtomToSugarAtomMap,
+     *         new HashMap<IBond, IBond>((int) ((mol.getAtomCount() / 0.75f) + 2), 0.75f));
+     * int[] groupIndices = sdu.getGroupIndicesForAllAtoms(mol, aglyconeAndSugarsList, inputAtomToAglyconeAtomMap, inputAtomToSugarAtomMap);
+     * for (IAtom atom : mol.atoms()) {
+     *    atom.setMapIdx(groupIndices[atom.getIndex()] + 1);
+     * }
+     * String smi = new SmilesGenerator(SmiFlavor.Isomeric | SmiFlavor.AtomAtomMap).create(mol);
+     * //example output (for Fusacandin B (CNP0295326.4)):
+     * // [CH3:1][CH2:1][CH2:1][CH2:1][CH2:1]/[CH:1]=[CH:1]/[CH:1]=[CH:1]/[C@@H:1]([OH:1])[CH2:1]/[CH:1]=[CH:1]/[CH:1]=[CH:1]/[C:1](=[O:1])[O:1][CH:1]1[CH:1]([OH:1])[C@H:1]([C:1]2=[C:1]([OH:1])[CH:1]=[C:1]([OH:1])[CH:1]=[C:1]2[CH2:1][OH:1])[O:1][C@H:1]([CH2:1][OH:1])[C@H:1]1[O:2][C@@H:2]3[O:2][CH:2]([CH2:2][OH:2])[C@H:2]([OH:2])[C@H:2]([OH:2])[CH:2]3[O:3][C@@H:3]4[O:3][CH:3]([CH2:3][OH:3])[C@H:3]([OH:3])[C@H:3]([OH:3])[CH:3]4[OH:3]
+     * }</pre>
+     * (Check out the "Color Map" option on the CDK depict web app).
+     * <p>The method uses the provided atom-to-atom copy maps to identify the correspondence between atoms in the input molecule
+     * and the aglycone/sugar fragments.</p>
+     * <p>Note that connecting hetero atoms between the aglycone and a sugar moiety are duplicated in the extraction process
+     * but will be assigned to only one of the two structures here.</p>
+     *
+     * @param mol The input molecule containing all atoms to be indexed. Must not be null or empty.
+     * @param aglyconeAndSugars A list of atom containers representing the aglycone (index 0) and sugar fragments (indices 1+).
+     *                          Must not be null or empty.
+     * @param inputAtomToAtomCopyInAglyconeMap A map linking atoms in the input molecule to their corresponding atoms in the aglycone.
+     *                                         Must not be null.
+     * @param inputAtomToAtomCopyInSugarsMap A map linking atoms in the input molecule to their corresponding atoms in the sugar fragments.
+     *                                       Must not be null.
+     * @return An array of integers where each index corresponds to an atom in the input molecule, and the value at that index
+     *         represents the group index (0 for aglycone, 1+ for sugar fragments, -1 for unassigned atoms).
+     *         Returns an empty array if the input molecule or aglyconeAndSugars list is empty, or if no groups are identified.
+     * @throws NullPointerException If any of the input parameters is null.
+     */
+    public int[] getGroupIndicesForAllAtoms(
+            IAtomContainer mol,
+            List<IAtomContainer> aglyconeAndSugars,
+            Map<IAtom, IAtom> inputAtomToAtomCopyInAglyconeMap,
+            Map<IAtom, IAtom> inputAtomToAtomCopyInSugarsMap
+    ) {
+        if (mol == null || aglyconeAndSugars == null || inputAtomToAtomCopyInAglyconeMap == null || inputAtomToAtomCopyInSugarsMap == null) {
+            throw new NullPointerException("Given molecule, extracted structures, or maps are null.");
+        }
+        if (mol.isEmpty() || aglyconeAndSugars.isEmpty() || (aglyconeAndSugars.size() == 1)) {
+            return new int[0];
+        }
+        int[] groupIndices = new int[mol.getAtomCount()];
+        Arrays.fill(groupIndices, -1);
+        for (int i = 0; i < aglyconeAndSugars.size(); i++) {
+            IAtomContainer group = aglyconeAndSugars.get(i);
+            if (group.isEmpty()) {
+                continue; //skip empty groups, e.g. empty aglycone
+            }
+            int[] atomIndices = this.getAtomIndicesOfGroup(mol, group, i == 0 ? inputAtomToAtomCopyInAglyconeMap : inputAtomToAtomCopyInSugarsMap);
+            for (int atomIndex : atomIndices) {
+                groupIndices[atomIndex] = i;
+            }
+        }
+        return groupIndices;
     }
 
     /**
@@ -903,95 +980,119 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
 
     /**
      * Splits O-glycosidic bonds in the given molecule (circular sugar moieties) and optionally marks the attachment points with R-groups.
-     * This method identifies O-glycosidic bonds in the molecule using a SMARTS pattern and applies a SMIRKS transformation
-     * to break these bonds. The transformation can either mark the attachment points with R-groups or saturate the
+     * This method identifies O-glycosidic bonds in the molecule using a SMARTS pattern and then breaks these bonds.
+     * The transformation can either mark the attachment points with R-groups or saturate the
      * resulting open valences with implicit H atoms, depending on the `markAttachPointsByR` parameter.
-     * If bonds are split, an unconnected atom container is returned. If no O-glycosidic bonds are found, the original
-     * molecule is returned unchanged.
+     * If bonds are split, an unconnected atom container results. If no O-glycosidic bonds are found, the original
+     * molecule remains unchanged.
+     *
+     * Note: SMIRKS transformations are not used here, since they create a copy of the molecule and that would destroy
+     * the atom and bond mapping to the original molecule. the same is the case for the other split methods below.
      *
      * @param molecule The molecule in which O-glycosidic bonds are to be split.
      * @param markAttachPointsByR If true, the attachment points are marked with R-groups; otherwise, they are saturated with implicit H.
-     * @return An unconnected structure with the O-glycosidic bonds split, or the original molecule if no transformation was applied.
+     * @throws NullPointerException If the input molecule is null.
      */
-    protected IAtomContainer splitOGlycosidicBonds(IAtomContainer molecule, boolean markAttachPointsByR) {
+    protected void splitOGlycosidicBonds(IAtomContainer molecule, boolean markAttachPointsByR) {
+        if (molecule == null) {
+            throw new NullPointerException("The input molecule must not be null.");
+        }
+        if (molecule.isEmpty()) {
+            return; //nothing to do
+        }
         //an aliphatic C in a ring with degree 3 and no charge, connected to an aliphatic O not in a ring with degree 2 and no charge,
         // connected to an aliphatic C with no charge (this side is left more promiscuous for corner cases)
         String eductPattern = "[C;R;D3;+0:1]-!@[O;!R;D2;+0:2]-!@[C;+0:3]";
-        SmirksTransform transformation;
-        if (markAttachPointsByR) {
-            //transformed into two hydroxy groups with R atoms
-            transformation = Smirks.compile(eductPattern + ">>([C:1]-O-*).(*-O-[C:3])");
-        } else {
-            //transformed into two saturated hydroxy groups
-            transformation = Smirks.compile(eductPattern + ">>([C:1]-[OH1]).([OH1]-[C:3])");
+        Mappings mappings = SmartsPattern.create(eductPattern).matchAll(molecule).uniqueAtoms();
+        if (mappings.atLeast(1)) {
+            for (IAtomContainer esterGroup : mappings.toSubstructures()) {
+                IAtom carbonOne = null;
+                IAtom connectingOxygen = null;
+                for (IAtom atom : esterGroup.atoms()) {
+                    if (atom.getAtomicNumber() == IElement.O) {
+                        connectingOxygen = atom;
+                    } else if (carbonOne == null ) {
+                        carbonOne = atom;
+                    }
+                }
+                molecule.removeBond(carbonOne, connectingOxygen);
+                IAtom newOxygen = molecule.newAtom(IElement.O);
+                molecule.newBond(carbonOne, newOxygen, IBond.Order.SINGLE);
+                IAtom[] oxygens = new IAtom[] {connectingOxygen, newOxygen};
+                for (IAtom oxygen : oxygens) {
+                    if (markAttachPointsByR) {
+                        IPseudoAtom tmpRAtom = oxygen.getBuilder().newInstance(IPseudoAtom.class, "R");
+                        tmpRAtom.setAttachPointNum(1);
+                        tmpRAtom.setImplicitHydrogenCount(0);
+                        IBond bondToR = oxygen.getBuilder().newInstance(
+                                IBond.class, oxygen, tmpRAtom, IBond.Order.SINGLE);
+                        molecule.addAtom(tmpRAtom);
+                        molecule.addBond(bondToR);
+                    } else {
+                        oxygen.setImplicitHydrogenCount(1);
+                    }
+                }
+            }
         }
-        //to detect rings
-        transformation.setPrepare(true);
-        for (IAtomContainer result : transformation.apply(molecule, Transform.Mode.Exclusive)) {
-            //the iterable is empty if the educt pattern does not match, so this is not reached;
-            // if it matches, only one result is in the iterable because of Mode.Exclusive, so this one result should be returned
-            molecule = result;
-        }
-        //return the original molecule if no transformation was applied
-        return molecule;
     }
 
     /**
      * Splits ether, ester, and peroxide bonds in the given molecule (linear sugar moieties) and optionally marks the
      * attachment points with R-groups.
-     * This method identifies specific bond types (ether, ester, and peroxide) in the molecule using SMARTS patterns and applies
-     * SMIRKS transformations to break these bonds. The transformation can either mark the attachment points with R-groups or
+     * This method identifies specific bond types (ether, ester, and peroxide) in the molecule using SMARTS patterns and
+     * then breaks these bonds, duplicating oxygen atoms where adequate. The transformation can either mark the attachment points with R-groups or
      * saturate the resulting open valences with implicit H atoms, depending on the `markAttachPointsByR` parameter.
-     * If bonds are split, an unconnected atom container is returned. If no matching bonds are found, the original molecule
-     * is returned unchanged.
+     * If bonds are split, an unconnected atom container results. If no matching bonds are found, the original molecule
+     * remains unchanged.
      *
      * @param molecule The molecule in which ether, ester, and peroxide bonds are to be split.
      * @param markAttachPointsByR If true, the attachment points are marked with R-groups; otherwise, they are saturated with implicit H.
-     * @return An unconnected structure with the specified bonds split, or the original molecule if no transformation was applied.
+     * @throws NullPointerException If the input molecule is null.
      */
-    protected IAtomContainer splitEtherEsterAndPeroxideBondsPostProcessing(IAtomContainer molecule, boolean markAttachPointsByR) {
-        //TODO put patterns into constants
-        String esterEductPattern = "[C;!R;+0:1](=!@[O;!R;+0:2])-!@[O;!R;D2;+0:3]-!@[C;!R;+0:4]";
-        String etherEductCrosslinkPattern = "[C;!R;+0:1]-!@[O;!R;D2;+0:2]-!@[C;!R;+0:3]-!@[OH1;!R;+0:4]";
-        String etherEductPattern = "[C;!R;+0:1]-!@[O;!R;D2;+0:2]-!@[C;!R;+0:3]";
-        String peroxideEductPattern = "[C;!R;+0:1]-!@[O;!R;D2;+0:2]-!@[O;!R;D2;+0:3]-!@[C;!R;+0:4]";
-        SmirksTransform esterTransformation;
-        SmirksTransform etherCrosslinkTransformation;
-        SmirksTransform etherTransformation;
-        SmirksTransform peroxideTransformation;
-        if (markAttachPointsByR) {
-            //transformed into two hydroxy groups with R atoms
-            esterTransformation = Smirks.compile(esterEductPattern + ">>([C:1](=[O:2])-O-*).(*-O-[C:4])");
-            etherCrosslinkTransformation = Smirks.compile(etherEductCrosslinkPattern + ">>([C:1]-[O:2]-*).(*-[C:3]-[OH1:4])");
-            etherTransformation = Smirks.compile(etherEductPattern + ">>([C:1]-O-*).(*-O-[C:3])");
-            peroxideTransformation = Smirks.compile(peroxideEductPattern + ">>([C:1]-[O:2]-*).(*-[O:3]-[C:4])");
-        } else {
-            //transformed into two saturated hydroxy groups
-            esterTransformation = Smirks.compile(esterEductPattern + ">>([C:1](=[O:2])-[OH1]).([OH1]-[C:4])");
-            etherCrosslinkTransformation = Smirks.compile(etherEductCrosslinkPattern + ">>([C:1]-[OH1:2]).([H][C:3]-[OH1:4])");
-            etherTransformation = Smirks.compile(etherEductPattern + ">>([C:1]-[OH1]).([OH1]-[C:3])");
-            peroxideTransformation = Smirks.compile(peroxideEductPattern + ">>([C:1]-[OH1:2]).([OH1:3]-[C:4])");
+    protected void splitEtherEsterAndPeroxideBondsPostProcessing(IAtomContainer molecule, boolean markAttachPointsByR) {
+        if (molecule == null) {
+            throw new NullPointerException("The input molecule must not be null.");
         }
-        SmirksTransform[] transformations = new SmirksTransform[] {
-                esterTransformation, etherCrosslinkTransformation, etherTransformation, peroxideTransformation
-        };
-        for (SmirksTransform transformation : transformations) {
-            //to detect rings
-            transformation.setPrepare(true);
-            for (IAtomContainer result : transformation.apply(molecule, Transform.Mode.Exclusive)) {
-                //the iterable is empty if the educt pattern does not match, so this is not reached;
-                // if it matches, only one result is in the iterable because of Mode.Exclusive, so this one result should be returned
-                molecule = result;
-            }
+        if (molecule.isEmpty()) {
+            return; //nothing to do
         }
-        return molecule;
+        //note: the order is important here, since the ether pattern is very promiscuous and matches esters and peroxides as well
+        this.splitEsters(molecule, markAttachPointsByR);
+        this.splitEthersCrosslinking(molecule, markAttachPointsByR);
+        this.splitEthers(molecule, markAttachPointsByR);
+        this.splitPeroxides(molecule, markAttachPointsByR);
     }
 
     /**
+     * Splits ester bonds in the given molecule and optionally marks the attachment points with R-groups.
+     * <p>
+     * This method identifies ester bonds in the molecule using a SMARTS pattern and then breaks these bonds while
+     * duplicating the formerly connecting oxygen atom.
+     * The transformation can either mark the attachment points with R-groups or saturate the resulting open
+     * valences with implicit hydrogen atoms, depending on the `markAttachPointsByR` parameter.
+     * <p>
+     * The SMARTS pattern used for detection matches ester bonds with the following structure:
+     * <ul>
+     *   <li>A carbon atom (not in a ring, no charge) double-bonded to an oxygen atom.</li>
+     *   <li>The carbon atom is single-bonded to an oxygen atom (not in a ring, degree 2, no charge).</li>
+     *   <li>The second oxygen atom is single-bonded to another carbon atom (not in a ring, no charge).</li>
+     * </ul>
+     * <p>
+     * If bonds are split, the molecule may become disconnected. If no ester bonds are found, the original
+     * molecule remains unchanged.
      *
+     * @param molecule The molecule in which ester bonds are to be split. Must not be null.
+     * @param markAttachPointsByR If true, the attachment points are marked with R-groups; otherwise, they are saturated
+     *                            with implicit hydrogens.
+     * @throws NullPointerException If the input molecule is null.
      */
     protected void splitEsters(IAtomContainer molecule, boolean markAttachPointsByR) {
-        //SmartsPattern.prepare should be done before calling this method
+        if (molecule == null) {
+            throw new NullPointerException("The input molecule must not be null.");
+        }
+        if (molecule.isEmpty()) {
+            return; //nothing to do
+        }
         String esterEductPattern = "[C;!R;+0;$(C=!@[O;!R;+0]):1]-!@[O;!R;D2;+0:2]-!@[C;!R;+0:3]";
         Mappings esterMappings = SmartsPattern.create(esterEductPattern).matchAll(molecule).uniqueAtoms();
         if (esterMappings.atLeast(1)) {
@@ -1018,7 +1119,6 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
                                 IBond.class, oxygen, tmpRAtom, IBond.Order.SINGLE);
                         molecule.addAtom(tmpRAtom);
                         molecule.addBond(bondToR);
-                        oxygen.setImplicitHydrogenCount(0);
                     } else {
                         oxygen.setImplicitHydrogenCount(1);
                     }
@@ -1028,11 +1128,169 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
     }
 
     /**
+     * Splits cross-linking ether bonds in the given molecule and optionally marks the attachment points with R-groups.
+     * <p>
+     * This method identifies cross-linking ether bonds in the molecule using a SMARTS pattern and then breaks these bonds
+     * while duplicating the formerly connecting oxygen atom.
+     * The transformation can either mark the attachment points with R-groups or saturate the resulting open valences
+     * with implicit hydrogen atoms, depending on the `markAttachPointsByR` parameter.
+     * <p>
+     * The SMARTS pattern used for detection matches cross-linking ether bonds with the following structure:
+     * <ul>
+     *   <li>A carbon atom (not in a ring, no charge) single-bonded to an oxygen atom (not in a ring, degree 2, no charge).</li>
+     *   <li>The oxygen atom is single-bonded to another carbon atom (not in a ring, no charge) that is also single-bonded to a hydroxyl group.</li>
+     * </ul>
+     * <p>
+     * If bonds are split, the molecule may become disconnected. If no matching bonds are found, the original molecule remains unchanged.
      *
+     * @param molecule The molecule in which cross-linking ether bonds are to be split. Must not be null.
+     * @param markAttachPointsByR If true, the attachment points are marked with R-groups; otherwise, they are saturated with implicit hydrogens.
+     * @throws NullPointerException If the input molecule is null.
      */
-    protected void splitEtherCrosslinking(IAtomContainer molecule, boolean markAttachPointsByR) {
-        String etherEductCrosslinkPattern = "[C;!R;+0:1]-!@[O;!R;D2;+0:2]-!@[C;!R;+0:3]-!@[OH1;!R;+0:4]";
-        //>>([C:1]-[O:2]-*).(*-[C:3]-[OH1:4])
-        //>>([C:1]-[OH1:2]).([H][C:3]-[OH1:4])
+    protected void splitEthersCrosslinking(IAtomContainer molecule, boolean markAttachPointsByR) {
+        if (molecule == null) {
+            throw new NullPointerException("The input molecule must not be null.");
+        }
+        if (molecule.isEmpty()) {
+            return; //nothing to do
+        }
+        String etherEductCrosslinkPattern = "[C;!R;+0:1]-!@[O;!R;D2;+0:2]-!@[C;!R;+0;$(C-!@[OH1;!R;+0]):3]";
+        Mappings mappings = SmartsPattern.create(etherEductCrosslinkPattern).matchAll(molecule).uniqueAtoms();
+        if (mappings.atLeast(1)) {
+            for (IAtomContainer esterGroup : mappings.toSubstructures()) {
+                IAtom carbonOne = null;
+                IAtom carbonTwo = null;
+                IAtom connectingOxygen = null;
+                for (IAtom atom : esterGroup.atoms()) {
+                    if (atom.getAtomicNumber() == IElement.O) {
+                        connectingOxygen = atom;
+                    } else if (carbonOne == null ) {
+                        carbonOne = atom;
+                    } else {
+                        carbonTwo = atom;
+                    }
+                }
+                molecule.removeBond(carbonTwo, connectingOxygen);
+                IAtom[] atoms = new IAtom[] {connectingOxygen, carbonTwo};
+                for (IAtom atom : atoms) {
+                    if (markAttachPointsByR) {
+                        IPseudoAtom tmpRAtom = atom.getBuilder().newInstance(IPseudoAtom.class, "R");
+                        tmpRAtom.setAttachPointNum(1);
+                        tmpRAtom.setImplicitHydrogenCount(0);
+                        IBond bondToR = atom.getBuilder().newInstance(
+                                IBond.class, atom, tmpRAtom, IBond.Order.SINGLE);
+                        molecule.addAtom(tmpRAtom);
+                        molecule.addBond(bondToR);
+                    } else {
+                        atom.setImplicitHydrogenCount(atom.getImplicitHydrogenCount() == null? 1 : atom.getImplicitHydrogenCount() + 1);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Splits ether groups connecting linear sugars in the given molecule and optionally marks the attachment points with R-groups.
+     * <p>
+     * This method identifies ether bonds in the molecule using a SMARTS pattern and then breaks these bonds while
+     * duplicating the formerly connecting oxygen atom.
+     * The transformation can either mark the attachment points with R-groups or saturate the resulting open valences
+     * with implicit hydrogen atoms, depending on the `markAttachPointsByR` parameter.
+     * <p>
+     * The SMARTS pattern used for detection matches ether bonds with the following structure:
+     * <ul>
+     *   <li>A carbon atom (not in a ring, no charge) single-bonded to an oxygen atom (not in a ring, degree 2, no charge).</li>
+     *   <li>The oxygen atom is single-bonded to another carbon atom (not in a ring, no charge).</li>
+     * </ul>
+     * <p>
+     * If bonds are split, the molecule may become disconnected. If no matching bonds are found, the original molecule remains unchanged.
+     *
+     * @param molecule The molecule in which ether bonds are to be split. Must not be null.
+     * @param markAttachPointsByR If true, the attachment points are marked with R-groups; otherwise, they are saturated with implicit hydrogens.
+     * @throws NullPointerException If the input molecule is null.
+     */
+    protected void splitEthers(IAtomContainer molecule, boolean markAttachPointsByR) {
+        if (molecule == null) {
+            throw new NullPointerException("The input molecule must not be null.");
+        }
+        if (molecule.isEmpty()) {
+            return; //nothing to do
+        }
+        String esterEductPattern = "[C;!R;+0:1]-!@[O;!R;D2;+0:2]-!@[C;!R;+0:3]";
+        Mappings mappings = SmartsPattern.create(esterEductPattern).matchAll(molecule).uniqueAtoms();
+        if (mappings.atLeast(1)) {
+            for (IAtomContainer esterGroup : mappings.toSubstructures()) {
+                IAtom carbonOne = null;
+                IAtom connectingOxygen = null;
+                for (IAtom atom : esterGroup.atoms()) {
+                    if (atom.getAtomicNumber() == IElement.O) {
+                        connectingOxygen = atom;
+                    } else if (carbonOne == null ) {
+                        carbonOne = atom;
+                    }
+                }
+                molecule.removeBond(carbonOne, connectingOxygen);
+                IAtom newOxygen = molecule.newAtom(IElement.O);
+                molecule.newBond(carbonOne, newOxygen, IBond.Order.SINGLE);
+                IAtom[] oxygens = new IAtom[] {connectingOxygen, newOxygen};
+                for (IAtom oxygen : oxygens) {
+                    if (markAttachPointsByR) {
+                        IPseudoAtom tmpRAtom = oxygen.getBuilder().newInstance(IPseudoAtom.class, "R");
+                        tmpRAtom.setAttachPointNum(1);
+                        tmpRAtom.setImplicitHydrogenCount(0);
+                        IBond bondToR = oxygen.getBuilder().newInstance(
+                                IBond.class, oxygen, tmpRAtom, IBond.Order.SINGLE);
+                        molecule.addAtom(tmpRAtom);
+                        molecule.addBond(bondToR);
+                    } else {
+                        oxygen.setImplicitHydrogenCount(1);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * TODO
+     */
+    protected void splitPeroxides(IAtomContainer molecule, boolean markAttachPointsByR) {
+        if (molecule == null) {
+            throw new NullPointerException("The input molecule must not be null.");
+        }
+        if (molecule.isEmpty()) {
+            return; //nothing to do
+        }
+        String etherEductCrosslinkPattern = "[C;!R;+0:1]-!@[O;!R;D2;+0:2]-!@[O;!R;D2;+0:3]-!@[C;!R;+0:4]";
+        Mappings mappings = SmartsPattern.create(etherEductCrosslinkPattern).matchAll(molecule).uniqueAtoms();
+        if (mappings.atLeast(1)) {
+            for (IAtomContainer esterGroup : mappings.toSubstructures()) {
+                IAtom oxygenOne = null;
+                IAtom oxygenTwo = null;
+                for (IAtom atom : esterGroup.atoms()) {
+                    if (atom.getAtomicNumber() == IElement.O) {
+                        if (oxygenOne == null) {
+                            oxygenOne = atom;
+                        } else {
+                            oxygenTwo = atom;
+                        }
+                    }
+                }
+                molecule.removeBond(oxygenOne, oxygenTwo);
+                IAtom[] atoms = new IAtom[] {oxygenOne, oxygenTwo};
+                for (IAtom atom : atoms) {
+                    if (markAttachPointsByR) {
+                        IPseudoAtom tmpRAtom = atom.getBuilder().newInstance(IPseudoAtom.class, "R");
+                        tmpRAtom.setAttachPointNum(1);
+                        tmpRAtom.setImplicitHydrogenCount(0);
+                        IBond bondToR = atom.getBuilder().newInstance(
+                                IBond.class, atom, tmpRAtom, IBond.Order.SINGLE);
+                        molecule.addAtom(tmpRAtom);
+                        molecule.addBond(bondToR);
+                    } else {
+                        atom.setImplicitHydrogenCount(atom.getImplicitHydrogenCount() == null? 1 : atom.getImplicitHydrogenCount() + 1);
+                    }
+                }
+            }
+        }
     }
 }

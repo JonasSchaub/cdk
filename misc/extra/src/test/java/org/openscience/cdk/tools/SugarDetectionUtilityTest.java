@@ -1281,7 +1281,7 @@ class SugarDetectionUtilityTest {
     }
 
     /**
-     *
+     * TODO
      */
     @Test
     void testEsterSplitting() throws Exception {
@@ -1301,6 +1301,68 @@ class SugarDetectionUtilityTest {
     }
 
     /**
+     * TODO
+     */
+    @Test
+    void testEtherCrosslinkingSplitting() throws Exception {
+        SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
+        SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.Canonical);
+        SugarDetectionUtility sdu = new SugarDetectionUtility(SilentChemObjectBuilder.getInstance());
+        //CNP0138295
+        String smiles = "O=CC(O)C(O)C(O)C(O)COC(O)(C(O)COC(=O)C(O)C(O)C(O)C(O)COC1=CC=CC=2C(=O)C3=CC(=CC(O)=C3C(=O)C12)C)C(O)C(O)C=O";
+        IAtomContainer molecule = smiPar.parseSmiles(smiles);
+        sdu.splitEthersCrosslinking(molecule, false);
+        Assertions.assertEquals("O=CC(O)C(O)C(O)C(O)CO.O=CC(O)C(O)C(O)C(O)COC(=O)C(O)C(O)C(O)C(O)COC1=CC=CC=2C(=O)C3=CC(=CC(O)=C3C(=O)C12)C",
+                smiGen.create(molecule));
+        molecule = smiPar.parseSmiles(smiles);
+        sdu.splitEthersCrosslinking(molecule, true);
+        Assertions.assertEquals("*OCC(O)C(O)C(O)C(O)C=O.*C(O)(C(O)COC(=O)C(O)C(O)C(O)C(O)COC1=CC=CC=2C(=O)C3=CC(=CC(O)=C3C(=O)C12)C)C(O)C(O)C=O",
+                smiGen.create(molecule));
+    }
+
+    /**
+     * TODO
+     */
+    @Test
+    void testEtherSplitting() throws Exception {
+        SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
+        SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.Canonical);
+        SugarDetectionUtility sdu = new SugarDetectionUtility(SilentChemObjectBuilder.getInstance());
+        //CNP0138295
+        String smiles = "O=CC(O)C(O)C(O)C(O)COC(O)(C(O)COC(=O)C(O)C(O)C(O)C(O)COC1=CC=CC=2C(=O)C3=CC(=CC(O)=C3C(=O)C12)C)C(O)C(O)C=O";
+        IAtomContainer molecule = smiPar.parseSmiles(smiles);
+        sdu.splitEthers(molecule, false);
+        //note that this shows why the ether splitting should be done last because it also matches esters and crosslinking ehthers that are treated differently
+        Assertions.assertEquals("O=CC(O)C(O)C(O)C(O)CO.O=CC(O)C(O)C(O)(O)C(O)CO.O=C(O)C(O)C(O)C(O)C(O)COC1=CC=CC=2C(=O)C3=CC(=CC(O)=C3C(=O)C12)C",
+                smiGen.create(molecule));
+        molecule = smiPar.parseSmiles(smiles);
+        sdu.splitEthers(molecule, true);
+        Assertions.assertEquals("*OC(=O)C(O)C(O)C(O)C(O)COC1=CC=CC=2C(=O)C3=CC(=CC(O)=C3C(=O)C12)C.*OCC(O)C(O)C(O)C(O)C=O.*OCC(O)C(O)(O*)C(O)C(O)C=O",
+                smiGen.create(molecule));
+    }
+
+    /**
+     * TODO
+     */
+    @Test
+    void testPeroxideSplitting() throws Exception {
+        SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
+        SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.Canonical);
+        SugarDetectionUtility sdu = new SugarDetectionUtility(SilentChemObjectBuilder.getInstance());
+        //CNP0206763.1
+        String smiles = "COC1=C2C[C@@H](C(C)(C)O)OC2=CC2=C1C(=O)C=C(COOC[C@H](O)[C@@H](O)[C@H](O)[C@H](O)CO)O2";
+        IAtomContainer molecule = smiPar.parseSmiles(smiles);
+        sdu.splitPeroxides(molecule, false);
+        //note that this shows why the ether splitting should be done last because it also matches esters and crosslinking ehthers that are treated differently
+        Assertions.assertEquals("O=C1C=C(OC=2C=C3OC(CC3=C(OC)C12)C(O)(C)C)CO.OCC(O)C(O)C(O)C(O)CO",
+                smiGen.create(molecule));
+        molecule = smiPar.parseSmiles(smiles);
+        sdu.splitPeroxides(molecule, true);
+        Assertions.assertEquals("*OCC=1OC=2C=C3OC(CC3=C(OC)C2C(=O)C1)C(O)(C)C.*OCC(O)C(O)C(O)C(O)CO",
+                smiGen.create(molecule));
+    }
+
+    /**
      * Test for splitting O-glycosidic bonds in a molecule, using the splitOGlycosidicBonds method used for postprocessing
      * extracted circular sugar moieties.
      */
@@ -1312,11 +1374,11 @@ class SugarDetectionUtilityTest {
         //CNP0595604.0
         String smiles = "CC(=O)NC(C=O)C(O)C(OC1OC(CO)C(OC2OC(COC3OC(CO)C(O)C(O)C3O)C(O)C(OC3OC(CO)C(O)C(O)C3O)C2O)C(O)C1NC(C)=O)C(O)CO";
         IAtomContainer molecule = smiPar.parseSmiles(smiles);
-        molecule = sdu.splitOGlycosidicBonds(molecule, false);
+        sdu.splitOGlycosidicBonds(molecule, false);
         Assertions.assertEquals("O=CC(NC(=O)C)C(O)C(O)C(O)CO.O=C(NC1C(O)OC(CO)C(O)C1O)C.OCC1OC(O)C(O)C(O)C1O.OCC1OC(O)C(O)C(O)C1O.OCC1OC(O)C(O)C(O)C1O",
                 smiGen.create(molecule));
         molecule = smiPar.parseSmiles(smiles);
-        molecule = sdu.splitOGlycosidicBonds(molecule, true);
+        sdu.splitOGlycosidicBonds(molecule, true);
         Assertions.assertEquals("*OCC1OC(O*)C(O)C(O*)C1O.*OC1OC(CO)C(O)C(O)C1O.*OC1OC(CO)C(O)C(O)C1O.*OC1OC(CO)C(O*)C(O)C1NC(=O)C.*OC(C(O)CO)C(O)C(C=O)NC(=O)C",
                 smiGen.create(molecule));
     }
@@ -1333,24 +1395,23 @@ class SugarDetectionUtilityTest {
         //CNP0138295
         String smiles = "O=CC(O)C(O)C(O)C(O)COC(O)(C(O)COC(=O)C(O)C(O)C(O)C(O)COC1=CC=CC=2C(=O)C3=CC(=CC(O)=C3C(=O)C12)C)C(O)C(O)C=O";
         IAtomContainer molecule = smiPar.parseSmiles(smiles);
-        molecule = sdu.splitEtherEsterAndPeroxideBondsPostProcessing(molecule, false);
+        sdu.splitEtherEsterAndPeroxideBondsPostProcessing(molecule, false);
         Assertions.assertEquals("O=CC(O)C(O)C(O)C(O)CO.O=CC(O)C(O)C(O)C(O)CO.O=C(O)C(O)C(O)C(O)C(O)COC1=CC=CC=2C(=O)C3=CC(=CC(O)=C3C(=O)C12)C",
                 smiGen.create(molecule));
         molecule = smiPar.parseSmiles(smiles);
-        molecule = sdu.splitEtherEsterAndPeroxideBondsPostProcessing(molecule, true);
+        sdu.splitEtherEsterAndPeroxideBondsPostProcessing(molecule, true);
         Assertions.assertEquals("*OC(=O)C(O)C(O)C(O)C(O)COC1=CC=CC=2C(=O)C3=CC(=CC(O)=C3C(=O)C12)C.*OCC(O)C(O)C(O)C(O)C=O.*OCC(O)C(*)(O)C(O)C(O)C=O",
                 smiGen.create(molecule));
     }
 
     /**
-     * TODO: the postprocessing of sugars destroys the mapping, do the SMIRKSTransformations generate completely new atoms?
+     * TODO
      *
      * @throws Exception
      */
     @Test
     void testRetrievalOfAtomIndices() throws Exception {
         SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
-        SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.Stereo);
         SugarDetectionUtility sdu = new SugarDetectionUtility(SilentChemObjectBuilder.getInstance());
         String smiles = "CCCCCC=CC=CC(O)CC=CC=CC(=O)OC1C(O)C(C2=C(O)C=C(O)C=C2CO)OC(CO)C1OC1OC(C)C(O)C(O)C1OC1OC(O)C(O)C(O)C1O";
         IAtomContainer mol = smiPar.parseSmiles(smiles);
@@ -1361,17 +1422,49 @@ class SugarDetectionUtilityTest {
                 true,
                 false,
                 false,
-                false,
+                true,
                 inputAtomToAglyconeAtomMap,
                 new HashMap<IBond, IBond>((int) ((mol.getAtomCount() / 0.75f) + 2), 0.75f),
                 inputAtomToSugarAtomMap,
                 new HashMap<IBond, IBond>((int) ((mol.getAtomCount() / 0.75f) + 2), 0.75f));
-        int[] aglyconeAtomIndices = sdu.getGroupAtomIndices(mol, candidates.get(0), inputAtomToAglyconeAtomMap);
-        Assertions.assertArrayEquals(new int[]{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38}, aglyconeAtomIndices);
-        for (int i = 1; i < candidates.size(); i++) {
-            int[] sugarAtomIndices = sdu.getGroupAtomIndices(mol, candidates.get(i), inputAtomToSugarAtomMap);
-            System.out.println("Sugar " + i + ": " + Arrays.toString(sugarAtomIndices));
+        int[] aglyconeAtomIndices = sdu.getAtomIndicesOfGroup(mol, candidates.get(0), inputAtomToAglyconeAtomMap);
+        Assertions.assertArrayEquals(new int[] {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38}, aglyconeAtomIndices);
+        Assertions.assertEquals(3, candidates.size());
+        int[] sugarOneAtomIndices = sdu.getAtomIndicesOfGroup(mol, candidates.get(1), inputAtomToSugarAtomMap);
+        int[] sugarTwoAtomIndices = sdu.getAtomIndicesOfGroup(mol, candidates.get(2), inputAtomToSugarAtomMap);
+        Assertions.assertArrayEquals(new int[] {38, 39, 40, 41, 42, 43, 44, 45, 46, 47}, sugarOneAtomIndices);
+        Assertions.assertArrayEquals(new int[] {48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58}, sugarTwoAtomIndices);
+    }
+
+    /**
+     * TODO
+     */
+    @Test
+    void testGetGroupIndicesForAllAtoms() throws Exception {
+        SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
+        SugarDetectionUtility sdu = new SugarDetectionUtility(SilentChemObjectBuilder.getInstance());
+        //CNP0295326.4
+        String smiles = "CCCCC/C=C/C=C/[C@@H](O)C/C=C/C=C/C(=O)OC1C(O)[C@H](C2=C(O)C=C(O)C=C2CO)O[C@H](CO)[C@H]1O[C@@H]1OC(CO)[C@H](O)[C@H](O)C1O[C@@H]1OC(CO)[C@H](O)[C@H](O)C1O";
+        IAtomContainer mol = smiPar.parseSmiles(smiles);
+        Map<IAtom, IAtom> inputAtomToAglyconeAtomMap = new HashMap<IAtom, IAtom>((int) ((mol.getAtomCount() / 0.75f) + 2), 0.75f);
+        Map<IAtom, IAtom> inputAtomToSugarAtomMap = new HashMap<IAtom, IAtom>((int) ((mol.getAtomCount() / 0.75f) + 2), 0.75f);
+        List<IAtomContainer> aglyconeAndSugarsList = sdu.copyAndExtractAglyconeAndSugars(
+                mol,
+                true,
+                false,
+                false,
+                true,
+                inputAtomToAglyconeAtomMap,
+                new HashMap<IBond, IBond>((int) ((mol.getAtomCount() / 0.75f) + 2), 0.75f),
+                inputAtomToSugarAtomMap,
+                new HashMap<IBond, IBond>((int) ((mol.getAtomCount() / 0.75f) + 2), 0.75f));
+        int[] groupIndices = sdu.getGroupIndicesForAllAtoms(mol, aglyconeAndSugarsList, inputAtomToAglyconeAtomMap, inputAtomToSugarAtomMap);
+        for (IAtom atom : mol.atoms()) {
+            atom.setMapIdx(groupIndices[atom.getIndex()] + 1);
         }
+        String smi = new SmilesGenerator(SmiFlavor.Isomeric | SmiFlavor.AtomAtomMap).create(mol);
+        Assertions.assertEquals("[CH3:1][CH2:1][CH2:1][CH2:1][CH2:1]/[CH:1]=[CH:1]/[CH:1]=[CH:1]/[C@@H:1]([OH:1])[CH2:1]/[CH:1]=[CH:1]/[CH:1]=[CH:1]/[C:1](=[O:1])[O:1][CH:1]1[CH:1]([OH:1])[C@H:1]([C:1]2=[C:1]([OH:1])[CH:1]=[C:1]([OH:1])[CH:1]=[C:1]2[CH2:1][OH:1])[O:1][C@H:1]([CH2:1][OH:1])[C@H:1]1[O:2][C@@H:2]3[O:2][CH:2]([CH2:2][OH:2])[C@H:2]([OH:2])[C@H:2]([OH:2])[CH:2]3[O:3][C@@H:3]4[O:3][CH:3]([CH2:3][OH:3])[C@H:3]([OH:3])[C@H:3]([OH:3])[CH:3]4[OH:3]",
+                smi);
     }
 
     /**
