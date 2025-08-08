@@ -288,6 +288,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
 
     //remove this method after all and incorporate the new behaviour into the existing methods? -> better to keep the original behaviour of the original methods
     //do not copy the aglycone? -> too much of a hassle because for postprocessing, we repeatedly need the original structure
+    //implement alternative method that directly returns group indices? -> blows up the code too much and the atom container fragments are the main point of reference
     //TODO: move SMARTS patterns to constants
     //TODO: simplify this method by encapsulating more code
     //TODO: add special treatment for esters (on the sugar side and on the aglycone side, respectively)?
@@ -985,7 +986,6 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
      * resulting open valences with implicit H atoms, depending on the `markAttachPointsByR` parameter.
      * If bonds are split, an unconnected atom container results. If no O-glycosidic bonds are found, the original
      * molecule remains unchanged.
-     *
      * Note: SMIRKS transformations are not used here, since they create a copy of the molecule and that would destroy
      * the atom and bond mapping to the original molecule. the same is the case for the other split methods below.
      *
@@ -1216,8 +1216,8 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
         if (molecule.isEmpty()) {
             return; //nothing to do
         }
-        String esterEductPattern = "[C;!R;+0:1]-!@[O;!R;D2;+0:2]-!@[C;!R;+0:3]";
-        Mappings mappings = SmartsPattern.create(esterEductPattern).matchAll(molecule).uniqueAtoms();
+        String eductPattern = "[C;!R;+0:1]-!@[O;!R;D2;+0:2]-!@[C;!R;+0:3]";
+        Mappings mappings = SmartsPattern.create(eductPattern).matchAll(molecule).uniqueAtoms();
         if (mappings.atLeast(1)) {
             for (IAtomContainer esterGroup : mappings.toSubstructures()) {
                 IAtom carbonOne = null;
@@ -1251,7 +1251,24 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
     }
 
     /**
-     * TODO
+     * Splits peroxide groups connecting linear sugars in the given molecule and optionally marks the attachment points with R-groups.
+     * <p>
+     * This method identifies peroxide bonds in the molecule using a SMARTS pattern and then breaks these bonds.
+     * The transformation can either mark the attachment points with R-groups or saturate the resulting open valences
+     * with implicit hydrogen atoms, depending on the `markAttachPointsByR` parameter.
+     * <p>
+     * The SMARTS pattern used for detection matches peroxide bonds with the following structure:
+     * <ul>
+     *   <li>A carbon atom (not in a ring, no charge) single-bonded to an oxygen atom (not in a ring, degree 2, no charge).</li>
+     *   <li>The oxygen atom is single-bonded to another oxygen atom  and that in turn to another carbon atom, each with
+     *   the same properties as the other two.</li>
+     * </ul>
+     * <p>
+     * If bonds are split, the molecule may become disconnected. If no matching bonds are found, the original molecule remains unchanged.
+     *
+     * @param molecule The molecule in which peroxide bonds are to be split. Must not be null.
+     * @param markAttachPointsByR If true, the attachment points are marked with R-groups; otherwise, they are saturated with implicit hydrogens.
+     * @throws NullPointerException If the input molecule is null.
      */
     protected void splitPeroxides(IAtomContainer molecule, boolean markAttachPointsByR) {
         if (molecule == null) {
@@ -1260,8 +1277,8 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
         if (molecule.isEmpty()) {
             return; //nothing to do
         }
-        String etherEductCrosslinkPattern = "[C;!R;+0:1]-!@[O;!R;D2;+0:2]-!@[O;!R;D2;+0:3]-!@[C;!R;+0:4]";
-        Mappings mappings = SmartsPattern.create(etherEductCrosslinkPattern).matchAll(molecule).uniqueAtoms();
+        String eductCrosslinkPattern = "[C;!R;+0:1]-!@[O;!R;D2;+0:2]-!@[O;!R;D2;+0:3]-!@[C;!R;+0:4]";
+        Mappings mappings = SmartsPattern.create(eductCrosslinkPattern).matchAll(molecule).uniqueAtoms();
         if (mappings.atLeast(1)) {
             for (IAtomContainer esterGroup : mappings.toSubstructures()) {
                 IAtom oxygenOne = null;

@@ -27,7 +27,6 @@ import org.junit.jupiter.api.Test;
 import org.openscience.cdk.exception.CDKException;
 import org.openscience.cdk.interfaces.IAtom;
 import org.openscience.cdk.interfaces.IAtomContainer;
-import org.openscience.cdk.interfaces.IBond;
 import org.openscience.cdk.io.iterator.IteratingSDFReader;
 import org.openscience.cdk.silent.SilentChemObjectBuilder;
 import org.openscience.cdk.smiles.SmiFlavor;
@@ -1281,7 +1280,9 @@ class SugarDetectionUtilityTest {
     }
 
     /**
-     * TODO
+     * Tests the postprocessing split of ester groups connecting sugar moieties.
+     *
+     * @throws Exception if anything goes wrong
      */
     @Test
     void testEsterSplitting() throws Exception {
@@ -1301,7 +1302,9 @@ class SugarDetectionUtilityTest {
     }
 
     /**
-     * TODO
+     * Tests the postprocessing split of ether groups cross-linking sugar moieties.
+     *
+     * @throws Exception if anything goes wrong
      */
     @Test
     void testEtherCrosslinkingSplitting() throws Exception {
@@ -1321,7 +1324,9 @@ class SugarDetectionUtilityTest {
     }
 
     /**
-     * TODO
+     * Tests the postprocessing split of ether groups connecting sugar moieties.
+     *
+     * @throws Exception if anything goes wrong
      */
     @Test
     void testEtherSplitting() throws Exception {
@@ -1342,7 +1347,9 @@ class SugarDetectionUtilityTest {
     }
 
     /**
-     * TODO
+     * Tests the postprocessing split of peroxide groups connecting sugar moieties.
+     *
+     * @throws Exception if anything goes wrong
      */
     @Test
     void testPeroxideSplitting() throws Exception {
@@ -1365,6 +1372,8 @@ class SugarDetectionUtilityTest {
     /**
      * Test for splitting O-glycosidic bonds in a molecule, using the splitOGlycosidicBonds method used for postprocessing
      * extracted circular sugar moieties.
+     *
+     * @throws Exception if anything goes wrong
      */
     @Test
     void testSplitOGlycosidicBonds() throws Exception {
@@ -1386,6 +1395,8 @@ class SugarDetectionUtilityTest {
     /**
      * Test for splitting ether, ester, and peroxide bonds in a molecule, using the postprocessing method for extracted
      * sugar moeties.
+     *
+     * @throws Exception if anything goes wrong
      */
     @Test
     void testSplitEtherEsterPeroxideBondsPostprocessing() throws Exception {
@@ -1405,9 +1416,9 @@ class SugarDetectionUtilityTest {
     }
 
     /**
-     * TODO
+     * Tests the retrieval of atom indices for aglycone and sugar moieties from a molecule.
      *
-     * @throws Exception
+     * @throws Exception if anything goes wrong
      */
     @Test
     void testRetrievalOfAtomIndices() throws Exception {
@@ -1415,8 +1426,8 @@ class SugarDetectionUtilityTest {
         SugarDetectionUtility sdu = new SugarDetectionUtility(SilentChemObjectBuilder.getInstance());
         String smiles = "CCCCCC=CC=CC(O)CC=CC=CC(=O)OC1C(O)C(C2=C(O)C=C(O)C=C2CO)OC(CO)C1OC1OC(C)C(O)C(O)C1OC1OC(O)C(O)C(O)C1O";
         IAtomContainer mol = smiPar.parseSmiles(smiles);
-        Map<IAtom, IAtom> inputAtomToAglyconeAtomMap = new HashMap<IAtom, IAtom>((int) ((mol.getAtomCount() / 0.75f) + 2), 0.75f);
-        Map<IAtom, IAtom> inputAtomToSugarAtomMap = new HashMap<IAtom, IAtom>((int) ((mol.getAtomCount() / 0.75f) + 2), 0.75f);
+        Map<IAtom, IAtom> inputAtomToAglyconeAtomMap = new HashMap<>((int) ((mol.getAtomCount() / 0.75f) + 2), 0.75f);
+        Map<IAtom, IAtom> inputAtomToSugarAtomMap = new HashMap<>((int) ((mol.getAtomCount() / 0.75f) + 2), 0.75f);
         List<IAtomContainer> candidates = sdu.copyAndExtractAglyconeAndSugars(
                 mol,
                 true,
@@ -1424,9 +1435,9 @@ class SugarDetectionUtilityTest {
                 false,
                 true,
                 inputAtomToAglyconeAtomMap,
-                new HashMap<IBond, IBond>((int) ((mol.getAtomCount() / 0.75f) + 2), 0.75f),
+                new HashMap<>((int) ((mol.getAtomCount() / 0.75f) + 2), 0.75f),
                 inputAtomToSugarAtomMap,
-                new HashMap<IBond, IBond>((int) ((mol.getAtomCount() / 0.75f) + 2), 0.75f));
+                new HashMap<>((int) ((mol.getAtomCount() / 0.75f) + 2), 0.75f));
         int[] aglyconeAtomIndices = sdu.getAtomIndicesOfGroup(mol, candidates.get(0), inputAtomToAglyconeAtomMap);
         Assertions.assertArrayEquals(new int[] {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38}, aglyconeAtomIndices);
         Assertions.assertEquals(3, candidates.size());
@@ -1437,7 +1448,9 @@ class SugarDetectionUtilityTest {
     }
 
     /**
-     * TODO
+     * Tests the retrieval of group indices for all atoms in a molecule, which is useful for visualisation.
+     *
+     * @throws Exception if anything goes wrong
      */
     @Test
     void testGetGroupIndicesForAllAtoms() throws Exception {
@@ -1446,8 +1459,8 @@ class SugarDetectionUtilityTest {
         //CNP0295326.4
         String smiles = "CCCCC/C=C/C=C/[C@@H](O)C/C=C/C=C/C(=O)OC1C(O)[C@H](C2=C(O)C=C(O)C=C2CO)O[C@H](CO)[C@H]1O[C@@H]1OC(CO)[C@H](O)[C@H](O)C1O[C@@H]1OC(CO)[C@H](O)[C@H](O)C1O";
         IAtomContainer mol = smiPar.parseSmiles(smiles);
-        Map<IAtom, IAtom> inputAtomToAglyconeAtomMap = new HashMap<IAtom, IAtom>((int) ((mol.getAtomCount() / 0.75f) + 2), 0.75f);
-        Map<IAtom, IAtom> inputAtomToSugarAtomMap = new HashMap<IAtom, IAtom>((int) ((mol.getAtomCount() / 0.75f) + 2), 0.75f);
+        Map<IAtom, IAtom> inputAtomToAglyconeAtomMap = new HashMap<>((int) ((mol.getAtomCount() / 0.75f) + 2), 0.75f);
+        Map<IAtom, IAtom> inputAtomToSugarAtomMap = new HashMap<>((int) ((mol.getAtomCount() / 0.75f) + 2), 0.75f);
         List<IAtomContainer> aglyconeAndSugarsList = sdu.copyAndExtractAglyconeAndSugars(
                 mol,
                 true,
@@ -1455,9 +1468,9 @@ class SugarDetectionUtilityTest {
                 false,
                 true,
                 inputAtomToAglyconeAtomMap,
-                new HashMap<IBond, IBond>((int) ((mol.getAtomCount() / 0.75f) + 2), 0.75f),
+                new HashMap<>((int) ((mol.getBondCount() / 0.75f) + 2), 0.75f),
                 inputAtomToSugarAtomMap,
-                new HashMap<IBond, IBond>((int) ((mol.getAtomCount() / 0.75f) + 2), 0.75f));
+                new HashMap<>((int) ((mol.getBondCount() / 0.75f) + 2), 0.75f));
         int[] groupIndices = sdu.getGroupIndicesForAllAtoms(mol, aglyconeAndSugarsList, inputAtomToAglyconeAtomMap, inputAtomToSugarAtomMap);
         for (IAtom atom : mol.atoms()) {
             atom.setMapIdx(groupIndices[atom.getIndex()] + 1);
@@ -1473,6 +1486,7 @@ class SugarDetectionUtilityTest {
      * @param candidates List of IAtomContainer molecules to convert
      * @param smiGen SMILES generator to use for conversion
      * @return List of SMILES strings
+     * @throws CDKException if SMILES generation fails
      */
     protected List<String> generateSmilesList(List<IAtomContainer> candidates, SmilesGenerator smiGen) throws CDKException {
         List<String> result = new ArrayList<>(candidates.size());
