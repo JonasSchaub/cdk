@@ -331,6 +331,14 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
      *                           implicit hydrogens are added to saturate the connections.
      * @param postProcessSugars If true, postprocessing of sugar fragments is performed, i.e. splitting O-glycosidic
      *                          bonds in circular and splitting ether, ester, and peroxide bonds in linear sugar moieties
+     * @param inputAtomToAtomCopyInAglyconeMap Map to be filled with mappings from original atoms to their copies in the aglycone.
+     *                                        Can be null (a new map will be created) or an empty map with sufficient capacity.
+     * @param inputBondToBondCopyInAglyconeMap Map to be filled with mappings from original bonds to their copies in the aglycone.
+     *                                        Can be null (a new map will be created) or an empty map with sufficient capacity.
+     * @param inputAtomToAtomCopyInSugarsMap Map to be filled with mappings from original atoms to their copies in the sugar fragments.
+     *                                      Can be null (a new map will be created) or an empty map with sufficient capacity.
+     * @param inputBondToBondCopyInSugarsMap Map to be filled with mappings from original bonds to their copies in the sugar fragments.
+                                           Can be null (a new map will be created) or an empty map with sufficient capacity.
      * @return A list of atom containers where the first element is the aglycone
      *         (copy molecule with sugars removed) and subsequent elements are the
      *         individual sugar fragments that were extracted (also copies). If no sugars were

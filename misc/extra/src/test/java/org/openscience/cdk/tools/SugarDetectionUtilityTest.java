@@ -148,7 +148,7 @@ class SugarDetectionUtilityTest {
                 "CCCCCCCC(=O)O.OC[C@H]1O[C@@H](O[C@@H]2[C@@H](O)[C@H](O)[C@@H](CO)O[C@H]2O)[C@H](O)[C@@H](O)[C@@H]1O"
         };
         for (String smiles : glycosidicNP) {
-            List<IAtomContainer> candidates = sdu.copyAndExtractAglyconeAndSugars(smiPar.parseSmiles(smiles), true, true, true);
+            List<IAtomContainer> candidates = sdu.copyAndExtractAglyconeAndSugars(smiPar.parseSmiles(smiles), true, true, true, true);
             if (candidates.size() < 2) {
                 continue;
             }
