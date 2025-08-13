@@ -325,6 +325,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
     //remove this method after all and incorporate the new behaviour into the existing methods? -> better to keep the original behaviour of the original methods
     //do not copy the aglycone? -> too much of a hassle because for postprocessing, we repeatedly need the original structure
     //implement alternative method that directly returns group indices? -> blows up the code too much and the atom container fragments are the main point of reference
+    //TODO: in postprocessing, couple the split with the preservation mode threshold, so that small modifications are not split from the extracted sugars
     //TODO: simplify this method by encapsulating more code
     //TODO: add special treatment for esters (on the sugar side and on the aglycone side, respectively)?
     //TODO: look at other special cases in the test class that might require additional postprocessing
@@ -367,13 +368,13 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
      * @param postProcessSugars If true, postprocessing of sugar fragments is performed, i.e. splitting O-glycosidic
      *                          bonds in circular and splitting ether, ester, and peroxide bonds in linear sugar moieties
      * @param inputAtomToAtomCopyInAglyconeMap Map to be filled with mappings from original atoms to their copies in the aglycone.
-     *                                        Can be null (a new map will be created) or an empty map with sufficient capacity.
+     *                                         Can be null (a new map will be created) or an empty map with sufficient capacity.
      * @param inputBondToBondCopyInAglyconeMap Map to be filled with mappings from original bonds to their copies in the aglycone.
-     *                                        Can be null (a new map will be created) or an empty map with sufficient capacity.
+     *                                         Can be null (a new map will be created) or an empty map with sufficient capacity.
      * @param inputAtomToAtomCopyInSugarsMap Map to be filled with mappings from original atoms to their copies in the sugar fragments.
-     *                                      Can be null (a new map will be created) or an empty map with sufficient capacity.
+     *                                       Can be null (a new map will be created) or an empty map with sufficient capacity.
      * @param inputBondToBondCopyInSugarsMap Map to be filled with mappings from original bonds to their copies in the sugar fragments.
-                                           Can be null (a new map will be created) or an empty map with sufficient capacity.
+     *                                       Can be null (a new map will be created) or an empty map with sufficient capacity.
      * @return A list of atom containers where the first element is the aglycone
      *         (copy molecule with sugars removed) and subsequent elements are the
      *         individual sugar fragments that were extracted (also copies). If no sugars were

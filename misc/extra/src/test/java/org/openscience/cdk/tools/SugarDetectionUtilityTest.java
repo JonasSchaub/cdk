@@ -1242,6 +1242,28 @@ class SugarDetectionUtilityTest {
         Assertions.assertLinesMatch(expectedSmilesList, generatedSmilesList);
     }
 
+    /**
+     * TODO the sugar should keep its C6 with a hydroxyl group, but it is currently lost in the extraction.
+     *
+     * @throws Exception if anything goes wrong
+     */
+    @Test
+    void sugarExtractionIndividualTest10() throws Exception {
+        SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
+        SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.Stereo);
+        SugarDetectionUtility sdu = new SugarDetectionUtility(SilentChemObjectBuilder.getInstance());
+        String smiles = "C1=C(C=CC(=C1)O[C@H]2[C@@H]([C@H]([C@@H]([C@@H](COC(=O)/C=C/C3(C=CC(=O)C=C3)O)O2)O)O)O)O";
+        sdu.setRemoveOnlyTerminalSugarsSetting(false);
+        List<IAtomContainer> candidates =sdu.copyAndExtractAglyconeAndSugars(smiPar.parseSmiles(smiles), true, true, false);
+        List<String> expectedSmilesList = Arrays.asList(
+                "C1=C(C=CC(=C1)O)O.COC(=O)C=CC1(C=CC(=O)C=C1)O",
+                "[C@@H]1([C@@H]([C@H]([C@@H](CO1)O)O)O)O"
+        );
+        List<String> generatedSmilesList = this.generateSmilesList(candidates, smiGen);
+        Assertions.assertLinesMatch(expectedSmilesList, generatedSmilesList);
+    }
+
+
     //TODO: remove this before starting the PR
     /**
      * Test for processing the COCONUT database. This method reads the COCONUT SDF file and processes each molecule to
@@ -1252,7 +1274,7 @@ class SugarDetectionUtilityTest {
     //@Test
     void testCOCONUT() throws Exception {
         IteratingSDFReader reader = new IteratingSDFReader(
-                new FileReader("C:\\Users\\jonas\\Research\\Projects\\Project_COCONUT_Curation\\COCONUT_versions\\coconut_sdf_2d_lite-03-2025.sdf"),
+                new FileReader("C:\\Users\\jonas\\Research\\Projects\\Project_COCONUT_Curation\\COCONUT_versions\\coconut_sdf_2d-08-2025.sdf"),
                 SilentChemObjectBuilder.getInstance());
         SugarDetectionUtility sdu = new SugarDetectionUtility(SilentChemObjectBuilder.getInstance());
         int exceptionsCounter = 0;
