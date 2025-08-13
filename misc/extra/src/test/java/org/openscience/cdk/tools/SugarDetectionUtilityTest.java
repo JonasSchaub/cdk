@@ -1393,6 +1393,25 @@ class SugarDetectionUtilityTest {
     }
 
     /**
+     * Test for splitting O-glycosidic bonds in a molecule, using the splitOGlycosidicBonds method used for postprocessing
+     * extracted circular sugar moieties. This test additionally checks that stereochemistry is preserved on both sides of the
+     * glycosidic bond, which was not the case in earlier versions of the code.
+     *
+     * @throws Exception if anything goes wrong
+     */
+    @Test
+    void testSplitOGlycosidicBondsWithStereo() throws Exception {
+        SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
+        SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.Stereo);
+        SugarDetectionUtility sdu = new SugarDetectionUtility(SilentChemObjectBuilder.getInstance());
+        String smiles = "OC[C@H]1O[C@@H](O[C@@H]2[C@@H](O)[C@H](O)[C@@H](CO)O[C@H]2O)[C@H](O)[C@@H](O)[C@@H]1O";
+        IAtomContainer molecule = smiPar.parseSmiles(smiles);
+        sdu.splitOGlycosidicBonds(molecule, false);
+        Assertions.assertEquals("OC[C@H]1O[C@H]([C@H](O)[C@@H](O)[C@@H]1O)O.O[C@@H]1[C@@H](O)[C@H](O)[C@@H](CO)O[C@H]1O",
+                smiGen.create(molecule));
+    }
+
+    /**
      * Test for splitting ether, ester, and peroxide bonds in a molecule, using the postprocessing method for extracted
      * sugar moeties.
      *

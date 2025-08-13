@@ -1055,9 +1055,20 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
                         carbonOne = atom;
                     }
                 }
-                molecule.removeBond(carbonOne, connectingOxygen);
+                IBond bondToBreak = molecule.getBond(carbonOne, connectingOxygen);
                 IAtom newOxygen = molecule.newAtom(IElement.O);
                 molecule.newBond(carbonOne, newOxygen, IBond.Order.SINGLE);
+                IStereoElement updatedStereoElement = null;
+                for (IStereoElement stereoElement : molecule.stereoElements()) {
+                    if (stereoElement.getFocus().equals(carbonOne) && stereoElement.contains(connectingOxygen)) {
+                        updatedStereoElement = stereoElement.updateCarriers(connectingOxygen, newOxygen);
+                        break;
+                    }
+                }
+                if (updatedStereoElement != null) {
+                    molecule.addStereoElement(updatedStereoElement);
+                }
+                molecule.removeBond(bondToBreak);
                 IAtom[] oxygens = new IAtom[] {connectingOxygen, newOxygen};
                 for (IAtom oxygen : oxygens) {
                     if (markAttachPointsByR) {
@@ -1133,7 +1144,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
         if (molecule.isEmpty()) {
             return; //nothing to do
         }
-        Mappings esterMappings = SmartsPattern.create(SugarDetectionUtility.ESTER_SMARTS_PATTERN).matchAll(molecule).uniqueAtoms();
+        Mappings esterMappings = SmartsPattern.create(SugarDetectionUtility.ESTER_BOND_SMARTS).matchAll(molecule).uniqueAtoms();
         if (esterMappings.atLeast(1)) {
             for (IAtomContainer esterGroup : esterMappings.toSubstructures()) {
                 IAtom carbonOne = null;
@@ -1145,9 +1156,20 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
                         carbonOne = atom;
                     }
                 }
-                molecule.removeBond(carbonOne, connectingOxygen);
+                IBond bondToBreak = molecule.getBond(carbonOne, connectingOxygen);
                 IAtom newOxygen = molecule.newAtom(IElement.O);
                 molecule.newBond(carbonOne, newOxygen, IBond.Order.SINGLE);
+                IStereoElement updatedStereoElement = null;
+                for (IStereoElement stereoElement : molecule.stereoElements()) {
+                    if (stereoElement.getFocus().equals(carbonOne) && stereoElement.contains(connectingOxygen)) {
+                        updatedStereoElement = stereoElement.updateCarriers(connectingOxygen, newOxygen);
+                        break;
+                    }
+                }
+                if (updatedStereoElement != null) {
+                    molecule.addStereoElement(updatedStereoElement);
+                }
+                molecule.removeBond(bondToBreak);
                 IAtom[] oxygens = new IAtom[] {connectingOxygen, newOxygen};
                 for (IAtom oxygen : oxygens) {
                     if (markAttachPointsByR) {
@@ -1208,6 +1230,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
                         carbonTwo = atom;
                     }
                 }
+                //no need to copy stereo elements, the connecting oxygen is not duplicated
                 molecule.removeBond(carbonTwo, connectingOxygen);
                 IAtom[] atoms = new IAtom[] {connectingOxygen, carbonTwo};
                 for (IAtom atom : atoms) {
@@ -1266,9 +1289,20 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
                         carbonOne = atom;
                     }
                 }
-                molecule.removeBond(carbonOne, connectingOxygen);
+                IBond bondToBreak = molecule.getBond(carbonOne, connectingOxygen);
                 IAtom newOxygen = molecule.newAtom(IElement.O);
                 molecule.newBond(carbonOne, newOxygen, IBond.Order.SINGLE);
+                IStereoElement updatedStereoElement = null;
+                for (IStereoElement stereoElement : molecule.stereoElements()) {
+                    if (stereoElement.getFocus().equals(carbonOne) && stereoElement.contains(connectingOxygen)) {
+                        updatedStereoElement = stereoElement.updateCarriers(connectingOxygen, newOxygen);
+                        break;
+                    }
+                }
+                if (updatedStereoElement != null) {
+                    molecule.addStereoElement(updatedStereoElement);
+                }
+                molecule.removeBond(bondToBreak);
                 IAtom[] oxygens = new IAtom[] {connectingOxygen, newOxygen};
                 for (IAtom oxygen : oxygens) {
                     if (markAttachPointsByR) {
@@ -1328,6 +1362,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
                         }
                     }
                 }
+                //no need to copy stereo elements, the connecting oxygen is not duplicated
                 molecule.removeBond(oxygenOne, oxygenTwo);
                 IAtom[] atoms = new IAtom[] {oxygenOne, oxygenTwo};
                 for (IAtom atom : atoms) {
