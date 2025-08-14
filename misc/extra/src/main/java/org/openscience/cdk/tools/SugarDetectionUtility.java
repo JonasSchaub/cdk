@@ -325,7 +325,6 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
     //remove this method after all and incorporate the new behaviour into the existing methods? -> better to keep the original behaviour of the original methods
     //do not copy the aglycone? -> too much of a hassle because for postprocessing, we repeatedly need the original structure
     //implement alternative method that directly returns group indices? -> blows up the code too much and the atom container fragments are the main point of reference
-    //TODO: in postprocessing, couple the split with the preservation mode threshold, so that small modifications are not split from the extracted sugars
     //TODO: simplify this method by encapsulating more code
     //TODO: add special treatment for esters (on the sugar side and on the aglycone side, respectively)?
     //TODO: look at other special cases in the test class that might require additional postprocessing
@@ -1047,6 +1046,14 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
         Mappings mappings = SmartsPattern.create(SugarDetectionUtility.O_GLYCOSIDIC_BOND_SMARTS).matchAll(molecule).uniqueAtoms();
         if (mappings.atLeast(1)) {
             for (IAtomContainer esterGroup : mappings.toSubstructures()) {
+                //split the detected bond in a copy first to see whether the resulting fragment is large enough
+                float loadFactor = 0.75f; //default load factor for HashMaps
+                //ensuring sufficient initial capacity
+                int atomMapInitCapacity = (int)((molecule.getAtomCount() / loadFactor) + 3.0f);
+                int bondMapInitCapacity = (int)((molecule.getBondCount() / loadFactor) + 3.0f);
+                Map<IAtom, IAtom> inputAtomToAtomCopyMap = new HashMap<>(atomMapInitCapacity);
+                Map<IBond, IBond> inputBondToBondCopyMap = new HashMap<>(bondMapInitCapacity);
+                IAtomContainer moleculeCopy = this.deeperCopy(molecule, inputAtomToAtomCopyMap, inputBondToBondCopyMap);
                 IAtom carbonOne = null;
                 IAtom connectingOxygen = null;
                 for (IAtom atom : esterGroup.atoms()) {
@@ -1057,31 +1064,42 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
                     }
                 }
                 IBond bondToBreak = molecule.getBond(carbonOne, connectingOxygen);
-                IAtom newOxygen = molecule.newAtom(IElement.O);
-                molecule.newBond(carbonOne, newOxygen, IBond.Order.SINGLE);
-                IStereoElement updatedStereoElement = null;
-                for (IStereoElement stereoElement : molecule.stereoElements()) {
-                    if (stereoElement.getFocus().equals(carbonOne) && stereoElement.contains(connectingOxygen)) {
-                        updatedStereoElement = stereoElement.updateCarriers(connectingOxygen, newOxygen);
+                moleculeCopy.removeBond(inputBondToBondCopyMap.get(bondToBreak));
+                //do not split the bond if a resulting fragment is too small
+                boolean isFragmentTooSmall = false;
+                for (IAtomContainer fragment : ConnectivityChecker.partitionIntoMolecules(moleculeCopy)) {
+                    if (this.isTooSmallToPreserve(fragment)) {
+                        isFragmentTooSmall = true;
                         break;
                     }
                 }
-                if (updatedStereoElement != null) {
-                    molecule.addStereoElement(updatedStereoElement);
-                }
-                molecule.removeBond(bondToBreak);
-                IAtom[] oxygens = new IAtom[] {connectingOxygen, newOxygen};
-                for (IAtom oxygen : oxygens) {
-                    if (markAttachPointsByR) {
-                        IPseudoAtom tmpRAtom = oxygen.getBuilder().newInstance(IPseudoAtom.class, "R");
-                        tmpRAtom.setAttachPointNum(1);
-                        tmpRAtom.setImplicitHydrogenCount(0);
-                        IBond bondToR = oxygen.getBuilder().newInstance(
-                                IBond.class, oxygen, tmpRAtom, IBond.Order.SINGLE);
-                        molecule.addAtom(tmpRAtom);
-                        molecule.addBond(bondToR);
-                    } else {
-                        oxygen.setImplicitHydrogenCount(1);
+                if (!isFragmentTooSmall) {
+                    IAtom newOxygen = molecule.newAtom(IElement.O);
+                    molecule.newBond(carbonOne, newOxygen, IBond.Order.SINGLE);
+                    IStereoElement updatedStereoElement = null;
+                    for (IStereoElement stereoElement : molecule.stereoElements()) {
+                        if (stereoElement.getFocus().equals(carbonOne) && stereoElement.contains(connectingOxygen)) {
+                            updatedStereoElement = stereoElement.updateCarriers(connectingOxygen, newOxygen);
+                            break;
+                        }
+                    }
+                    if (updatedStereoElement != null) {
+                        molecule.addStereoElement(updatedStereoElement);
+                    }
+                    molecule.removeBond(bondToBreak);
+                    IAtom[] oxygens = new IAtom[] {connectingOxygen, newOxygen};
+                    for (IAtom oxygen : oxygens) {
+                        if (markAttachPointsByR) {
+                            IPseudoAtom tmpRAtom = oxygen.getBuilder().newInstance(IPseudoAtom.class, "R");
+                            tmpRAtom.setAttachPointNum(1);
+                            tmpRAtom.setImplicitHydrogenCount(0);
+                            IBond bondToR = oxygen.getBuilder().newInstance(
+                                    IBond.class, oxygen, tmpRAtom, IBond.Order.SINGLE);
+                            molecule.addAtom(tmpRAtom);
+                            molecule.addBond(bondToR);
+                        } else {
+                            oxygen.setImplicitHydrogenCount(1);
+                        }
                     }
                 }
             }
@@ -1148,6 +1166,14 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
         Mappings esterMappings = SmartsPattern.create(SugarDetectionUtility.ESTER_BOND_SMARTS).matchAll(molecule).uniqueAtoms();
         if (esterMappings.atLeast(1)) {
             for (IAtomContainer esterGroup : esterMappings.toSubstructures()) {
+                //split the detected bond in a copy first to see whether the resulting fragment is large enough
+                float loadFactor = 0.75f; //default load factor for HashMaps
+                //ensuring sufficient initial capacity
+                int atomMapInitCapacity = (int)((molecule.getAtomCount() / loadFactor) + 3.0f);
+                int bondMapInitCapacity = (int)((molecule.getBondCount() / loadFactor) + 3.0f);
+                Map<IAtom, IAtom> inputAtomToAtomCopyMap = new HashMap<>(atomMapInitCapacity);
+                Map<IBond, IBond> inputBondToBondCopyMap = new HashMap<>(bondMapInitCapacity);
+                IAtomContainer moleculeCopy = this.deeperCopy(molecule, inputAtomToAtomCopyMap, inputBondToBondCopyMap);
                 IAtom carbonOne = null;
                 IAtom connectingOxygen = null;
                 for (IAtom atom : esterGroup.atoms()) {
@@ -1158,31 +1184,42 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
                     }
                 }
                 IBond bondToBreak = molecule.getBond(carbonOne, connectingOxygen);
-                IAtom newOxygen = molecule.newAtom(IElement.O);
-                molecule.newBond(carbonOne, newOxygen, IBond.Order.SINGLE);
-                IStereoElement updatedStereoElement = null;
-                for (IStereoElement stereoElement : molecule.stereoElements()) {
-                    if (stereoElement.getFocus().equals(carbonOne) && stereoElement.contains(connectingOxygen)) {
-                        updatedStereoElement = stereoElement.updateCarriers(connectingOxygen, newOxygen);
+                moleculeCopy.removeBond(inputBondToBondCopyMap.get(bondToBreak));
+                //do not split the bond if a resulting fragment is too small
+                boolean isFragmentTooSmall = false;
+                for (IAtomContainer fragment : ConnectivityChecker.partitionIntoMolecules(moleculeCopy)) {
+                    if (fragment.getAtomCount() < this.getLinearSugarCandidateMinSizeSetting()) {
+                        isFragmentTooSmall = true;
                         break;
                     }
                 }
-                if (updatedStereoElement != null) {
-                    molecule.addStereoElement(updatedStereoElement);
-                }
-                molecule.removeBond(bondToBreak);
-                IAtom[] oxygens = new IAtom[] {connectingOxygen, newOxygen};
-                for (IAtom oxygen : oxygens) {
-                    if (markAttachPointsByR) {
-                        IPseudoAtom tmpRAtom = oxygen.getBuilder().newInstance(IPseudoAtom.class, "R");
-                        tmpRAtom.setAttachPointNum(1);
-                        tmpRAtom.setImplicitHydrogenCount(0);
-                        IBond bondToR = oxygen.getBuilder().newInstance(
-                                IBond.class, oxygen, tmpRAtom, IBond.Order.SINGLE);
-                        molecule.addAtom(tmpRAtom);
-                        molecule.addBond(bondToR);
-                    } else {
-                        oxygen.setImplicitHydrogenCount(1);
+                if (!isFragmentTooSmall) {
+                    IAtom newOxygen = molecule.newAtom(IElement.O);
+                    molecule.newBond(carbonOne, newOxygen, IBond.Order.SINGLE);
+                    IStereoElement updatedStereoElement = null;
+                    for (IStereoElement stereoElement : molecule.stereoElements()) {
+                        if (stereoElement.getFocus().equals(carbonOne) && stereoElement.contains(connectingOxygen)) {
+                            updatedStereoElement = stereoElement.updateCarriers(connectingOxygen, newOxygen);
+                            break;
+                        }
+                    }
+                    if (updatedStereoElement != null) {
+                        molecule.addStereoElement(updatedStereoElement);
+                    }
+                    molecule.removeBond(bondToBreak);
+                    IAtom[] oxygens = new IAtom[] {connectingOxygen, newOxygen};
+                    for (IAtom oxygen : oxygens) {
+                        if (markAttachPointsByR) {
+                            IPseudoAtom tmpRAtom = oxygen.getBuilder().newInstance(IPseudoAtom.class, "R");
+                            tmpRAtom.setAttachPointNum(1);
+                            tmpRAtom.setImplicitHydrogenCount(0);
+                            IBond bondToR = oxygen.getBuilder().newInstance(
+                                    IBond.class, oxygen, tmpRAtom, IBond.Order.SINGLE);
+                            molecule.addAtom(tmpRAtom);
+                            molecule.addBond(bondToR);
+                        } else {
+                            oxygen.setImplicitHydrogenCount(1);
+                        }
                     }
                 }
             }
@@ -1219,6 +1256,14 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
         Mappings mappings = SmartsPattern.create(SugarDetectionUtility.CROSS_LINKING_ETHER_BOND_SMARTS).matchAll(molecule).uniqueAtoms();
         if (mappings.atLeast(1)) {
             for (IAtomContainer esterGroup : mappings.toSubstructures()) {
+                //split the detected bond in a copy first to see whether the resulting fragment is large enough
+                float loadFactor = 0.75f; //default load factor for HashMaps
+                //ensuring sufficient initial capacity
+                int atomMapInitCapacity = (int)((molecule.getAtomCount() / loadFactor) + 3.0f);
+                int bondMapInitCapacity = (int)((molecule.getBondCount() / loadFactor) + 3.0f);
+                Map<IAtom, IAtom> inputAtomToAtomCopyMap = new HashMap<>(atomMapInitCapacity);
+                Map<IBond, IBond> inputBondToBondCopyMap = new HashMap<>(bondMapInitCapacity);
+                IAtomContainer moleculeCopy = this.deeperCopy(molecule, inputAtomToAtomCopyMap, inputBondToBondCopyMap);
                 IAtom carbonOne = null;
                 IAtom carbonTwo = null;
                 IAtom connectingOxygen = null;
@@ -1232,19 +1277,31 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
                     }
                 }
                 //no need to copy stereo elements, the connecting oxygen is not duplicated
-                molecule.removeBond(carbonTwo, connectingOxygen);
-                IAtom[] atoms = new IAtom[] {connectingOxygen, carbonTwo};
-                for (IAtom atom : atoms) {
-                    if (markAttachPointsByR) {
-                        IPseudoAtom tmpRAtom = atom.getBuilder().newInstance(IPseudoAtom.class, "R");
-                        tmpRAtom.setAttachPointNum(1);
-                        tmpRAtom.setImplicitHydrogenCount(0);
-                        IBond bondToR = atom.getBuilder().newInstance(
-                                IBond.class, atom, tmpRAtom, IBond.Order.SINGLE);
-                        molecule.addAtom(tmpRAtom);
-                        molecule.addBond(bondToR);
-                    } else {
-                        atom.setImplicitHydrogenCount(atom.getImplicitHydrogenCount() == null? 1 : atom.getImplicitHydrogenCount() + 1);
+                IBond bondToBreak = molecule.getBond(carbonTwo, connectingOxygen);
+                moleculeCopy.removeBond(inputBondToBondCopyMap.get(bondToBreak));
+                //do not split the bond if a resulting fragment is too small
+                boolean isFragmentTooSmall = false;
+                for (IAtomContainer fragment : ConnectivityChecker.partitionIntoMolecules(moleculeCopy)) {
+                    if (fragment.getAtomCount() < this.getLinearSugarCandidateMinSizeSetting()) {
+                        isFragmentTooSmall = true;
+                        break;
+                    }
+                }
+                if (!isFragmentTooSmall) {
+                    molecule.removeBond(bondToBreak);
+                    IAtom[] atoms = new IAtom[] {connectingOxygen, carbonTwo};
+                    for (IAtom atom : atoms) {
+                        if (markAttachPointsByR) {
+                            IPseudoAtom tmpRAtom = atom.getBuilder().newInstance(IPseudoAtom.class, "R");
+                            tmpRAtom.setAttachPointNum(1);
+                            tmpRAtom.setImplicitHydrogenCount(0);
+                            IBond bondToR = atom.getBuilder().newInstance(
+                                    IBond.class, atom, tmpRAtom, IBond.Order.SINGLE);
+                            molecule.addAtom(tmpRAtom);
+                            molecule.addBond(bondToR);
+                        } else {
+                            atom.setImplicitHydrogenCount(atom.getImplicitHydrogenCount() == null? 1 : atom.getImplicitHydrogenCount() + 1);
+                        }
                     }
                 }
             }
@@ -1281,6 +1338,14 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
         Mappings mappings = SmartsPattern.create(SugarDetectionUtility.ETHER_BOND_SMARTS).matchAll(molecule).uniqueAtoms();
         if (mappings.atLeast(1)) {
             for (IAtomContainer esterGroup : mappings.toSubstructures()) {
+                //split the detected bond in a copy first to see whether the resulting fragment is large enough
+                float loadFactor = 0.75f; //default load factor for HashMaps
+                //ensuring sufficient initial capacity
+                int atomMapInitCapacity = (int)((molecule.getAtomCount() / loadFactor) + 3.0f);
+                int bondMapInitCapacity = (int)((molecule.getBondCount() / loadFactor) + 3.0f);
+                Map<IAtom, IAtom> inputAtomToAtomCopyMap = new HashMap<>(atomMapInitCapacity);
+                Map<IBond, IBond> inputBondToBondCopyMap = new HashMap<>(bondMapInitCapacity);
+                IAtomContainer moleculeCopy = this.deeperCopy(molecule, inputAtomToAtomCopyMap, inputBondToBondCopyMap);
                 IAtom carbonOne = null;
                 IAtom connectingOxygen = null;
                 for (IAtom atom : esterGroup.atoms()) {
@@ -1291,31 +1356,42 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
                     }
                 }
                 IBond bondToBreak = molecule.getBond(carbonOne, connectingOxygen);
-                IAtom newOxygen = molecule.newAtom(IElement.O);
-                molecule.newBond(carbonOne, newOxygen, IBond.Order.SINGLE);
-                IStereoElement updatedStereoElement = null;
-                for (IStereoElement stereoElement : molecule.stereoElements()) {
-                    if (stereoElement.getFocus().equals(carbonOne) && stereoElement.contains(connectingOxygen)) {
-                        updatedStereoElement = stereoElement.updateCarriers(connectingOxygen, newOxygen);
+                moleculeCopy.removeBond(inputBondToBondCopyMap.get(bondToBreak));
+                //do not split the bond if a resulting fragment is too small
+                boolean isFragmentTooSmall = false;
+                for (IAtomContainer fragment : ConnectivityChecker.partitionIntoMolecules(moleculeCopy)) {
+                    if (fragment.getAtomCount() < this.getLinearSugarCandidateMinSizeSetting()) {
+                        isFragmentTooSmall = true;
                         break;
                     }
                 }
-                if (updatedStereoElement != null) {
-                    molecule.addStereoElement(updatedStereoElement);
-                }
-                molecule.removeBond(bondToBreak);
-                IAtom[] oxygens = new IAtom[] {connectingOxygen, newOxygen};
-                for (IAtom oxygen : oxygens) {
-                    if (markAttachPointsByR) {
-                        IPseudoAtom tmpRAtom = oxygen.getBuilder().newInstance(IPseudoAtom.class, "R");
-                        tmpRAtom.setAttachPointNum(1);
-                        tmpRAtom.setImplicitHydrogenCount(0);
-                        IBond bondToR = oxygen.getBuilder().newInstance(
-                                IBond.class, oxygen, tmpRAtom, IBond.Order.SINGLE);
-                        molecule.addAtom(tmpRAtom);
-                        molecule.addBond(bondToR);
-                    } else {
-                        oxygen.setImplicitHydrogenCount(1);
+                if (!isFragmentTooSmall) {
+                    IAtom newOxygen = molecule.newAtom(IElement.O);
+                    molecule.newBond(carbonOne, newOxygen, IBond.Order.SINGLE);
+                    IStereoElement updatedStereoElement = null;
+                    for (IStereoElement stereoElement : molecule.stereoElements()) {
+                        if (stereoElement.getFocus().equals(carbonOne) && stereoElement.contains(connectingOxygen)) {
+                            updatedStereoElement = stereoElement.updateCarriers(connectingOxygen, newOxygen);
+                            break;
+                        }
+                    }
+                    if (updatedStereoElement != null) {
+                        molecule.addStereoElement(updatedStereoElement);
+                    }
+                    molecule.removeBond(bondToBreak);
+                    IAtom[] oxygens = new IAtom[] {connectingOxygen, newOxygen};
+                    for (IAtom oxygen : oxygens) {
+                        if (markAttachPointsByR) {
+                            IPseudoAtom tmpRAtom = oxygen.getBuilder().newInstance(IPseudoAtom.class, "R");
+                            tmpRAtom.setAttachPointNum(1);
+                            tmpRAtom.setImplicitHydrogenCount(0);
+                            IBond bondToR = oxygen.getBuilder().newInstance(
+                                    IBond.class, oxygen, tmpRAtom, IBond.Order.SINGLE);
+                            molecule.addAtom(tmpRAtom);
+                            molecule.addBond(bondToR);
+                        } else {
+                            oxygen.setImplicitHydrogenCount(1);
+                        }
                     }
                 }
             }
@@ -1352,6 +1428,14 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
         Mappings mappings = SmartsPattern.create(SugarDetectionUtility.PEROXIDE_BOND_SMARTS).matchAll(molecule).uniqueAtoms();
         if (mappings.atLeast(1)) {
             for (IAtomContainer esterGroup : mappings.toSubstructures()) {
+                //split the detected bond in a copy first to see whether the resulting fragment is large enough
+                float loadFactor = 0.75f; //default load factor for HashMaps
+                //ensuring sufficient initial capacity
+                int atomMapInitCapacity = (int)((molecule.getAtomCount() / loadFactor) + 3.0f);
+                int bondMapInitCapacity = (int)((molecule.getBondCount() / loadFactor) + 3.0f);
+                Map<IAtom, IAtom> inputAtomToAtomCopyMap = new HashMap<>(atomMapInitCapacity);
+                Map<IBond, IBond> inputBondToBondCopyMap = new HashMap<>(bondMapInitCapacity);
+                IAtomContainer moleculeCopy = this.deeperCopy(molecule, inputAtomToAtomCopyMap, inputBondToBondCopyMap);
                 IAtom oxygenOne = null;
                 IAtom oxygenTwo = null;
                 for (IAtom atom : esterGroup.atoms()) {
@@ -1363,20 +1447,32 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
                         }
                     }
                 }
-                //no need to copy stereo elements, the connecting oxygen is not duplicated
-                molecule.removeBond(oxygenOne, oxygenTwo);
-                IAtom[] atoms = new IAtom[] {oxygenOne, oxygenTwo};
-                for (IAtom atom : atoms) {
-                    if (markAttachPointsByR) {
-                        IPseudoAtom tmpRAtom = atom.getBuilder().newInstance(IPseudoAtom.class, "R");
-                        tmpRAtom.setAttachPointNum(1);
-                        tmpRAtom.setImplicitHydrogenCount(0);
-                        IBond bondToR = atom.getBuilder().newInstance(
-                                IBond.class, atom, tmpRAtom, IBond.Order.SINGLE);
-                        molecule.addAtom(tmpRAtom);
-                        molecule.addBond(bondToR);
-                    } else {
-                        atom.setImplicitHydrogenCount(atom.getImplicitHydrogenCount() == null? 1 : atom.getImplicitHydrogenCount() + 1);
+                IBond bondToBreak = molecule.getBond(oxygenOne, oxygenTwo);
+                moleculeCopy.removeBond(inputBondToBondCopyMap.get(bondToBreak));
+                //do not split the bond if a resulting fragment is too small
+                boolean isFragmentTooSmall = false;
+                for (IAtomContainer fragment : ConnectivityChecker.partitionIntoMolecules(moleculeCopy)) {
+                    if (fragment.getAtomCount() < this.getLinearSugarCandidateMinSizeSetting()) {
+                        isFragmentTooSmall = true;
+                        break;
+                    }
+                }
+                if (!isFragmentTooSmall) {
+                    //no need to copy stereo elements, the connecting oxygen is not duplicated
+                    molecule.removeBond(bondToBreak);
+                    IAtom[] atoms = new IAtom[] {oxygenOne, oxygenTwo};
+                    for (IAtom atom : atoms) {
+                        if (markAttachPointsByR) {
+                            IPseudoAtom tmpRAtom = atom.getBuilder().newInstance(IPseudoAtom.class, "R");
+                            tmpRAtom.setAttachPointNum(1);
+                            tmpRAtom.setImplicitHydrogenCount(0);
+                            IBond bondToR = atom.getBuilder().newInstance(
+                                    IBond.class, atom, tmpRAtom, IBond.Order.SINGLE);
+                            molecule.addAtom(tmpRAtom);
+                            molecule.addBond(bondToR);
+                        } else {
+                            atom.setImplicitHydrogenCount(atom.getImplicitHydrogenCount() == null? 1 : atom.getImplicitHydrogenCount() + 1);
+                        }
                     }
                 }
             }
