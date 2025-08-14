@@ -1314,11 +1314,11 @@ class SugarDetectionUtilityTest {
         //CNP0138295
         String smiles = "O=CC(O)C(O)C(O)C(O)COC(O)(C(O)COC(=O)C(O)C(O)C(O)C(O)COC1=CC=CC=2C(=O)C3=CC(=CC(O)=C3C(=O)C12)C)C(O)C(O)C=O";
         IAtomContainer molecule = smiPar.parseSmiles(smiles);
-        sdu.splitEsters(molecule, false);
+        sdu.splitEsters(molecule, false, false);
         Assertions.assertEquals("O=CC(O)C(O)C(O)C(O)COC(O)(C(O)CO)C(O)C(O)C=O.O=C(O)C(O)C(O)C(O)C(O)COC1=CC=CC=2C(=O)C3=CC(=CC(O)=C3C(=O)C12)C",
                 smiGen.create(molecule));
         molecule = smiPar.parseSmiles(smiles);
-        sdu.splitEsters(molecule, true);
+        sdu.splitEsters(molecule, true, false);
         Assertions.assertEquals("*OC(=O)C(O)C(O)C(O)C(O)COC1=CC=CC=2C(=O)C3=CC(=CC(O)=C3C(=O)C12)C.*OCC(O)C(O)(OCC(O)C(O)C(O)C(O)C=O)C(O)C(O)C=O",
                 smiGen.create(molecule));
     }
@@ -1336,11 +1336,11 @@ class SugarDetectionUtilityTest {
         //CNP0138295
         String smiles = "O=CC(O)C(O)C(O)C(O)COC(O)(C(O)COC(=O)C(O)C(O)C(O)C(O)COC1=CC=CC=2C(=O)C3=CC(=CC(O)=C3C(=O)C12)C)C(O)C(O)C=O";
         IAtomContainer molecule = smiPar.parseSmiles(smiles);
-        sdu.splitEthersCrosslinking(molecule, false);
+        sdu.splitEthersCrosslinking(molecule, false, false);
         Assertions.assertEquals("O=CC(O)C(O)C(O)C(O)CO.O=CC(O)C(O)C(O)C(O)COC(=O)C(O)C(O)C(O)C(O)COC1=CC=CC=2C(=O)C3=CC(=CC(O)=C3C(=O)C12)C",
                 smiGen.create(molecule));
         molecule = smiPar.parseSmiles(smiles);
-        sdu.splitEthersCrosslinking(molecule, true);
+        sdu.splitEthersCrosslinking(molecule, true, false);
         Assertions.assertEquals("*OCC(O)C(O)C(O)C(O)C=O.*C(O)(C(O)COC(=O)C(O)C(O)C(O)C(O)COC1=CC=CC=2C(=O)C3=CC(=CC(O)=C3C(=O)C12)C)C(O)C(O)C=O",
                 smiGen.create(molecule));
     }
@@ -1358,12 +1358,12 @@ class SugarDetectionUtilityTest {
         //CNP0138295
         String smiles = "O=CC(O)C(O)C(O)C(O)COC(O)(C(O)COC(=O)C(O)C(O)C(O)C(O)COC1=CC=CC=2C(=O)C3=CC(=CC(O)=C3C(=O)C12)C)C(O)C(O)C=O";
         IAtomContainer molecule = smiPar.parseSmiles(smiles);
-        sdu.splitEthers(molecule, false);
+        sdu.splitEthers(molecule, false, false);
         //note that this shows why the ether splitting should be done last because it also matches esters and crosslinking ehthers that are treated differently
         Assertions.assertEquals("O=CC(O)C(O)C(O)C(O)CO.O=CC(O)C(O)C(O)(O)C(O)CO.O=C(O)C(O)C(O)C(O)C(O)COC1=CC=CC=2C(=O)C3=CC(=CC(O)=C3C(=O)C12)C",
                 smiGen.create(molecule));
         molecule = smiPar.parseSmiles(smiles);
-        sdu.splitEthers(molecule, true);
+        sdu.splitEthers(molecule, true, false);
         Assertions.assertEquals("*OC(=O)C(O)C(O)C(O)C(O)COC1=CC=CC=2C(=O)C3=CC(=CC(O)=C3C(=O)C12)C.*OCC(O)C(O)C(O)C(O)C=O.*OCC(O)C(O)(O*)C(O)C(O)C=O",
                 smiGen.create(molecule));
     }
@@ -1381,12 +1381,12 @@ class SugarDetectionUtilityTest {
         //CNP0206763.1
         String smiles = "COC1=C2C[C@@H](C(C)(C)O)OC2=CC2=C1C(=O)C=C(COOC[C@H](O)[C@@H](O)[C@H](O)[C@H](O)CO)O2";
         IAtomContainer molecule = smiPar.parseSmiles(smiles);
-        sdu.splitPeroxides(molecule, false);
+        sdu.splitPeroxides(molecule, false, false);
         //note that this shows why the ether splitting should be done last because it also matches esters and crosslinking ehthers that are treated differently
         Assertions.assertEquals("O=C1C=C(OC=2C=C3OC(CC3=C(OC)C12)C(O)(C)C)CO.OCC(O)C(O)C(O)C(O)CO",
                 smiGen.create(molecule));
         molecule = smiPar.parseSmiles(smiles);
-        sdu.splitPeroxides(molecule, true);
+        sdu.splitPeroxides(molecule, true, false);
         Assertions.assertEquals("*OCC=1OC=2C=C3OC(CC3=C(OC)C2C(=O)C1)C(O)(C)C.*OCC(O)C(O)C(O)C(O)CO",
                 smiGen.create(molecule));
     }
@@ -1405,11 +1405,11 @@ class SugarDetectionUtilityTest {
         //CNP0595604.0
         String smiles = "CC(=O)NC(C=O)C(O)C(OC1OC(CO)C(OC2OC(COC3OC(CO)C(O)C(O)C3O)C(O)C(OC3OC(CO)C(O)C(O)C3O)C2O)C(O)C1NC(C)=O)C(O)CO";
         IAtomContainer molecule = smiPar.parseSmiles(smiles);
-        sdu.splitOGlycosidicBonds(molecule, false);
+        sdu.splitOGlycosidicBonds(molecule, false, false);
         Assertions.assertEquals("O=CC(NC(=O)C)C(O)C(O)C(O)CO.O=C(NC1C(O)OC(CO)C(O)C1O)C.OCC1OC(O)C(O)C(O)C1O.OCC1OC(O)C(O)C(O)C1O.OCC1OC(O)C(O)C(O)C1O",
                 smiGen.create(molecule));
         molecule = smiPar.parseSmiles(smiles);
-        sdu.splitOGlycosidicBonds(molecule, true);
+        sdu.splitOGlycosidicBonds(molecule, true, false);
         Assertions.assertEquals("*OCC1OC(O*)C(O)C(O*)C1O.*OC1OC(CO)C(O)C(O)C1O.*OC1OC(CO)C(O)C(O)C1O.*OC1OC(CO)C(O*)C(O)C1NC(=O)C.*OC(C(O)CO)C(O)C(C=O)NC(=O)C",
                 smiGen.create(molecule));
     }
@@ -1428,7 +1428,7 @@ class SugarDetectionUtilityTest {
         SugarDetectionUtility sdu = new SugarDetectionUtility(SilentChemObjectBuilder.getInstance());
         String smiles = "OC[C@H]1O[C@@H](O[C@@H]2[C@@H](O)[C@H](O)[C@@H](CO)O[C@H]2O)[C@H](O)[C@@H](O)[C@@H]1O";
         IAtomContainer molecule = smiPar.parseSmiles(smiles);
-        sdu.splitOGlycosidicBonds(molecule, false);
+        sdu.splitOGlycosidicBonds(molecule, false, false);
         Assertions.assertEquals("OC[C@H]1O[C@H]([C@H](O)[C@@H](O)[C@@H]1O)O.O[C@@H]1[C@@H](O)[C@H](O)[C@@H](CO)O[C@H]1O",
                 smiGen.create(molecule));
     }
@@ -1447,13 +1447,101 @@ class SugarDetectionUtilityTest {
         //CNP0138295
         String smiles = "O=CC(O)C(O)C(O)C(O)COC(O)(C(O)COC(=O)C(O)C(O)C(O)C(O)COC1=CC=CC=2C(=O)C3=CC(=CC(O)=C3C(=O)C12)C)C(O)C(O)C=O";
         IAtomContainer molecule = smiPar.parseSmiles(smiles);
-        sdu.splitEtherEsterAndPeroxideBondsPostProcessing(molecule, false);
+        sdu.splitEtherEsterAndPeroxideBondsPostProcessing(molecule, false, false);
         Assertions.assertEquals("O=CC(O)C(O)C(O)C(O)CO.O=CC(O)C(O)C(O)C(O)CO.O=C(O)C(O)C(O)C(O)C(O)COC1=CC=CC=2C(=O)C3=CC(=CC(O)=C3C(=O)C12)C",
                 smiGen.create(molecule));
         molecule = smiPar.parseSmiles(smiles);
-        sdu.splitEtherEsterAndPeroxideBondsPostProcessing(molecule, true);
+        sdu.splitEtherEsterAndPeroxideBondsPostProcessing(molecule, true, false);
         Assertions.assertEquals("*OC(=O)C(O)C(O)C(O)C(O)COC1=CC=CC=2C(=O)C3=CC(=CC(O)=C3C(=O)C12)C.*OCC(O)C(O)C(O)C(O)C=O.*OCC(O)C(*)(O)C(O)C(O)C=O",
                 smiGen.create(molecule));
+    }
+
+    /**
+     * Tests that small fragments (e.g. methyl ether modifications) are preserved in the post-processing step
+     * of sugar extraction, which was an issue in earlier versions of the code.
+     *
+     * @throws Exception if anything goes wrong
+     */
+    @Test
+    void testSmallFragmentPreservationInPostProcessing() throws Exception {
+        SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
+        SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.Canonical);
+        SugarDetectionUtility sdu = new SugarDetectionUtility(SilentChemObjectBuilder.getInstance());
+        String smiles = "O=C(NC1C(O)OC(CO)C(O)C1OC2OC(CO)C(OC)C(O)C2OC3OC(C)C(O)C(O)C3OC)C";
+        IAtomContainer molecule = smiPar.parseSmiles(smiles);
+        List<IAtomContainer> results = sdu.copyAndExtractAglyconeAndSugars(molecule, true, true, true, true);
+        //notice that the methyl ether modifications are not separated from the sugars
+        List<String> expectedSmilesList = Arrays.asList(
+                "",
+                "*OC1C(O)C(OC(O)C1NC(=O)C)CO",
+                "*OC1OC(CO)C(OC)C(O)C1O*",
+                "*OC1OC(C)C(O)C(O)C1OC"
+        );
+        List<String> generatedSmilesList = this.generateSmilesList(results, smiGen);
+        Assertions.assertLinesMatch(expectedSmilesList, generatedSmilesList);
+
+        //CNP0140416.1
+        smiles = "CO[C@@H]1[C@@H](OC(N)=O)[C@@H](O)[C@H](OC2=CC=C3C([O-])=C(NC(=O)C4=CC=C(O)C(CC=C(C)C)=C4)C(=O)OC3=C2C)OC1(C)C";
+        molecule = smiPar.parseSmiles(smiles);
+        results = sdu.copyAndExtractAglyconeAndSugars(molecule, true, true, true, true);
+        //the carbamic acid and methyl ether modifications are not be separated from the sugar
+        expectedSmilesList = Arrays.asList(
+                "*OC=1C=CC=2C([O-])=C(NC(=O)C3=CC=C(O)C(=C3)CC=C(C)C)C(=O)OC2C1C",
+                "*OC1OC(C)(C)C(OC)C(OC(=O)N)C1O"
+        );
+        generatedSmilesList = this.generateSmilesList(results, smiGen);
+        Assertions.assertLinesMatch(expectedSmilesList, generatedSmilesList);
+
+        //CNP0225661.1
+        smiles = "CC[C@H]1OC(=O)[C@H](C)[C@@H](O[C@H]2C[C@@](C)(OC)[C@@H](O)[C@H](C)O2)[C@H](C)[C@@H](O[C@@H]2O[C@H](C)C[C@H](N(C)C)[C@H]2OC(C)=O)[C@](C)(O)C[C@@H](C)C(=O)[C@H](C)[C@@H](O)[C@]1(C)O";
+        molecule = smiPar.parseSmiles(smiles);
+        //one of the sugars does not have enough exocyclic oxygen atoms
+        sdu.setExocyclicOxygenAtomsToAtomsInRingRatioThresholdSetting(0.1);
+        results = sdu.copyAndExtractAglyconeAndSugars(molecule, true, true, true, true);
+        //the ethyl ester and methyl ether modifications are not be separated from the sugar
+        expectedSmilesList = Arrays.asList(
+                "*OC1C(C(=O)OC(CC)C(O)(C)C(O)C(C(=O)C(C)CC(O)(C)C(O*)C1C)C)C",
+                "*OC1OC(C)C(O)C(OC)(C)C1",
+                "*OC1OC(C)CC(N(C)C)C1OC(=O)C"
+        );
+        generatedSmilesList = this.generateSmilesList(results, smiGen);
+        Assertions.assertLinesMatch(expectedSmilesList, generatedSmilesList);
+
+        //CNP0084266.1
+        smiles = "CCCCCC/C=C\\CCCCCCCCCC(=O)N[C@H]1[C@H](OC[C@H]2O[C@H](OP(=O)([O-])[O-])[C@H](NC(=O)CC(=O)CCCCCCCCCCC)[C@@H](OCCCCCCCCCC)[C@@H]2O)O[C@H](COC)[C@@H](OP(=O)([O-])[O-])[C@@H]1OCC[C@@H](CCCCCCC)OC";
+        molecule = smiPar.parseSmiles(smiles);
+        //back to default
+        sdu.setExocyclicOxygenAtomsToAtomsInRingRatioThresholdSetting(SugarRemovalUtility.EXOCYCLIC_OXYGEN_ATOMS_TO_ATOMS_IN_RING_RATIO_THRESHOLD_DEFAULT);
+        //the sugars are non-terminal
+        sdu.setRemoveOnlyTerminalSugarsSetting(false);
+        results = sdu.copyAndExtractAglyconeAndSugars(molecule, true, true, true, true);
+        //the methyl ether is not separated from the sugar
+        expectedSmilesList = Arrays.asList(
+                "*OCCCCCCCCCC.*OCCC(OC)CCCCCCC.*OP(=O)([O-])[O-].*OP(=O)([O-])[O-].*NC(=O)CC(=O)CCCCCCCCCCC.*NC(=O)CCCCCCCCCC=CCCCCCC",
+                "*OC1OC(COC)C(O*)C(O*)C1N*",
+                "*OCC1OC(O*)C(N*)C(O*)C1O"
+        );
+        generatedSmilesList = this.generateSmilesList(results, smiGen);
+        Assertions.assertLinesMatch(expectedSmilesList, generatedSmilesList);
+
+        //CNP0279873.1
+        smiles = "C[C@H]1O[C@@H](O[C@H]2[C@@H](OC=O)C[C@H](O[C@H]3[C@@H](OC=O)C[C@H](O[C@H]4CC[C@@]5(C)[C@H](CC[C@@H]6[C@@H]5CC[C@]5(C)[C@@H](C7=CC(=O)OC7)[C@@H](OC=O)C[C@]65O)C4)O[C@@H]3C)O[C@@H]2C)C[C@H](OC=O)[C@@H]1OC=O";
+        molecule = smiPar.parseSmiles(smiles);
+        //back to default
+        sdu.setRemoveOnlyTerminalSugarsSetting(true);
+        results = sdu.copyAndExtractAglyconeAndSugars(molecule, true, true, true, true);
+        //the formic acid moieties are not separated from the sugars
+        for (IAtomContainer result : results) {
+            System.out.println(smiGen.create(result));
+        }
+        expectedSmilesList = Arrays.asList(
+                "*OC1CCC2(C)C(CCC3C2CCC4(C)C(C5=CC(=O)OC5)C(OC=O)CC34O)C1",
+                "*OC1OC(C)C(OC=O)C(OC=O)C1",
+                "*OC1OC(C)C(O*)C(OC=O)C1",
+                "*OC1OC(C)C(O*)C(OC=O)C1"
+        );
+        generatedSmilesList = this.generateSmilesList(results, smiGen);
+        Assertions.assertLinesMatch(expectedSmilesList, generatedSmilesList);
     }
 
     /**
@@ -1474,6 +1562,7 @@ class SugarDetectionUtilityTest {
                 true,
                 false,
                 false,
+                true,
                 true,
                 inputAtomToAglyconeAtomMap,
                 new HashMap<>((int) ((mol.getAtomCount() / 0.75f) + 2), 0.75f),
@@ -1507,6 +1596,7 @@ class SugarDetectionUtilityTest {
                 true,
                 false,
                 false,
+                true,
                 true,
                 inputAtomToAglyconeAtomMap,
                 new HashMap<>((int) ((mol.getBondCount() / 0.75f) + 2), 0.75f),

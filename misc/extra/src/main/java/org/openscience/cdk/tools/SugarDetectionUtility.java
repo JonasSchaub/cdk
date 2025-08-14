@@ -78,10 +78,10 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
 
     /**
      * SMARTS pattern for detecting glycosidic bonds between circular sugar moieties for postprocessing after extraction.
-     * Defines an aliphatic C in a ring with degree 3 and no charge, connected to an aliphatic O not in a ring with degree 2 and no charge,
+     * Defines an aliphatic C in a ring with degree 3 or 4 and no charge, connected to an aliphatic O not in a ring with degree 2 and no charge,
      * connected to an aliphatic C with no charge (this side is left more promiscuous for corner cases).
      */
-    public static final String O_GLYCOSIDIC_BOND_SMARTS = "[C;R;D3;+0:1]-!@[O;!R;D2;+0:2]-!@[C;+0:3]";
+    public static final String O_GLYCOSIDIC_BOND_SMARTS = "[C;R;D3,4;+0:1]-!@[O;!R;D2;+0:2]-!@[C;+0:3]";
 
     /**
      * SMARTS pattern for detecting ester bonds between linear sugar moieties for postprocessing after extraction.
@@ -166,7 +166,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
     public List<IAtomContainer> copyAndExtractAglyconeAndSugars(
             IAtomContainer mol) {
         return this.copyAndExtractAglyconeAndSugars(
-                mol, true, false, false, false, null, null, null, null);
+                mol, true, false, false, false, true, null, null, null, null);
     }
 
     /**
@@ -213,7 +213,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
             boolean extractCircularSugars,
             boolean extractLinearSugars) {
         return this.copyAndExtractAglyconeAndSugars(
-                mol, extractCircularSugars, extractLinearSugars, false, false, null, null, null, null);
+                mol, extractCircularSugars, extractLinearSugars, false, false, true, null, null, null, null);
     }
 
     /**
@@ -264,7 +264,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
             boolean extractLinearSugars,
             boolean markAttachPointsByR) {
         return this.copyAndExtractAglyconeAndSugars(
-                mol, extractCircularSugars, extractLinearSugars, markAttachPointsByR, false, null, null, null, null);
+                mol, extractCircularSugars, extractLinearSugars, markAttachPointsByR, false, true, null, null, null, null);
     }
 
     /**
@@ -318,17 +318,10 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
             boolean markAttachPointsByR,
             boolean postProcessSugars) {
         return this.copyAndExtractAglyconeAndSugars(
-                mol, extractCircularSugars, extractLinearSugars, markAttachPointsByR, postProcessSugars,
+                mol, extractCircularSugars, extractLinearSugars, markAttachPointsByR, postProcessSugars, true,
                 null, null, null, null);
     }
 
-    //remove this method after all and incorporate the new behaviour into the existing methods? -> better to keep the original behaviour of the original methods
-    //do not copy the aglycone? -> too much of a hassle because for postprocessing, we repeatedly need the original structure
-    //implement alternative method that directly returns group indices? -> blows up the code too much and the atom container fragments are the main point of reference
-    //TODO: simplify this method by encapsulating more code
-    //TODO: add special treatment for esters (on the sugar side and on the aglycone side, respectively)?
-    //TODO: look at other special cases in the test class that might require additional postprocessing
-    //TODO: check doc of all overloaded methods and ensure that they are consistent
     /**
      * Extracts copies of the aglycone and (specified) sugar parts of the given molecule (if there are any).
      * <p>
@@ -366,6 +359,83 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
      *                           implicit hydrogens are added to saturate the connections.
      * @param postProcessSugars If true, postprocessing of sugar fragments is performed, i.e. splitting O-glycosidic
      *                          bonds in circular and splitting ether, ester, and peroxide bonds in linear sugar moieties
+     * @param limitPostProcessingBySize If true, sugar moieties will only be separated/split in postprocessing if they are larger
+     *                                  than the set preservation mode threshold (see {@link SugarRemovalUtility}). This is
+     *                                  to prevent smaller substituents like, e.g. methyl ethers, being separated from the
+     *                                  sugars. For linear sugars, the minimum size for linear sugar candidates is applied
+     *                                  as a criterion.
+     * @return A list of atom containers where the first element is the aglycone
+     *         (copy molecule with sugars removed) and subsequent elements are the
+     *         individual sugar fragments that were extracted (also copies). If no sugars were
+     *         detected or removed, returns a list containing only a copy of the
+     *         original molecule. Sugar fragments may be disconnected from each
+     *         other if they were not directly linked in the original structure or were disconnected in postprocessing.
+     * @throws NullPointerException if the input molecule is null
+     * @see SugarRemovalUtility#removeCircularSugars(IAtomContainer)
+     * @see SugarRemovalUtility#removeLinearSugars(IAtomContainer)
+     * @see SugarRemovalUtility#removeCircularAndLinearSugars(IAtomContainer)
+     */
+    public List<IAtomContainer> copyAndExtractAglyconeAndSugars(
+            IAtomContainer mol,
+            boolean extractCircularSugars,
+            boolean extractLinearSugars,
+            boolean markAttachPointsByR,
+            boolean postProcessSugars,
+            boolean limitPostProcessingBySize) {
+        return this.copyAndExtractAglyconeAndSugars(
+                mol, extractCircularSugars, extractLinearSugars, markAttachPointsByR, postProcessSugars, limitPostProcessingBySize,
+                null, null, null, null);
+    }
+
+    //remove this method after all and incorporate the new behaviour into the existing methods? -> better to keep the original behaviour of the original methods
+    //do not copy the aglycone? -> too much of a hassle because for postprocessing, we repeatedly need the original structure
+    //implement alternative method that directly returns group indices? -> blows up the code too much and the atom container fragments are the main point of reference
+    //TODO: simplify this method by encapsulating more code
+    //TODO: add special treatment for esters (on the sugar side and on the aglycone side, respectively)?
+    //TODO: look at other special cases in the test class that might require additional postprocessing
+    //TODO: check doc of all overloaded methods and ensure that they are consistent; check docs in general
+    /**
+     * Extracts copies of the aglycone and (specified) sugar parts of the given molecule (if there are any).
+     * <p>
+     * This method creates a deep copy of the input molecule and removes the specified
+     * sugar moieties (circular and/or linear) to produce an aglycone. It then creates
+     * a second copy to extract the sugar fragments that were removed. The attachment
+     * points between the aglycone and sugars are handled by either adding R-groups
+     * (pseudo atoms) or implicit hydrogens to saturate the broken bonds.
+     *
+     * <p>The method preserves stereochemistry information at connection points and
+     * handles glycosidic bonds appropriately. When bonds are broken between sugar
+     * moieties and the aglycone, connecting heteroatoms (such as glycosidic oxygen,
+     * nitrogen, or sulfur atoms) are copied to both the aglycone and sugar fragments
+     * to maintain chemical validity.
+     *
+     * <p>The extraction process respects all current sugar detection settings as described in
+     * {@link SugarRemovalUtility}, including terminal vs. non-terminal sugar removal,
+     * preservation mode settings, and various detection thresholds.
+     *
+     * <p>Note that atom types are not copied, they have to be re-perceived if needed.</p>
+     *
+     * <p>This method additionally gives you the option to supply four maps as parameters that will be filled with a
+     * mapping of atoms and bonds in the original molecule to the atoms and bonds in the aglycone and sugar copies. They
+     * should be of sufficient size and empty when given.</p>
+     *
+     * @param mol The input molecule to separate into aglycone and sugar components.
+     *            Must not be null but can be empty; a list containing only the empty given
+     *            atom container is returned in the latter case.
+     * @param extractCircularSugars If true, circular sugar moieties will be detected
+     *                             and extracted according to current settings.
+     * @param extractLinearSugars If true, linear sugar moieties will be detected
+     *                           and extracted according to current settings.
+     * @param markAttachPointsByR If true, attachment points where sugars and the aglycone were connected
+     *                           are marked with R-groups (pseudo atoms). If false,
+     *                           implicit hydrogens are added to saturate the connections.
+     * @param postProcessSugars If true, postprocessing of sugar fragments is performed, i.e. splitting O-glycosidic
+     *                          bonds in circular and splitting ether, ester, and peroxide bonds in linear sugar moieties
+     * @param limitPostProcessingBySize If true, sugar moieties will only be separated/split in postprocessing if they are larger
+     *                                  than the set preservation mode threshold (see {@link SugarRemovalUtility}). This is
+     *                                  to prevent smaller substituents like, e.g. methyl ethers, being separated from the
+     *                                  sugars. For linear sugars, the minimum size for linear sugar candidates is applied
+     *                                  as a criterion.
      * @param inputAtomToAtomCopyInAglyconeMap Map to be filled with mappings from original atoms to their copies in the aglycone.
      *                                         Can be null (a new map will be created) or an empty map with sufficient capacity.
      * @param inputBondToBondCopyInAglyconeMap Map to be filled with mappings from original bonds to their copies in the aglycone.
@@ -391,6 +461,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
             boolean extractLinearSugars,
             boolean markAttachPointsByR,
             boolean postProcessSugars,
+            boolean limitPostProcessingBySize,
             Map<IAtom, IAtom> inputAtomToAtomCopyInAglyconeMap,
             Map<IBond, IBond> inputBondToBondCopyInAglyconeMap,
             Map<IAtom, IAtom> inputAtomToAtomCopyInSugarsMap,
@@ -636,10 +707,10 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
         }
         if (postProcessSugars) {
             if (extractLinearSugars) {
-                this.splitEtherEsterAndPeroxideBondsPostProcessing(copyForSugars, markAttachPointsByR);
+                this.splitEtherEsterAndPeroxideBondsPostProcessing(copyForSugars, markAttachPointsByR, limitPostProcessingBySize);
             }
             if (extractCircularSugars) {
-                this.splitOGlycosidicBonds(copyForSugars, markAttachPointsByR);
+                this.splitOGlycosidicBonds(copyForSugars, markAttachPointsByR, limitPostProcessingBySize);
             }
         }
         //clean up the maps
@@ -1036,7 +1107,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
      * @param markAttachPointsByR If true, the attachment points are marked with R-groups; otherwise, they are saturated with implicit H.
      * @throws NullPointerException If the input molecule is null.
      */
-    protected void splitOGlycosidicBonds(IAtomContainer molecule, boolean markAttachPointsByR) {
+    protected void splitOGlycosidicBonds(IAtomContainer molecule, boolean markAttachPointsByR, boolean limitPostProcessingBySize) {
         if (molecule == null) {
             throw new NullPointerException("The input molecule must not be null.");
         }
@@ -1046,14 +1117,6 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
         Mappings mappings = SmartsPattern.create(SugarDetectionUtility.O_GLYCOSIDIC_BOND_SMARTS).matchAll(molecule).uniqueAtoms();
         if (mappings.atLeast(1)) {
             for (IAtomContainer esterGroup : mappings.toSubstructures()) {
-                //split the detected bond in a copy first to see whether the resulting fragment is large enough
-                float loadFactor = 0.75f; //default load factor for HashMaps
-                //ensuring sufficient initial capacity
-                int atomMapInitCapacity = (int)((molecule.getAtomCount() / loadFactor) + 3.0f);
-                int bondMapInitCapacity = (int)((molecule.getBondCount() / loadFactor) + 3.0f);
-                Map<IAtom, IAtom> inputAtomToAtomCopyMap = new HashMap<>(atomMapInitCapacity);
-                Map<IBond, IBond> inputBondToBondCopyMap = new HashMap<>(bondMapInitCapacity);
-                IAtomContainer moleculeCopy = this.deeperCopy(molecule, inputAtomToAtomCopyMap, inputBondToBondCopyMap);
                 IAtom carbonOne = null;
                 IAtom connectingOxygen = null;
                 for (IAtom atom : esterGroup.atoms()) {
@@ -1064,15 +1127,28 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
                     }
                 }
                 IBond bondToBreak = molecule.getBond(carbonOne, connectingOxygen);
-                moleculeCopy.removeBond(inputBondToBondCopyMap.get(bondToBreak));
-                //do not split the bond if a resulting fragment is too small
                 boolean isFragmentTooSmall = false;
-                for (IAtomContainer fragment : ConnectivityChecker.partitionIntoMolecules(moleculeCopy)) {
-                    if (this.isTooSmallToPreserve(fragment)) {
-                        isFragmentTooSmall = true;
-                        break;
+                if (limitPostProcessingBySize) {
+                    //split the detected bond in a copy first to see whether the resulting fragment is large enough
+                    float loadFactor = 0.75f; //default load factor for HashMaps
+                    //ensuring sufficient initial capacity
+                    int atomMapInitCapacity = (int)((molecule.getAtomCount() / loadFactor) + 3.0f);
+                    int bondMapInitCapacity = (int)((molecule.getBondCount() / loadFactor) + 3.0f);
+                    Map<IAtom, IAtom> inputAtomToAtomCopyMap = new HashMap<>(atomMapInitCapacity);
+                    Map<IBond, IBond> inputBondToBondCopyMap = new HashMap<>(bondMapInitCapacity);
+                    IAtomContainer moleculeCopy = this.deeperCopy(molecule, inputAtomToAtomCopyMap, inputBondToBondCopyMap);
+                    moleculeCopy.removeBond(inputBondToBondCopyMap.get(bondToBreak));
+                    //do not split the bond if a resulting fragment is too small
+                    for (IAtomContainer fragment : ConnectivityChecker.partitionIntoMolecules(moleculeCopy)) {
+                        if (this.isTooSmallToPreserve(fragment)) {
+                            isFragmentTooSmall = true;
+                            break;
+                        }
                     }
-                }
+                } //else {
+                    //no limit by size, so we can split the bond; but this value is already assigned
+                    //isFragmentTooSmall = false;
+                //}
                 if (!isFragmentTooSmall) {
                     IAtom newOxygen = molecule.newAtom(IElement.O);
                     molecule.newBond(carbonOne, newOxygen, IBond.Order.SINGLE);
@@ -1119,7 +1195,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
      * @param markAttachPointsByR If true, the attachment points are marked with R-groups; otherwise, they are saturated with implicit H.
      * @throws NullPointerException If the input molecule is null.
      */
-    protected void splitEtherEsterAndPeroxideBondsPostProcessing(IAtomContainer molecule, boolean markAttachPointsByR) {
+    protected void splitEtherEsterAndPeroxideBondsPostProcessing(IAtomContainer molecule, boolean markAttachPointsByR, boolean limitPostProcessingBySize) {
         if (molecule == null) {
             throw new NullPointerException("The input molecule must not be null.");
         }
@@ -1127,10 +1203,10 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
             return; //nothing to do
         }
         //note: the order is important here, since the ether pattern is very promiscuous and matches esters and peroxides as well
-        this.splitEsters(molecule, markAttachPointsByR);
-        this.splitEthersCrosslinking(molecule, markAttachPointsByR);
-        this.splitEthers(molecule, markAttachPointsByR);
-        this.splitPeroxides(molecule, markAttachPointsByR);
+        this.splitEsters(molecule, markAttachPointsByR, limitPostProcessingBySize);
+        this.splitEthersCrosslinking(molecule, markAttachPointsByR, limitPostProcessingBySize);
+        this.splitEthers(molecule, markAttachPointsByR, limitPostProcessingBySize);
+        this.splitPeroxides(molecule, markAttachPointsByR, limitPostProcessingBySize);
     }
 
     /**
@@ -1156,7 +1232,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
      *                            with implicit hydrogens.
      * @throws NullPointerException If the input molecule is null.
      */
-    protected void splitEsters(IAtomContainer molecule, boolean markAttachPointsByR) {
+    protected void splitEsters(IAtomContainer molecule, boolean markAttachPointsByR, boolean limitPostProcessingBySize) {
         if (molecule == null) {
             throw new NullPointerException("The input molecule must not be null.");
         }
@@ -1166,14 +1242,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
         Mappings esterMappings = SmartsPattern.create(SugarDetectionUtility.ESTER_BOND_SMARTS).matchAll(molecule).uniqueAtoms();
         if (esterMappings.atLeast(1)) {
             for (IAtomContainer esterGroup : esterMappings.toSubstructures()) {
-                //split the detected bond in a copy first to see whether the resulting fragment is large enough
-                float loadFactor = 0.75f; //default load factor for HashMaps
-                //ensuring sufficient initial capacity
-                int atomMapInitCapacity = (int)((molecule.getAtomCount() / loadFactor) + 3.0f);
-                int bondMapInitCapacity = (int)((molecule.getBondCount() / loadFactor) + 3.0f);
-                Map<IAtom, IAtom> inputAtomToAtomCopyMap = new HashMap<>(atomMapInitCapacity);
-                Map<IBond, IBond> inputBondToBondCopyMap = new HashMap<>(bondMapInitCapacity);
-                IAtomContainer moleculeCopy = this.deeperCopy(molecule, inputAtomToAtomCopyMap, inputBondToBondCopyMap);
+
                 IAtom carbonOne = null;
                 IAtom connectingOxygen = null;
                 for (IAtom atom : esterGroup.atoms()) {
@@ -1184,15 +1253,28 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
                     }
                 }
                 IBond bondToBreak = molecule.getBond(carbonOne, connectingOxygen);
-                moleculeCopy.removeBond(inputBondToBondCopyMap.get(bondToBreak));
-                //do not split the bond if a resulting fragment is too small
                 boolean isFragmentTooSmall = false;
-                for (IAtomContainer fragment : ConnectivityChecker.partitionIntoMolecules(moleculeCopy)) {
-                    if (fragment.getAtomCount() < this.getLinearSugarCandidateMinSizeSetting()) {
-                        isFragmentTooSmall = true;
-                        break;
+                if (limitPostProcessingBySize) {
+                    //split the detected bond in a copy first to see whether the resulting fragment is large enough
+                    float loadFactor = 0.75f; //default load factor for HashMaps
+                    //ensuring sufficient initial capacity
+                    int atomMapInitCapacity = (int)((molecule.getAtomCount() / loadFactor) + 3.0f);
+                    int bondMapInitCapacity = (int)((molecule.getBondCount() / loadFactor) + 3.0f);
+                    Map<IAtom, IAtom> inputAtomToAtomCopyMap = new HashMap<>(atomMapInitCapacity);
+                    Map<IBond, IBond> inputBondToBondCopyMap = new HashMap<>(bondMapInitCapacity);
+                    IAtomContainer moleculeCopy = this.deeperCopy(molecule, inputAtomToAtomCopyMap, inputBondToBondCopyMap);
+                    moleculeCopy.removeBond(inputBondToBondCopyMap.get(bondToBreak));
+                    //do not split the bond if a resulting fragment is too small
+                    for (IAtomContainer fragment : ConnectivityChecker.partitionIntoMolecules(moleculeCopy)) {
+                        if (fragment.getAtomCount() < this.getLinearSugarCandidateMinSizeSetting()) {
+                            isFragmentTooSmall = true;
+                            break;
+                        }
                     }
-                }
+                } //else {
+                    //no limit by size, so we can split the bond; but this value is already assigned
+                    //isFragmentTooSmall = false;
+                //}
                 if (!isFragmentTooSmall) {
                     IAtom newOxygen = molecule.newAtom(IElement.O);
                     molecule.newBond(carbonOne, newOxygen, IBond.Order.SINGLE);
@@ -1246,7 +1328,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
      * @param markAttachPointsByR If true, the attachment points are marked with R-groups; otherwise, they are saturated with implicit hydrogens.
      * @throws NullPointerException If the input molecule is null.
      */
-    protected void splitEthersCrosslinking(IAtomContainer molecule, boolean markAttachPointsByR) {
+    protected void splitEthersCrosslinking(IAtomContainer molecule, boolean markAttachPointsByR, boolean limitPostProcessingBySize) {
         if (molecule == null) {
             throw new NullPointerException("The input molecule must not be null.");
         }
@@ -1256,14 +1338,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
         Mappings mappings = SmartsPattern.create(SugarDetectionUtility.CROSS_LINKING_ETHER_BOND_SMARTS).matchAll(molecule).uniqueAtoms();
         if (mappings.atLeast(1)) {
             for (IAtomContainer esterGroup : mappings.toSubstructures()) {
-                //split the detected bond in a copy first to see whether the resulting fragment is large enough
-                float loadFactor = 0.75f; //default load factor for HashMaps
-                //ensuring sufficient initial capacity
-                int atomMapInitCapacity = (int)((molecule.getAtomCount() / loadFactor) + 3.0f);
-                int bondMapInitCapacity = (int)((molecule.getBondCount() / loadFactor) + 3.0f);
-                Map<IAtom, IAtom> inputAtomToAtomCopyMap = new HashMap<>(atomMapInitCapacity);
-                Map<IBond, IBond> inputBondToBondCopyMap = new HashMap<>(bondMapInitCapacity);
-                IAtomContainer moleculeCopy = this.deeperCopy(molecule, inputAtomToAtomCopyMap, inputBondToBondCopyMap);
+
                 IAtom carbonOne = null;
                 IAtom carbonTwo = null;
                 IAtom connectingOxygen = null;
@@ -1278,15 +1353,28 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
                 }
                 //no need to copy stereo elements, the connecting oxygen is not duplicated
                 IBond bondToBreak = molecule.getBond(carbonTwo, connectingOxygen);
-                moleculeCopy.removeBond(inputBondToBondCopyMap.get(bondToBreak));
-                //do not split the bond if a resulting fragment is too small
                 boolean isFragmentTooSmall = false;
-                for (IAtomContainer fragment : ConnectivityChecker.partitionIntoMolecules(moleculeCopy)) {
-                    if (fragment.getAtomCount() < this.getLinearSugarCandidateMinSizeSetting()) {
-                        isFragmentTooSmall = true;
-                        break;
+                if (limitPostProcessingBySize) {
+                    //split the detected bond in a copy first to see whether the resulting fragment is large enough
+                    float loadFactor = 0.75f; //default load factor for HashMaps
+                    //ensuring sufficient initial capacity
+                    int atomMapInitCapacity = (int)((molecule.getAtomCount() / loadFactor) + 3.0f);
+                    int bondMapInitCapacity = (int)((molecule.getBondCount() / loadFactor) + 3.0f);
+                    Map<IAtom, IAtom> inputAtomToAtomCopyMap = new HashMap<>(atomMapInitCapacity);
+                    Map<IBond, IBond> inputBondToBondCopyMap = new HashMap<>(bondMapInitCapacity);
+                    IAtomContainer moleculeCopy = this.deeperCopy(molecule, inputAtomToAtomCopyMap, inputBondToBondCopyMap);
+                    moleculeCopy.removeBond(inputBondToBondCopyMap.get(bondToBreak));
+                    //do not split the bond if a resulting fragment is too small
+                    for (IAtomContainer fragment : ConnectivityChecker.partitionIntoMolecules(moleculeCopy)) {
+                        if (fragment.getAtomCount() < this.getLinearSugarCandidateMinSizeSetting()) {
+                            isFragmentTooSmall = true;
+                            break;
+                        }
                     }
-                }
+                } //else {
+                    //no limit by size, so we can split the bond; but this value is already assigned
+                    //isFragmentTooSmall = false;
+                //}
                 if (!isFragmentTooSmall) {
                     molecule.removeBond(bondToBreak);
                     IAtom[] atoms = new IAtom[] {connectingOxygen, carbonTwo};
@@ -1328,7 +1416,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
      * @param markAttachPointsByR If true, the attachment points are marked with R-groups; otherwise, they are saturated with implicit hydrogens.
      * @throws NullPointerException If the input molecule is null.
      */
-    protected void splitEthers(IAtomContainer molecule, boolean markAttachPointsByR) {
+    protected void splitEthers(IAtomContainer molecule, boolean markAttachPointsByR, boolean limitPostProcessingBySize) {
         if (molecule == null) {
             throw new NullPointerException("The input molecule must not be null.");
         }
@@ -1338,14 +1426,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
         Mappings mappings = SmartsPattern.create(SugarDetectionUtility.ETHER_BOND_SMARTS).matchAll(molecule).uniqueAtoms();
         if (mappings.atLeast(1)) {
             for (IAtomContainer esterGroup : mappings.toSubstructures()) {
-                //split the detected bond in a copy first to see whether the resulting fragment is large enough
-                float loadFactor = 0.75f; //default load factor for HashMaps
-                //ensuring sufficient initial capacity
-                int atomMapInitCapacity = (int)((molecule.getAtomCount() / loadFactor) + 3.0f);
-                int bondMapInitCapacity = (int)((molecule.getBondCount() / loadFactor) + 3.0f);
-                Map<IAtom, IAtom> inputAtomToAtomCopyMap = new HashMap<>(atomMapInitCapacity);
-                Map<IBond, IBond> inputBondToBondCopyMap = new HashMap<>(bondMapInitCapacity);
-                IAtomContainer moleculeCopy = this.deeperCopy(molecule, inputAtomToAtomCopyMap, inputBondToBondCopyMap);
+
                 IAtom carbonOne = null;
                 IAtom connectingOxygen = null;
                 for (IAtom atom : esterGroup.atoms()) {
@@ -1356,15 +1437,28 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
                     }
                 }
                 IBond bondToBreak = molecule.getBond(carbonOne, connectingOxygen);
-                moleculeCopy.removeBond(inputBondToBondCopyMap.get(bondToBreak));
-                //do not split the bond if a resulting fragment is too small
                 boolean isFragmentTooSmall = false;
-                for (IAtomContainer fragment : ConnectivityChecker.partitionIntoMolecules(moleculeCopy)) {
-                    if (fragment.getAtomCount() < this.getLinearSugarCandidateMinSizeSetting()) {
-                        isFragmentTooSmall = true;
-                        break;
+                if (limitPostProcessingBySize) {
+                    //split the detected bond in a copy first to see whether the resulting fragment is large enough
+                    float loadFactor = 0.75f; //default load factor for HashMaps
+                    //ensuring sufficient initial capacity
+                    int atomMapInitCapacity = (int)((molecule.getAtomCount() / loadFactor) + 3.0f);
+                    int bondMapInitCapacity = (int)((molecule.getBondCount() / loadFactor) + 3.0f);
+                    Map<IAtom, IAtom> inputAtomToAtomCopyMap = new HashMap<>(atomMapInitCapacity);
+                    Map<IBond, IBond> inputBondToBondCopyMap = new HashMap<>(bondMapInitCapacity);
+                    IAtomContainer moleculeCopy = this.deeperCopy(molecule, inputAtomToAtomCopyMap, inputBondToBondCopyMap);
+                    moleculeCopy.removeBond(inputBondToBondCopyMap.get(bondToBreak));
+                    //do not split the bond if a resulting fragment is too small
+                    for (IAtomContainer fragment : ConnectivityChecker.partitionIntoMolecules(moleculeCopy)) {
+                        if (fragment.getAtomCount() < this.getLinearSugarCandidateMinSizeSetting()) {
+                            isFragmentTooSmall = true;
+                            break;
+                        }
                     }
-                }
+                } //else {
+                    //no limit by size, so we can split the bond; but this value is already assigned
+                    //isFragmentTooSmall = false;
+                //}
                 if (!isFragmentTooSmall) {
                     IAtom newOxygen = molecule.newAtom(IElement.O);
                     molecule.newBond(carbonOne, newOxygen, IBond.Order.SINGLE);
@@ -1418,7 +1512,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
      * @param markAttachPointsByR If true, the attachment points are marked with R-groups; otherwise, they are saturated with implicit hydrogens.
      * @throws NullPointerException If the input molecule is null.
      */
-    protected void splitPeroxides(IAtomContainer molecule, boolean markAttachPointsByR) {
+    protected void splitPeroxides(IAtomContainer molecule, boolean markAttachPointsByR, boolean limitPostProcessingBySize) {
         if (molecule == null) {
             throw new NullPointerException("The input molecule must not be null.");
         }
@@ -1428,14 +1522,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
         Mappings mappings = SmartsPattern.create(SugarDetectionUtility.PEROXIDE_BOND_SMARTS).matchAll(molecule).uniqueAtoms();
         if (mappings.atLeast(1)) {
             for (IAtomContainer esterGroup : mappings.toSubstructures()) {
-                //split the detected bond in a copy first to see whether the resulting fragment is large enough
-                float loadFactor = 0.75f; //default load factor for HashMaps
-                //ensuring sufficient initial capacity
-                int atomMapInitCapacity = (int)((molecule.getAtomCount() / loadFactor) + 3.0f);
-                int bondMapInitCapacity = (int)((molecule.getBondCount() / loadFactor) + 3.0f);
-                Map<IAtom, IAtom> inputAtomToAtomCopyMap = new HashMap<>(atomMapInitCapacity);
-                Map<IBond, IBond> inputBondToBondCopyMap = new HashMap<>(bondMapInitCapacity);
-                IAtomContainer moleculeCopy = this.deeperCopy(molecule, inputAtomToAtomCopyMap, inputBondToBondCopyMap);
+
                 IAtom oxygenOne = null;
                 IAtom oxygenTwo = null;
                 for (IAtom atom : esterGroup.atoms()) {
@@ -1448,15 +1535,29 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
                     }
                 }
                 IBond bondToBreak = molecule.getBond(oxygenOne, oxygenTwo);
-                moleculeCopy.removeBond(inputBondToBondCopyMap.get(bondToBreak));
-                //do not split the bond if a resulting fragment is too small
                 boolean isFragmentTooSmall = false;
-                for (IAtomContainer fragment : ConnectivityChecker.partitionIntoMolecules(moleculeCopy)) {
-                    if (fragment.getAtomCount() < this.getLinearSugarCandidateMinSizeSetting()) {
-                        isFragmentTooSmall = true;
-                        break;
+                if (limitPostProcessingBySize) {
+                    //split the detected bond in a copy first to see whether the resulting fragment is large enough
+                    float loadFactor = 0.75f; //default load factor for HashMaps
+                    //ensuring sufficient initial capacity
+                    int atomMapInitCapacity = (int)((molecule.getAtomCount() / loadFactor) + 3.0f);
+                    int bondMapInitCapacity = (int)((molecule.getBondCount() / loadFactor) + 3.0f);
+                    Map<IAtom, IAtom> inputAtomToAtomCopyMap = new HashMap<>(atomMapInitCapacity);
+                    Map<IBond, IBond> inputBondToBondCopyMap = new HashMap<>(bondMapInitCapacity);
+                    IAtomContainer moleculeCopy = this.deeperCopy(molecule, inputAtomToAtomCopyMap, inputBondToBondCopyMap);
+                    moleculeCopy.removeBond(inputBondToBondCopyMap.get(bondToBreak));
+                    //do not split the bond if a resulting fragment is too small
+
+                    for (IAtomContainer fragment : ConnectivityChecker.partitionIntoMolecules(moleculeCopy)) {
+                        if (fragment.getAtomCount() < this.getLinearSugarCandidateMinSizeSetting()) {
+                            isFragmentTooSmall = true;
+                            break;
+                        }
                     }
-                }
+                } //else {
+                    //no limit by size, so we can split the bond; but this value is already assigned
+                    //isFragmentTooSmall = false;
+                //}
                 if (!isFragmentTooSmall) {
                     //no need to copy stereo elements, the connecting oxygen is not duplicated
                     molecule.removeBond(bondToBreak);
