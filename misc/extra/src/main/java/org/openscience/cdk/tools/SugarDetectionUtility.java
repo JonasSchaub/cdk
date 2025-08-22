@@ -35,6 +35,8 @@ import org.openscience.cdk.interfaces.IStereoElement;
 import org.openscience.cdk.isomorphism.Mappings;
 import org.openscience.cdk.smarts.SmartsPattern;
 
+import javax.vecmath.Point2d;
+import javax.vecmath.Point3d;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -390,7 +392,6 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
     //remove this method after all and incorporate the new behaviour into the existing methods? -> better to keep the original behaviour of the original methods
     //do not copy the aglycone? -> too much of a hassle because for postprocessing, we repeatedly need the original structure
     //implement alternative method that directly returns group indices? -> blows up the code too much and the atom container fragments are the main point of reference
-    //TODO: copy atom coordinates and other properties as well (see Max's code)
     //TODO: simplify this method by encapsulating more code
     //TODO: add special treatment for esters (on the sugar side and on the aglycone side, respectively)?
     //TODO: look at other special cases in the test class that might require additional postprocessing
@@ -981,8 +982,10 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
      *  <br>- valency
      *  <br>- atom type name
      *  <br>- formal charge
+     *  <br>- point 2D and 3D coordinates
+     *  <br>- flags
      *  <br>- some primitive-based properties (String, Integer, Boolean)
-     * <br>Note: atom types of the original atoms are not copied and hence, some properties will be unset in the copies.
+     * <br>Note: atom types and isotopes of the original atoms are not copied and hence, some properties will be unset in the copies.
      * If you need atom types and their defining properties, you need to re-perceive them after copying.
      *
      * @param atom the atom to copy
@@ -995,8 +998,19 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
         cpyAtom.setIsAromatic(atom.isAromatic());
         cpyAtom.setValency(atom.getValency());
         cpyAtom.setAtomTypeName(atom.getAtomTypeName());
+        //setting the formal charge also sets the (partial) charge, see https://github.com/cdk/cdk/pull/1151
         cpyAtom.setFormalCharge(atom.getFormalCharge());
-        // properties
+        if (atom.getPoint2d() != null) {
+            cpyAtom.setPoint2d(new Point2d(atom.getPoint2d().x, atom.getPoint2d().y));
+        }
+        if (atom.getPoint3d() != null) {
+            cpyAtom.setPoint3d(new Point3d(atom.getPoint3d().x, atom.getPoint3d().y, atom.getPoint3d().z));
+        }
+        cpyAtom.setFlags(atom.getFlags());
+        //fractional point 3D (location in a crystal unit cell) is deliberately not copied; add if needed
+        //fields related to atom type (max bond order, bond order sum, covalent radius, hybridization, formal neighbor count) are deliberately not copied; add if needed
+        //fields related to isotope (exact mass, natural abundance, mass number) are deliberately not copied; add if needed
+        //properties:
         for (Map.Entry<Object, Object> entry : atom.getProperties().entrySet()) {
             if ((entry.getKey() instanceof String || entry.getKey() instanceof Integer || entry.getKey() instanceof Boolean)
                     && (entry.getValue() instanceof String || entry.getValue() instanceof Integer || entry.getValue() instanceof Boolean || entry.getValue() == null)) {
@@ -1014,6 +1028,8 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
      * <br>- stereo
      * <br>- display
      * <br>- in ring flag
+     * <br>- flags
+     * <br>- electron count
      * <br>- some primitive-based properties (String, Integer, Boolean)
      * <br>Note: The begin and end atoms are not copied, but the given ones are used in the copy.
      * <br>Note also: the created bond must be added to the copy atom container by the calling code!
@@ -1030,7 +1046,9 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
         newBond.setStereo(bond.getStereo());
         newBond.setDisplay(bond.getDisplay());
         newBond.setIsInRing(bond.isInRing());
-        // properties
+        newBond.setFlags(bond.getFlags());
+        newBond.setElectronCount(bond.getElectronCount());
+        //properties:
         for (Map.Entry<Object, Object> entry : bond.getProperties().entrySet()) {
             if ((entry.getKey() instanceof String || entry.getKey() instanceof Integer || entry.getKey() instanceof Boolean)
                     && (entry.getValue() instanceof String || entry.getValue() instanceof Integer || entry.getValue() instanceof Boolean || entry.getValue() == null)) {
