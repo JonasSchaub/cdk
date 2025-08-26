@@ -533,12 +533,13 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
             if (!copyForAglycone.contains(inputBondToBondCopyInAglyconeMap.get(bond))
                     && !copyForSugars.contains(inputBondToBondCopyInSugarsMap.get(bond))) {
                 if (this.isCarbonAtom(bond.getBegin()) && this.isCarbonAtom(bond.getEnd())) {
-                    //detect cases where the C6 carbon was separated from the sugar
+                    //detect cases where the C6 carbon was separated from the sugar and cases where the sugar carries a carboxy group
                     boolean isBeginInAglycone = copyForAglycone.contains(inputAtomToAtomCopyInAglyconeMap.get(bond.getBegin()));
                     IAtom carbonInAglycone = isBeginInAglycone?
                             inputAtomToAtomCopyInAglyconeMap.get(bond.getBegin()) : inputAtomToAtomCopyInAglyconeMap.get(bond.getEnd());
                     IAtom aglyconeCarbonOriginalAtom = isBeginInAglycone? bond.getBegin() : bond.getEnd();
                     if (copyForAglycone.getConnectedBondsCount(carbonInAglycone) == 1) {
+                        //section that corrects C6 separation
                         boolean onlyNeighborIsOxygen = false;
                         for (IAtom nbr : copyForAglycone.getConnectedAtomsList(carbonInAglycone)) {
                             if (nbr.getAtomicNumber() == IElement.O) {
@@ -576,12 +577,14 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
                                         copyForSugars.addStereoElement(elem.map(inputAtomToAtomCopyInSugarsMap, inputBondToBondCopyInSugarsMap));
                                     }
                                 }
-                            }
+                            }//end of stereo element iteration
                         }
-                    }
-                }
-            }
-        }
+                    }//end of C6 separation correction
+                    //TODO add correction of carboxy groups here
+                }//end of if that detect broken C-C bonds
+            }//end of if that detects broken bonds
+        }//end of bonds iteration
+        //general processing that does not need to correct the SRU results
         boolean hasIdentifiedBrokenBond = false;
         //identify bonds that were broken between sugar moieties and aglycone
         // -> copy connecting hetero atoms (glycosidic O/N/S etc.) from one part (sugar or aglycone) to the other,

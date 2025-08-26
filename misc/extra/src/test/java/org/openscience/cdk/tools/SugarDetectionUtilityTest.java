@@ -1270,7 +1270,7 @@ class SugarDetectionUtilityTest {
      * @throws Exception if anything goes wrong
      */
     @Test
-    void sugarExtractionIndividualTest10() throws Exception {
+    void testC6Correction() throws Exception {
         SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.Stereo);
         SugarDetectionUtility sdu = new SugarDetectionUtility(SilentChemObjectBuilder.getInstance());
@@ -1285,6 +1285,27 @@ class SugarDetectionUtilityTest {
         Assertions.assertLinesMatch(expectedSmilesList, generatedSmilesList);
     }
 
+    /**
+     * Tests a structure where the SRU cuts between the sugar and its C6 atom but the SDU should correct that in extraction.
+     *
+     * @throws Exception if anything goes wrong
+     */
+    @Test
+    void testNicofuranose() throws Exception {
+        SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
+        SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.Stereo);
+        SugarDetectionUtility sdu = new SugarDetectionUtility(SilentChemObjectBuilder.getInstance());
+        //CNP0074341.1
+        String smiles = "O=C(OC[C@H]1O[C@](O)(COC(=O)C2=CC=CN=C2)[C@@H](OC(=O)C2=CC=CN=C2)[C@@H]1OC(=O)C1=CC=CN=C1)C1=CC=CN=C1";
+        sdu.setRemoveOnlyTerminalSugarsSetting(false);
+        List<IAtomContainer> candidates =sdu.copyAndExtractAglyconeAndSugars(smiPar.parseSmiles(smiles), true, true, true, true);
+        List<String> expectedSmilesList = Arrays.asList(
+                "O=C(O*)C1=CC=CN=C1.O(C(=O)C1=CC=CN=C1)*.O(C(=O)C1=CC=CN=C1)*.O(C(=O)C1=CC=CN=C1)*",
+                "[C@@H]1(O[C@@](O)([C@H]([C@@H]1O*)O*)CO*)CO*"
+        );
+        List<String> generatedSmilesList = this.generateSmilesList(candidates, smiGen);
+        Assertions.assertLinesMatch(expectedSmilesList, generatedSmilesList);
+    }
 
     //TODO: remove this before starting the PR
     /**
