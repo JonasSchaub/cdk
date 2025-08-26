@@ -1265,7 +1265,7 @@ class SugarDetectionUtilityTest {
     }
 
     /**
-     * TODO the sugar should keep its C6 with a hydroxyl group, but it is currently lost in the extraction.
+     * Tests a structure where the SRU cuts between the sugar and its C6 atom but the SDU should correct that in extraction.
      *
      * @throws Exception if anything goes wrong
      */
@@ -1278,8 +1278,8 @@ class SugarDetectionUtilityTest {
         sdu.setRemoveOnlyTerminalSugarsSetting(false);
         List<IAtomContainer> candidates =sdu.copyAndExtractAglyconeAndSugars(smiPar.parseSmiles(smiles), true, true, false);
         List<String> expectedSmilesList = Arrays.asList(
-                "C1=C(C=CC(=C1)O)O.COC(=O)C=CC1(C=CC(=O)C=C1)O",
-                "[C@@H]1([C@@H]([C@H]([C@@H](CO1)O)O)O)O"
+                "C1=C(C=CC(=C1)O)O.OC(=O)C=CC1(C=CC(=O)C=C1)O",
+                "[C@@H]1([C@@H]([C@H]([C@@H]([C@H](O1)CO)O)O)O)O"
         );
         List<String> generatedSmilesList = this.generateSmilesList(candidates, smiGen);
         Assertions.assertLinesMatch(expectedSmilesList, generatedSmilesList);

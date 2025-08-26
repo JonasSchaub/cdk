@@ -528,6 +528,60 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
         }
         //note that the four atom and bond maps still hold references to the atoms and bonds that were removed from the
         // two copies to get the aglycone and sugars; important for later queries; only cleared at the end of this method
+        for (IBond bond : mol.bonds()) {
+            //bond not in aglycone or sugars, so it was broken during sugar removal
+            if (!copyForAglycone.contains(inputBondToBondCopyInAglyconeMap.get(bond))
+                    && !copyForSugars.contains(inputBondToBondCopyInSugarsMap.get(bond))) {
+                if (this.isCarbonAtom(bond.getBegin()) && this.isCarbonAtom(bond.getEnd())) {
+                    //detect cases where the C6 carbon was separated from the sugar
+                    boolean isBeginInAglycone = copyForAglycone.contains(inputAtomToAtomCopyInAglyconeMap.get(bond.getBegin()));
+                    IAtom carbonInAglycone = isBeginInAglycone?
+                            inputAtomToAtomCopyInAglyconeMap.get(bond.getBegin()) : inputAtomToAtomCopyInAglyconeMap.get(bond.getEnd());
+                    IAtom aglyconeCarbonOriginalAtom = isBeginInAglycone? bond.getBegin() : bond.getEnd();
+                    if (copyForAglycone.getConnectedBondsCount(carbonInAglycone) == 1) {
+                        boolean onlyNeighborIsOxygen = false;
+                        for (IAtom nbr : copyForAglycone.getConnectedAtomsList(carbonInAglycone)) {
+                            if (nbr.getAtomicNumber() == IElement.O) {
+                                onlyNeighborIsOxygen = true;
+                            }
+                        }
+                        if (onlyNeighborIsOxygen) {
+                            copyForAglycone.removeAtom(carbonInAglycone);
+                            IAtom newAtomCopyInSugars = this.deeperCopy(aglyconeCarbonOriginalAtom, copyForSugars);
+                            IBond newBondInSugars = this.deeperCopy(bond, newAtomCopyInSugars, inputAtomToAtomCopyInSugarsMap.get(bond.getOther(aglyconeCarbonOriginalAtom)));
+                            copyForSugars.addBond(newBondInSugars);
+                            inputAtomToAtomCopyInSugarsMap.put(aglyconeCarbonOriginalAtom, newAtomCopyInSugars);
+                            inputBondToBondCopyInSugarsMap.put(bond, newBondInSugars);
+                            for (IStereoElement elem : mol.stereoElements()) {
+                                if (elem.contains(bond.getBegin()) && elem.contains(bond.getEnd())
+                                        && copyForSugars.contains(inputAtomToAtomCopyInSugarsMap.get(elem.getFocus()))) {
+                                    boolean carriersAllPresent = true;
+                                    for (Object object : elem.getCarriers()) {
+                                        if (object instanceof IAtom) {
+                                            if (!copyForSugars.contains(inputAtomToAtomCopyInSugarsMap.get(object))) {
+                                                carriersAllPresent = false;
+                                                break;
+                                            }
+                                        } else if (object instanceof IBond) {
+                                            if (!copyForSugars.contains(inputBondToBondCopyInSugarsMap.get(object))) {
+                                                carriersAllPresent = false;
+                                                break;
+                                            }
+                                        } else {
+                                            carriersAllPresent = false;
+                                            break;
+                                        }
+                                    }
+                                    if (carriersAllPresent) {
+                                        copyForSugars.addStereoElement(elem.map(inputAtomToAtomCopyInSugarsMap, inputBondToBondCopyInSugarsMap));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
         boolean hasIdentifiedBrokenBond = false;
         //identify bonds that were broken between sugar moieties and aglycone
         // -> copy connecting hetero atoms (glycosidic O/N/S etc.) from one part (sugar or aglycone) to the other,
