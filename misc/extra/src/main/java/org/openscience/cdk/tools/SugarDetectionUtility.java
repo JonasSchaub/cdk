@@ -83,7 +83,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
      * Defines an aliphatic C in a ring with degree 3 or 4 and no charge, connected to an aliphatic O not in a ring with degree 2 and no charge,
      * connected to an aliphatic C with no charge (this side is left more promiscuous for corner cases).
      */
-    public static final String O_GLYCOSIDIC_BOND_SMARTS = "[C;R;D3,4;+0:1]-!@[O;!R;D2;+0:2]-!@[C;+0:3]";
+    public static final String O_GLYCOSIDIC_BOND_SMARTS = "[C;R;D3,D4;+0:1]-!@[O;!R;D2;+0:2]-!@[C;+0:3]";
 
     /**
      * SMARTS pattern for detecting ester bonds between linear sugar moieties for postprocessing after extraction.
@@ -1124,6 +1124,8 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
      *
      * @param molecule The molecule in which O-glycosidic bonds are to be split.
      * @param markAttachPointsByR If true, the attachment points are marked with R-groups; otherwise, they are saturated with implicit H.
+     * @param limitPostProcessingBySize If true, the bond will only be split if both resulting fragments are large enough
+     *                                  to be preserved according to the set preservation mode and threshold
      * @throws NullPointerException If the input molecule is null.
      */
     protected void splitOGlycosidicBonds(IAtomContainer molecule, boolean markAttachPointsByR, boolean limitPostProcessingBySize) {
@@ -1212,6 +1214,8 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
      *
      * @param molecule The molecule in which ether, ester, and peroxide bonds are to be split.
      * @param markAttachPointsByR If true, the attachment points are marked with R-groups; otherwise, they are saturated with implicit H.
+     * @param limitPostProcessingBySize If true, the bond will only be split if both resulting fragments are large enough
+     *                                  to be preserved according to the set minimum size for linear sugars
      * @throws NullPointerException If the input molecule is null.
      */
     protected void splitEtherEsterAndPeroxideBondsPostProcessing(IAtomContainer molecule, boolean markAttachPointsByR, boolean limitPostProcessingBySize) {
@@ -1249,6 +1253,8 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
      * @param molecule The molecule in which ester bonds are to be split. Must not be null.
      * @param markAttachPointsByR If true, the attachment points are marked with R-groups; otherwise, they are saturated
      *                            with implicit hydrogens.
+     * @param limitPostProcessingBySize If true, the bond will only be split if both resulting fragments are large enough
+     *                                  to be preserved according to the set minimum size for linear sugars
      * @throws NullPointerException If the input molecule is null.
      */
     protected void splitEsters(IAtomContainer molecule, boolean markAttachPointsByR, boolean limitPostProcessingBySize) {
@@ -1345,6 +1351,8 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
      *
      * @param molecule The molecule in which cross-linking ether bonds are to be split. Must not be null.
      * @param markAttachPointsByR If true, the attachment points are marked with R-groups; otherwise, they are saturated with implicit hydrogens.
+     * @param limitPostProcessingBySize If true, the bond will only be split if both resulting fragments are large enough
+     *                                  to be preserved according to the set minimum size for linear sugars
      * @throws NullPointerException If the input molecule is null.
      */
     protected void splitEthersCrosslinking(IAtomContainer molecule, boolean markAttachPointsByR, boolean limitPostProcessingBySize) {
@@ -1433,6 +1441,8 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
      *
      * @param molecule The molecule in which ether bonds are to be split. Must not be null.
      * @param markAttachPointsByR If true, the attachment points are marked with R-groups; otherwise, they are saturated with implicit hydrogens.
+     * @param limitPostProcessingBySize If true, the bond will only be split if both resulting fragments are large enough
+     *                                  to be preserved according to the set minimum size for linear sugars
      * @throws NullPointerException If the input molecule is null.
      */
     protected void splitEthers(IAtomContainer molecule, boolean markAttachPointsByR, boolean limitPostProcessingBySize) {
@@ -1529,6 +1539,8 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
      *
      * @param molecule The molecule in which peroxide bonds are to be split. Must not be null.
      * @param markAttachPointsByR If true, the attachment points are marked with R-groups; otherwise, they are saturated with implicit hydrogens.
+     * @param limitPostProcessingBySize If true, the bond will only be split if both resulting fragments are large enough
+     *                                  to be preserved according to the set minimum size for linear sugars
      * @throws NullPointerException If the input molecule is null.
      */
     protected void splitPeroxides(IAtomContainer molecule, boolean markAttachPointsByR, boolean limitPostProcessingBySize) {

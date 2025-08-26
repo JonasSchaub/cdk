@@ -1412,6 +1412,13 @@ class SugarDetectionUtilityTest {
         sdu.splitOGlycosidicBonds(molecule, true, false);
         Assertions.assertEquals("*OCC1OC(O*)C(O)C(O*)C1O.*OC1OC(CO)C(O)C(O)C1O.*OC1OC(CO)C(O)C(O)C1O.*OC1OC(CO)C(O*)C(O)C1NC(=O)C.*OC(C(O)CO)C(O)C(C=O)NC(=O)C",
                 smiGen.create(molecule));
+        //CNP0208164.1
+        smiles = "CC(=O)OC[C@H]1O[C@H](CO[C@]2(CO)O[C@H](COC(=O)/C=C/C3=CC=C(O)C=C3)[C@H](OC(C)=O)[C@H]2O)[C@H](O)[C@@H](OC(C)=O)[C@@H]1OC(C)=O";
+        molecule = smiPar.parseSmiles(smiles);
+        sdu.splitOGlycosidicBonds(molecule, true, true);
+        //an earlier version had an issue here because carbons of degree 4 were not handled properly by the SMARTS pattern
+        Assertions.assertEquals("*OCC1OC(COC(=O)C)C(OC(=O)C)C(OC(=O)C)C1O.*OC1(OC(COC(=O)C=CC2=CC=C(O)C=C2)C(OC(=O)C)C1O)CO",
+                smiGen.create(molecule));
     }
 
     /**
