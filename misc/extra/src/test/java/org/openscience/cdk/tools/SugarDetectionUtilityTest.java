@@ -1058,6 +1058,28 @@ class SugarDetectionUtilityTest {
     }
 
     /**
+     * Test for correct sugar extraction from a glycosidic natural product with a spiro sugar.
+     *
+     * @throws Exception if anything goes wrong
+     */
+    @Test
+    void sugarExtractionTestSpiro() throws Exception {
+        SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
+        SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.Stereo);
+        //CNP0360010.1 without the two standard sugars
+        IAtomContainer mol = smiPar.parseSmiles("C[C@@H]1CC[C@]2(O[C@H]3C[C@H]4[C@@H]5CC[C@H]6C[C@H](CC[C@@]6([C@H]5CC[C@@]4([C@H]3[C@@H]2C)C)C)O)CO1");
+        SugarDetectionUtility sdu = new SugarDetectionUtility(SilentChemObjectBuilder.getInstance());
+        sdu.setDetectSpiroRingsAsCircularSugarsSetting(true);
+        sdu.setDetectCircularSugarsOnlyWithEnoughExocyclicOxygenAtomsSetting(false);
+        List<IAtomContainer> candidates = sdu.copyAndExtractAglyconeAndSugars(mol, true, false, true, false);
+        Assertions.assertEquals(2, candidates.size());
+        // aglycone
+        Assertions.assertEquals("C1(O[C@H]2C[C@H]3[C@@H]4CC[C@H]5C[C@H](CC[C@@]5([C@H]4CC[C@@]3([C@H]2[C@@H]1C)C)C)O)(*)*", smiGen.create(candidates.get(0)));
+        //sugar
+        Assertions.assertEquals("C[C@@H]1CCC(CO1)(*)*", smiGen.create(candidates.get(1)));
+    }
+
+    /**
      * The following tests had the purpose to single out molecules that had issues in batch processing in the past.
      *
      * @throws Exception if anything goes wrong

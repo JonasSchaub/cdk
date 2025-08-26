@@ -514,7 +514,14 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
         //note: instead of copying the whole structure and removing the aglycone atoms, one could only copy those atoms
         // and bonds that are not part of the aglycone to form the sugars to save some memory but the code would be much
         // more complicated, so we don't do it that way for now
+        boolean containsSpiroSugars = false;
         for (IAtom atom : mol.atoms()) {
+            if (this.areSpiroRingsDetectedAsCircularSugars() && inputAtomToAtomCopyInAglyconeMap.get(atom).getProperty(SugarRemovalUtility.IS_SPIRO_ATOM_PROPERTY_KEY) != null) {
+                //spiro atom that was marked as part of a circular sugar, so duplicate it
+                inputAtomToAtomCopyInSugarsMap.get(atom).setProperty(SugarRemovalUtility.IS_SPIRO_ATOM_PROPERTY_KEY, true);
+                containsSpiroSugars = true;
+                continue;
+            }
             if (copyForAglycone.contains(inputAtomToAtomCopyInAglyconeMap.get(atom))) {
                 copyForSugars.removeAtom(inputAtomToAtomCopyInSugarsMap.get(atom));
             }
@@ -702,10 +709,32 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
                 }
             } //end of if condition looking for bonds broken during sugar extraction
         } // end of for loop over all bonds in the input molecule
-        if (!hasIdentifiedBrokenBond && !copyForAglycone.isEmpty() && ConnectivityChecker.isConnected(mol)) {
+        if (!hasIdentifiedBrokenBond && !copyForAglycone.isEmpty() && ConnectivityChecker.isConnected(mol) && !containsSpiroSugars) {
             //note for disconnected glycosides, one could process each component separately, but this seems like
             // unnecessary overhead just for the sake of this check
             SugarDetectionUtility.LOGGER.error("No broken bonds found between aglycone and sugars, no saturation performed, this should not happen!");
+        }
+        if (this.areSpiroRingsDetectedAsCircularSugars() && containsSpiroSugars) {
+            for (IAtomContainer part : new IAtomContainer[]{copyForAglycone, copyForSugars}) {
+                for (IAtom atom : part.atoms()) {
+                    if (atom.getProperty(SugarRemovalUtility.IS_SPIRO_ATOM_PROPERTY_KEY) != null) {
+                        if (markAttachPointsByR) {
+                            for (int i = 0; i < 2; i++) {
+                                IPseudoAtom tmpRAtom = atom.getBuilder().newInstance(IPseudoAtom.class, "R");
+                                tmpRAtom.setAttachPointNum(1);
+                                tmpRAtom.setImplicitHydrogenCount(0);
+                                part.addAtom(tmpRAtom);
+                                IBond bondToR = atom.getBuilder().newInstance(
+                                        IBond.class, atom, tmpRAtom, IBond.Order.SINGLE);
+                                part.addBond(bondToR);
+                            }
+                        } else {
+                            int implHCount = atom.getImplicitHydrogenCount();
+                            atom.setImplicitHydrogenCount(implHCount + 2);
+                        }
+                    }
+                }
+            }
         }
         if (postProcessSugars) {
             if (extractLinearSugars) {
