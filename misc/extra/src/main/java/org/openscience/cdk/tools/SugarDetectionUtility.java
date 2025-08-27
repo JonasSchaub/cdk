@@ -392,6 +392,8 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
     //remove this method after all and incorporate the new behaviour into the existing methods? -> better to keep the original behaviour of the original methods
     //do not copy the aglycone? -> too much of a hassle because for postprocessing, we repeatedly need the original structure
     //implement alternative method that directly returns group indices? -> blows up the code too much and the atom container fragments are the main point of reference
+    //TODO: add check that spiro carbon is in aglycone and not only in sugar (test structure: Abierixin)
+    //TODO: make it also an option to split CC-bonds and esters, peroxides between circular sugars? See slides, to discuss
     //TODO: simplify this method by encapsulating more code
     //TODO: look at other special cases in the test class that might require additional postprocessing
     //TODO: check doc of all overloaded methods and ensure that they are consistent; check docs in general
