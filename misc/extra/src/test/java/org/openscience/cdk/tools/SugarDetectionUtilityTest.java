@@ -1,7 +1,5 @@
 /*
  * Copyright (c) 2025 Jonas Schaub <jonas.schaub@uni-jena.de>
- *                    Achim Zielesny <achim.zielesny@w-hs.de>
- *                    Christoph Steinbeck <christoph.steinbeck@uni-jena.de>
  *
  * Contact: cdk-devel@lists.sourceforge.net
  *
@@ -51,7 +49,7 @@ import java.util.Map;
  *     <a href="https://pubchem.ncbi.nlm.nih.gov">PubChem database</a>.
  * </p>
  *
- * @author Jonas Schaub
+ * @author Jonas Schaub (jonas.schaub@uni-jena.de | jonas-schaub@gmx.de | <a href="https://github.com/JonasSchaub">JonasSchaub on GitHub</a>)
  */
 class SugarDetectionUtilityTest {
     /**
@@ -69,11 +67,8 @@ class SugarDetectionUtilityTest {
         String[] glycosidicNP = new String[] {
                 "CC(=O)N[C@H]1[C@H](O[C@H]2[C@H](O)[C@@H](NC(C)=O)[C@@H](OP(=O)(O)OP(=O)(O)OCCC(C)CC/C=C(\\C)CC/C=C(\\C)CC/C=C(\\C)CCC=C(C)C)O[C@@H]2CO)O[C@H](CO)[C@@H](O[C@@H]2O[C@H](CO[C@H]3O[C@H](CO[C@H]4O[C@H](CO)[C@@H](O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]5O)[C@H](O)[C@@H]4O)[C@@H](O)[C@H](O[C@H]4O[C@H](CO)[C@@H](O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]5O)[C@H](O)[C@@H]4O)[C@@H]3O)[C@@H](O)[C@H](O[C@H]3O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]3O[C@H]3O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]3O[C@H]3O[C@H](CO)[C@@H](O)[C@H](O[C@H]4O[C@H](CO)[C@@H](O)[C@H](O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@H]5O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@H]5O)[C@H]4O)[C@@H]3O)[C@@H]2O)[C@@H]1O",
                 "C=CC1C(C[C@@H]2NCCC3=C2NC2=CC=CC=C32)C(C(=O)O)=CO[C@H]1O[C@@H]1O[C@H](CO)[C@@H](O)[C@H](O)[C@H]1O",
-                //has issues in this batch processing
                 "CC(N)C(=O)NC(CCC(N)=O)C(=O)NOC1OC(O)C(O)C(O)C1O",
-                //has issues in this batch processing
                 "CCCCCC=CC=CC(O)CC=CC=CC(=O)OC1C(O)C(C2=C(O)C=C(O)C=C2CO)OC(CO)C1OC1OC(C)C(O)C(O)C1OC1OC(O)C(O)C(O)C1O",
-                //has issues in this batch processing
                 "OC1OC(O)C(O)C1OC1C(OCCCCCCCCCCCCCCCCC)OC(OCCCCCCCCCCC)C(O)C1OC1C(O)C(O)C(O)OC(O)C1O",
                 "[H]OC1([H])C([H])(OC2=C3C(OC(=O)C4=C3C([H])([H])C([H])([H])C4([H])[H])=C([H])C(=C2[H])C([H])([H])[H])OC([H])(C([H])(O[H])C1([H])O[H])C([H])([H])O[H]",
                 "O=C(OC1C(OCC2=COC(OC(=O)CC(C)C)C3C2CC(O)C3(O)COC(=O)C)OC(CO)C(O)C1O)C=CC4=CC=C(O)C=C4",
@@ -99,7 +94,6 @@ class SugarDetectionUtilityTest {
                 "O=C1C=C(OC=2C1=CC3=C(OC(C)(C)C(OOCC(O)C(O)C(O)C(O)CO)C3)C2[N+]=4C=C5N=CC=C5C4CC)C",
                 "O=C1C=C(OC2=CC(OC(=O)C3OC(O)C(O)C(O)C3O)=C(O)C(O)=C12)C=4C=CC(O)=CC4",
                 "O=C(O)CC(O)(C)CC(=O)OCC1OC(C=2C(O)=CC(O)=C3C(=O)C=C(OC32)C=4C=CC(O)=C(O)C4)C(O)C(O)C1O",
-                //has issues in this batch processing
                 "O=C(O)CC(O)(C(=O)O)C(C(=O)O)CCCCCCCCCCCCCC",
                 "O=CC1(C)C(OC2OC(C(=O)O)C(O)C(OC3OCC(O)C(O)C3O)C2OC4OC(CO)C(O)C(O)C4O)CCC5(C)C6CC=C7C8CC(C)(C)CCC8(C(=O)OC9OC(C)C(OC(=O)CC(O)CC(OC(=O)CC(O)CC(OC%10OC(CO)C(O)C%10O)C(C)CC)C(C)CC)C(O)C9OC%11OC(C)C(OC%12OCC(O)C(O)C%12O)C(O)C%11O)C(O)CC7(C)C6(C)CCC15",
                 "O=C(OCC)CCC1=CC=2C=COC2C=3OCCNCC4(SSCC5(OC(OC31)C(O)C(O)C5O)CO)CCCC4",
@@ -109,9 +103,7 @@ class SugarDetectionUtilityTest {
                 "OC1(OCCC21OC3(O)CCOC3(O2)C)C",
                 "OCC1OC2(OC3C(O)C(OC3(OC2)CO)CO)C(O)C1O",
                 "OCC1OC2(OCC3OC(OC2)(CO)C(O)C3O)C(O)C1O",
-                //might create issues in this batch processing
                 "OCC(O)C(O)C(O)C(O)C1OC(CO)C(O)C(O)C1O",
-                //might create issues in this batch processing
                 "OCC(O)C(O)C(O)C(O)C(O)C1OC(O)C(O)C(O)C1N",
                 "OCC1OC2OC3C(O)C(O)C(OC3CO)OC4C(O)C(O)C(OC4CO)OC5C(O)C(O)C(OC5CO)OC6C(O)C(O)C(OC6CO)OC7C(O)C(O)C(OC7CO)OC1C(O)C2O",
                 "O(*)C1OC(CN)CCC1N",
@@ -780,7 +772,7 @@ class SugarDetectionUtilityTest {
     }
 
     /**
-     * Test for correct circular sugar extraction from strictosidinic acid.
+     * Test for correct circular sugar extraction from strictosidinic acid, a glycoside with a typical beta-D-glucose sugar moiety.
      *
      * @throws Exception if anything goes wrong
      */
@@ -957,7 +949,7 @@ class SugarDetectionUtilityTest {
      * @throws Exception if anything goes wrong
      */
     @Test
-    void sugarExtractionTangshenoside_ITest() throws Exception {
+    void sugarExtractionTangshenosideITest() throws Exception {
         SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.Stereo);
         //CNP0218440.3
@@ -1241,7 +1233,8 @@ class SugarDetectionUtilityTest {
     }
 
     /**
-     * This test is for a specific case where the sugar extraction should yield an empty aglycone but did not in the past.
+     * This test is for a specific case where the sugar extraction should yield an empty aglycone but did not in the
+     * past because of a bug in the SugarRemovalUtility that is now fixed.
      *
      * @throws Exception if anything goes wrong
      */
@@ -1262,7 +1255,7 @@ class SugarDetectionUtilityTest {
     }
 
     /**
-     * This test is for a specific case where the sugar extraction should yield an empty aglycone but did not in the past.
+     * See above
      *
      * @throws Exception if anything goes wrong
      */
@@ -1288,7 +1281,7 @@ class SugarDetectionUtilityTest {
      * @throws Exception if anything goes wrong
      */
     @Test
-    void sugarExtractionIndividualTest10() throws Exception {
+    void sugarExtractionCircularAndLinearSugarPostprocessingTest() throws Exception {
         SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.Stereo);
         SugarDetectionUtility sdu = new SugarDetectionUtility(SilentChemObjectBuilder.getInstance());
@@ -1305,12 +1298,12 @@ class SugarDetectionUtilityTest {
     }
 
     /**
-     * Tribenoside (CNP0273794.1) is not split very optimal but it is seen as a corner case and added here for documentation.
+     * Tribenoside (CNP0273794.1) is not split very optimal, but it is seen as a corner case and added here for documentation.
      *
      * @throws Exception if anything goes wrong
      */
     @Test
-    void sugarExtractionIndividualTest11() throws Exception {
+    void sugarExtractionTribenosideTest() throws Exception {
         SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.Stereo);
         SugarDetectionUtility sdu = new SugarDetectionUtility(SilentChemObjectBuilder.getInstance());
@@ -1395,7 +1388,7 @@ class SugarDetectionUtilityTest {
     }
 
     /**
-     * Tests the postprocessing split of ester groups connecting sugar moieties.
+     * Tests the postprocessing split of ester groups connecting linear sugar moieties.
      *
      * @throws Exception if anything goes wrong
      */
@@ -1417,7 +1410,7 @@ class SugarDetectionUtilityTest {
     }
 
     /**
-     * Tests the postprocessing split of ether groups cross-linking sugar moieties.
+     * Tests the postprocessing split of ether groups cross-linking linear sugar moieties.
      *
      * @throws Exception if anything goes wrong
      */
@@ -1439,7 +1432,7 @@ class SugarDetectionUtilityTest {
     }
 
     /**
-     * Tests the postprocessing split of ether groups connecting sugar moieties.
+     * Tests the postprocessing split of ether groups connecting linear sugar moieties.
      *
      * @throws Exception if anything goes wrong
      */
@@ -1462,7 +1455,7 @@ class SugarDetectionUtilityTest {
     }
 
     /**
-     * Tests the postprocessing split of peroxide groups connecting sugar moieties.
+     * Tests the postprocessing split of peroxide groups connecting linear sugar moieties.
      *
      * @throws Exception if anything goes wrong
      */
@@ -1535,7 +1528,7 @@ class SugarDetectionUtilityTest {
 
     /**
      * Test for splitting ether, ester, and peroxide bonds in a molecule, using the postprocessing method for extracted
-     * sugar moeties.
+     * sugar moieties.
      *
      * @throws Exception if anything goes wrong
      */
@@ -1558,7 +1551,7 @@ class SugarDetectionUtilityTest {
 
     /**
      * Tests that small fragments (e.g. methyl ether modifications) are preserved in the post-processing step
-     * of sugar extraction, which was an issue in earlier versions of the code.
+     * of sugar extraction, which was an issue in earlier versions of the code (another option for this was introduced).
      *
      * @throws Exception if anything goes wrong
      */
@@ -1569,7 +1562,7 @@ class SugarDetectionUtilityTest {
         SugarDetectionUtility sdu = new SugarDetectionUtility(SilentChemObjectBuilder.getInstance());
         String smiles = "O=C(NC1C(O)OC(CO)C(O)C1OC2OC(CO)C(OC)C(O)C2OC3OC(C)C(O)C(O)C3OC)C";
         IAtomContainer molecule = smiPar.parseSmiles(smiles);
-        List<IAtomContainer> results = sdu.copyAndExtractAglyconeAndSugars(molecule, true, true, true, true);
+        List<IAtomContainer> results = sdu.copyAndExtractAglyconeAndSugars(molecule, true, true, true, true, true);
         //notice that the methyl ether modifications are not separated from the sugars
         List<String> expectedSmilesList = Arrays.asList(
                 "",
@@ -1583,7 +1576,7 @@ class SugarDetectionUtilityTest {
         //CNP0140416.1
         smiles = "CO[C@@H]1[C@@H](OC(N)=O)[C@@H](O)[C@H](OC2=CC=C3C([O-])=C(NC(=O)C4=CC=C(O)C(CC=C(C)C)=C4)C(=O)OC3=C2C)OC1(C)C";
         molecule = smiPar.parseSmiles(smiles);
-        results = sdu.copyAndExtractAglyconeAndSugars(molecule, true, true, true, true);
+        results = sdu.copyAndExtractAglyconeAndSugars(molecule, true, true, true, true, true);
         //the carbamic acid and methyl ether modifications are not be separated from the sugar
         expectedSmilesList = Arrays.asList(
                 "*OC=1C=CC=2C([O-])=C(NC(=O)C3=CC=C(O)C(=C3)CC=C(C)C)C(=O)OC2C1C",
@@ -1597,7 +1590,7 @@ class SugarDetectionUtilityTest {
         molecule = smiPar.parseSmiles(smiles);
         //one of the sugars does not have enough exocyclic oxygen atoms
         sdu.setExocyclicOxygenAtomsToAtomsInRingRatioThresholdSetting(0.1);
-        results = sdu.copyAndExtractAglyconeAndSugars(molecule, true, true, true, true);
+        results = sdu.copyAndExtractAglyconeAndSugars(molecule, true, true, true, true, true);
         //the ethyl ester and methyl ether modifications are not be separated from the sugar
         expectedSmilesList = Arrays.asList(
                 "*OC1C(C(=O)OC(CC)C(O)(C)C(O)C(C(=O)C(C)CC(O)(C)C(O*)C1C)C)C",
@@ -1614,7 +1607,7 @@ class SugarDetectionUtilityTest {
         sdu.setExocyclicOxygenAtomsToAtomsInRingRatioThresholdSetting(SugarRemovalUtility.EXOCYCLIC_OXYGEN_ATOMS_TO_ATOMS_IN_RING_RATIO_THRESHOLD_DEFAULT);
         //the sugars are non-terminal
         sdu.setRemoveOnlyTerminalSugarsSetting(false);
-        results = sdu.copyAndExtractAglyconeAndSugars(molecule, true, true, true, true);
+        results = sdu.copyAndExtractAglyconeAndSugars(molecule, true, true, true, true, true);
         //the methyl ether is not separated from the sugar
         expectedSmilesList = Arrays.asList(
                 "*OCCCCCCCCCC.*OCCC(OC)CCCCCCC.*OP(=O)([O-])[O-].*OP(=O)([O-])[O-].*NC(=O)CC(=O)CCCCCCCCCCC.*NC(=O)CCCCCCCCCC=CCCCCCC",
@@ -1629,7 +1622,7 @@ class SugarDetectionUtilityTest {
         molecule = smiPar.parseSmiles(smiles);
         //back to default
         sdu.setRemoveOnlyTerminalSugarsSetting(true);
-        results = sdu.copyAndExtractAglyconeAndSugars(molecule, true, true, true, true);
+        results = sdu.copyAndExtractAglyconeAndSugars(molecule, true, true, true, true, true);
         //the formic acid moieties are not separated from the sugars
         expectedSmilesList = Arrays.asList(
                 "*OC1CCC2(C)C(CCC3C2CCC4(C)C(C5=CC(=O)OC5)C(OC=O)CC34O)C1",

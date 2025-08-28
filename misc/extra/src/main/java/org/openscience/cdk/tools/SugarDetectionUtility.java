@@ -73,7 +73,7 @@ import java.util.Objects;
  * // Subsequent elements are individual sugar fragments
  * }</pre>
  *
- * @author Jonas Schaub
+ * @author Jonas Schaub (jonas.schaub@uni-jena.de | jonas-schaub@gmx.de | <a href="https://github.com/JonasSchaub">JonasSchaub on GitHub</a>)
  */
 public class SugarDetectionUtility extends SugarRemovalUtility {
 
