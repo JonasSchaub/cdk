@@ -208,13 +208,15 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
     }
 
     /**
-     * Extracts copies of the aglycone and (specified) sugar parts of the given molecule (if there are any).
+     * Extracts copies of the aglycone and sugar parts of the given molecule (if there are any).
      * <p>
-     * This method creates a deep copy of the input molecule and removes the specified
-     * sugar moieties (circular and/or linear) to produce an aglycone. It then creates
+     * This method creates a deep copy of the input molecule and removes circular and/or linear
+     * sugar moieties to produce an aglycone. It then creates
      * a second copy to extract the sugar fragments that were removed. The attachment
-     * points between the aglycone and sugars are handled by either adding R-groups
-     * (pseudo atoms) or implicit hydrogens to saturate the broken bonds.
+     * points between the aglycone and sugars are saturated with implicit hydrogen atoms.
+     * No postprocessing of the sugar fragments is performed, i.e. they are not separated
+     * from each other if they are connected in the original structure.
+     * Check the overloaded versions of this method for more options.
      *
      * <p>The method preserves stereochemistry information at connection points and
      * handles glycosidic bonds appropriately. When bonds are broken between sugar
@@ -224,7 +226,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
      *
      * <p>The extraction process respects all current sugar detection settings as described in
      * {@link SugarRemovalUtility}, including terminal vs. non-terminal sugar removal,
-     * preservation mode settings, and various detection thresholds.
+     * preservation mode settings, various detection thresholds, etc.
      *
      * <p>Note that atom types are not copied, they have to be re-perceived if needed.</p>
      *
@@ -264,13 +266,16 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
     }
 
     /**
-     * Extracts copies of the aglycone and (specified) sugar parts of the given molecule (if there are any).
+     * Extracts copies of the aglycone and sugar parts of the given molecule (if there are any).
      * <p>
-     * This method creates a deep copy of the input molecule and removes the specified
-     * sugar moieties (circular and/or linear) to produce an aglycone. It then creates
+     * This method creates a deep copy of the input molecule and removes circular and/or linear
+     * sugar moieties to produce an aglycone. It then creates
      * a second copy to extract the sugar fragments that were removed. The attachment
      * points between the aglycone and sugars are handled by either adding R-groups
-     * (pseudo atoms) or implicit hydrogens to saturate the broken bonds.
+     * (pseudo atoms) or implicit hydrogen atoms to saturate the broken bonds.
+     * No postprocessing of the sugar fragments is performed, i.e. they are not separated
+     * from each other if they are connected in the original structure.
+     * Check the overloaded versions of this method for more options.
      *
      * <p>The method preserves stereochemistry information at connection points and
      * handles glycosidic bonds appropriately. When bonds are broken between sugar
@@ -280,20 +285,20 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
      *
      * <p>The extraction process respects all current sugar detection settings as described in
      * {@link SugarRemovalUtility}, including terminal vs. non-terminal sugar removal,
-     * preservation mode settings, and various detection thresholds.
+     * preservation mode settings, various detection thresholds, etc.
      *
      * <p>Note that atom types are not copied, they have to be re-perceived if needed.</p>
      *
      * @param mol The input molecule to separate into aglycone and sugar components.
      *            Must not be null but can be empty; a list containing only the empty given
      *            atom container is returned in the latter case.
-     * @param markAttachPointsByR If true, attachment points where sugars and the aglycone were connected
-     *                           are marked with R-groups (pseudo atoms). If false,
-     *                           implicit hydrogens are added to saturate the connections.
      * @param extractCircularSugars If true, circular sugar moieties will be detected
      *                             and extracted according to current settings.
      * @param extractLinearSugars If true, linear sugar moieties will be detected
      *                           and extracted according to current settings.
+     * @param markAttachPointsByR If true, attachment points where sugars and the aglycone were connected
+     *                           are marked with R-groups (pseudo atoms). If false,
+     *                           implicit hydrogen atoms are added to saturate the connections.
      * @return A list of atom containers where the first element is the aglycone
      *         (copy molecule with sugars removed) and subsequent elements are the
      *         individual sugar fragments that were extracted (also copies). If no sugars were
@@ -324,13 +329,21 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
     }
 
     /**
-     * Extracts copies of the aglycone and (specified) sugar parts of the given molecule (if there are any).
+     * Extracts copies of the aglycone and sugar parts of the given molecule (if there are any).
      * <p>
-     * This method creates a deep copy of the input molecule and removes the specified
-     * sugar moieties (circular and/or linear) to produce an aglycone. It then creates
+     * This method creates a deep copy of the input molecule and removes circular and/or linear
+     * sugar moieties to produce an aglycone. It then creates
      * a second copy to extract the sugar fragments that were removed. The attachment
      * points between the aglycone and sugars are handled by either adding R-groups
-     * (pseudo atoms) or implicit hydrogens to saturate the broken bonds.
+     * (pseudo atoms) or implicit hydrogen atoms to saturate the broken bonds.
+     * Optionally, postprocessing of the sugar fragments is performed, i.e. they are separated
+     * from each other if they are connected in the original structure via O-glycosidic bonds
+     * (circular sugars), ether, ester, or peroxide bonds (linear sugars). This postprocessing
+     * is limited by size, i.e. sugars and their substituents are only split if both resulting
+     * parts are larger than the set preservation mode threshold for circular sugars and
+     * the minimum size for linear sugar candidates, respectively, to prevent smaller substituents
+     * being split off of the sugars.
+     * Check the overloaded versions of this method for more options.
      *
      * <p>The method preserves stereochemistry information at connection points and
      * handles glycosidic bonds appropriately. When bonds are broken between sugar
@@ -340,7 +353,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
      *
      * <p>The extraction process respects all current sugar detection settings as described in
      * {@link SugarRemovalUtility}, including terminal vs. non-terminal sugar removal,
-     * preservation mode settings, and various detection thresholds.
+     * preservation mode settings, various detection thresholds, etc.
      *
      * <p>Note that atom types are not copied, they have to be re-perceived if needed.</p>
      *
@@ -353,7 +366,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
      *                           and extracted according to current settings.
      * @param markAttachPointsByR If true, attachment points where sugars and the aglycone were connected
      *                           are marked with R-groups (pseudo atoms). If false,
-     *                           implicit hydrogens are added to saturate the connections.
+     *                           implicit hydrogen atoms are added to saturate the connections.
      * @param postProcessSugars If true, postprocessing of sugar fragments is performed, i.e. splitting O-glycosidic
      *                          bonds in circular and splitting ether, ester, and peroxide bonds in linear sugar moieties
      * @return A list of atom containers where the first element is the aglycone
@@ -387,13 +400,21 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
     }
 
     /**
-     * Extracts copies of the aglycone and (specified) sugar parts of the given molecule (if there are any).
+     * Extracts copies of the aglycone and sugar parts of the given molecule (if there are any).
      * <p>
-     * This method creates a deep copy of the input molecule and removes the specified
-     * sugar moieties (circular and/or linear) to produce an aglycone. It then creates
+     * This method creates a deep copy of the input molecule and removes circular and/or linear
+     * sugar moieties to produce an aglycone. It then creates
      * a second copy to extract the sugar fragments that were removed. The attachment
      * points between the aglycone and sugars are handled by either adding R-groups
-     * (pseudo atoms) or implicit hydrogens to saturate the broken bonds.
+     * (pseudo atoms) or implicit hydrogen atoms to saturate the broken bonds.
+     * Optionally, postprocessing of the sugar fragments is performed, i.e. they are separated
+     * from each other if they are connected in the original structure via O-glycosidic bonds
+     * (circular sugars), ether, ester, or peroxide bonds (linear sugars). Optionally, this postprocessing
+     * is limited by size, i.e. sugars and their substituents are only split if both resulting
+     * parts are larger than the set preservation mode threshold for circular sugars and
+     * the minimum size for linear sugar candidates, respectively, to prevent smaller substituents
+     * being split off of the sugars.
+     * Check the overloaded versions of this method for more options.
      *
      * <p>The method preserves stereochemistry information at connection points and
      * handles glycosidic bonds appropriately. When bonds are broken between sugar
@@ -403,13 +424,9 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
      *
      * <p>The extraction process respects all current sugar detection settings as described in
      * {@link SugarRemovalUtility}, including terminal vs. non-terminal sugar removal,
-     * preservation mode settings, and various detection thresholds.
+     * preservation mode settings, various detection thresholds, etc.
      *
      * <p>Note that atom types are not copied, they have to be re-perceived if needed.</p>
-     *
-     * <p>This method additionally gives you the option to supply four maps as parameters that will be filled with a
-     * mapping of atoms and bonds in the original molecule to the atoms and bonds in the aglycone and sugar copies. They
-     * should be of sufficient size and empty when given.</p>
      *
      * @param mol The input molecule to separate into aglycone and sugar components.
      *            Must not be null but can be empty; a list containing only the empty given
@@ -420,7 +437,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
      *                           and extracted according to current settings.
      * @param markAttachPointsByR If true, attachment points where sugars and the aglycone were connected
      *                           are marked with R-groups (pseudo atoms). If false,
-     *                           implicit hydrogens are added to saturate the connections.
+     *                           implicit hydrogen atoms are added to saturate the connections.
      * @param postProcessSugars If true, postprocessing of sugar fragments is performed, i.e. splitting O-glycosidic
      *                          bonds in circular and splitting ether, ester, and peroxide bonds in linear sugar moieties
      * @param limitPostProcessingBySize If true, sugar moieties will only be separated/split in postprocessing if they are larger
@@ -463,15 +480,21 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
     //implement alternative method that directly returns group indices? -> blows up the code too much and the atom container fragments are the main point of reference
     //TODO: make it also an option to split CC-bonds and esters, peroxides between circular sugars? See slides, to discuss
     //TODO: simplify this method by encapsulating more code
-    //TODO: check doc of all overloaded methods and ensure that they are consistent; check docs in general
     /**
      * Extracts copies of the aglycone and sugar parts of the given molecule (if there are any).
      * <p>
-     * This method creates a deep copy of the input molecule and removes the specified
-     * sugar moieties (circular and/or linear) to produce an aglycone. It then creates
+     * This method creates a deep copy of the input molecule and removes circular and/or linear
+     * sugar moieties to produce an aglycone. It then creates
      * a second copy to extract the sugar fragments that were removed. The attachment
      * points between the aglycone and sugars are handled by either adding R-groups
      * (pseudo atoms) or implicit hydrogen atoms to saturate the broken bonds.
+     * Optionally, postprocessing of the sugar fragments is performed, i.e. they are separated
+     * from each other if they are connected in the original structure via O-glycosidic bonds
+     * (circular sugars), ether, ester, or peroxide bonds (linear sugars). Optionally, this postprocessing
+     * is limited by size, i.e. sugars and their substituents are only split if both resulting
+     * parts are larger than the set preservation mode threshold for circular sugars and
+     * the minimum size for linear sugar candidates, respectively, to prevent smaller substituents
+     * being split off of the sugars.
      *
      * <p>The method preserves stereochemistry information at connection points and
      * handles glycosidic bonds appropriately. When bonds are broken between sugar
@@ -899,7 +922,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
                         }
                     }
                 } else {
-                    //saturate both former bond atoms with implicit hydrogens
+                    //saturate both former bond atoms with implicit hydrogen atoms
                     for (IAtom atom : bond.atoms()) {
                         if (copyForAglycone.contains(inputAtomToAtomCopyInAglyconeMap.get(atom))) {
                             IAtom bondAtomInAglycone = inputAtomToAtomCopyInAglyconeMap.get(atom);
@@ -1002,8 +1025,8 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
      * (e.g., R-groups added during processing), which will be ignored.
      *
      * @param mol The input molecule containing the original atoms
-     * @param group The group container to check for atom membership
-     * @param inputAtomToAtomCopyMap Map from original atoms to their copies in the group
+     * @param group The group container to check for atom membership, e.g. extracted sugar or aglycone
+     * @param inputAtomToAtomCopyMap Map of original atoms to their copies in the group
      * @return Array of atom indices in the input molecule that have corresponding atoms in the group.
      *         Returns empty array if no matching atoms are found or if the group is empty.
      * @throws NullPointerException if any of the parameters is null
@@ -1040,7 +1063,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
      * (e.g., bonds to R-groups added during processing), which will be ignored.
      *
      * @param mol The input molecule containing the original bonds
-     * @param group The group container to check for bond membership
+     * @param group The group container to check for bond membership, e.g. extracted sugar or aglycone
      * @param inputBondToBondCopyMap Map from original bonds to their copies in the group
      * @return Array of bond indices in the input molecule that have corresponding bonds in the group.
      *         Returns empty array if no matching bonds are found or if the group is empty.
@@ -1084,10 +1107,11 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
      * Map<IAtom, IAtom> inputAtomToAglyconeAtomMap = new HashMap<IAtom, IAtom>((int) ((mol.getAtomCount() / 0.75f) + 2), 0.75f);
      * Map<IAtom, IAtom> inputAtomToSugarAtomMap = new HashMap<IAtom, IAtom>((int) ((mol.getAtomCount() / 0.75f) + 2), 0.75f);
      * List<IAtomContainer> aglyconeAndSugarsList = sdu.copyAndExtractAglyconeAndSugars(
-     *         mol,
+     *         molecule,
      *         true,
      *         false,
      *         false,
+     *         true,
      *         true,
      *         inputAtomToAglyconeAtomMap,
      *         new HashMap<IBond, IBond>((int) ((mol.getAtomCount() / 0.75f) + 2), 0.75f),
@@ -1147,8 +1171,9 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
     }
 
     /**
-     * Creates a relatively deep ("deeper" than cloning) copy of the given atom container mol and fills the given maps
-     * with a mappings of the original atoms and bonds to the atoms an d bonds in the copy.
+     * Creates a relatively deep ("deeper" than cloning but not as extensive) copy of the given
+     * atom container mol and fills the given maps
+     * with a mapping of the original atoms and bonds to the atoms and bonds in the copy.
      * Copies:
      * <br>- Atoms (atomic number, implicit hydrogen count, aromaticity flag, valency, atom type name, formal charge, some primitive-based properties)
      * <br>- Bonds (begin and end atom, order, aromaticity flag, stereo, display, in ring flag, some primitive-based properties)
@@ -1214,7 +1239,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
     }
 
     /**
-     *  Creates a relatively deep ("deeper" than cloning) copy of the given atom and adds it to the given container.
+     *  Creates a relatively deep ("deeper" than cloning but not as extensive) copy of the given atom and adds it to the given container.
      *  Copies:
      *  <br>- atomic number
      *  <br>- implicit hydrogen count
@@ -1261,7 +1286,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
     }
 
     /**
-     * Creates a relatively deep ("deeper" than cloning) copy of the given bond between the given begin and end atoms.
+     * Creates a relatively deep ("deeper" than cloning but not as extensive) copy of the given bond between the given begin and end atoms.
      * Copies:
      * <br>- order
      * <br>- aromaticity flag
@@ -1360,7 +1385,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
      * If bonds are split, an unconnected atom container results. If no O-glycosidic bonds are found, the original
      * molecule remains unchanged.
      * Note: SMIRKS transformations are not used here, since they create a copy of the molecule and that would destroy
-     * the atom and bond mapping to the original molecule. the same is the case for the other split methods below.
+     * the atom and bond mapping to the original molecule.
      *
      * @param molecule The molecule in which O-glycosidic bonds are to be split.
      * @param markAttachPointsByR If true, the attachment points are marked with R-groups; otherwise, they are saturated with implicit H.
@@ -1368,7 +1393,10 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
      *                                  to be preserved according to the set preservation mode and threshold
      * @throws NullPointerException If the input molecule is null.
      */
-    protected void splitOGlycosidicBonds(IAtomContainer molecule, boolean markAttachPointsByR, boolean limitPostProcessingBySize) {
+    protected void splitOGlycosidicBonds(
+            IAtomContainer molecule,
+            boolean markAttachPointsByR,
+            boolean limitPostProcessingBySize) {
         if (molecule == null) {
             throw new NullPointerException("The input molecule must not be null.");
         }
@@ -1451,6 +1479,8 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
      * saturate the resulting open valences with implicit H atoms, depending on the `markAttachPointsByR` parameter.
      * If bonds are split, an unconnected atom container results. If no matching bonds are found, the original molecule
      * remains unchanged.
+     * Note: SMIRKS transformations are not used here, since they create a copy of the molecule and that would destroy
+     * the atom and bond mapping to the original molecule.
      *
      * @param molecule The molecule in which ether, ester, and peroxide bonds are to be split.
      * @param markAttachPointsByR If true, the attachment points are marked with R-groups; otherwise, they are saturated with implicit H.
@@ -1465,7 +1495,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
         if (molecule.isEmpty()) {
             return; //nothing to do
         }
-        //note: the order is important here, since the ether pattern is very promiscuous and matches esters and peroxides as well
+        //note: the order is important here, since the ether pattern is very promiscuous and matches esters and cross-linking ethers as well
         this.splitEsters(molecule, markAttachPointsByR, limitPostProcessingBySize);
         this.splitEthersCrosslinking(molecule, markAttachPointsByR, limitPostProcessingBySize);
         this.splitEthers(molecule, markAttachPointsByR, limitPostProcessingBySize);
@@ -1476,7 +1506,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
      * Splits ester bonds in the given molecule and optionally marks the attachment points with R-groups.
      * <p>
      * This method identifies ester bonds in the molecule using a SMARTS pattern and then breaks these bonds while
-     * duplicating the formerly connecting oxygen atom.
+     * duplicating the formerly connecting oxygen atom to produce a carboxy acid and an alcohol as educts.
      * The transformation can either mark the attachment points with R-groups or saturate the resulting open
      * valences with implicit hydrogen atoms, depending on the `markAttachPointsByR` parameter.
      * <p>
@@ -1489,10 +1519,12 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
      * <p>
      * If bonds are split, the molecule may become disconnected. If no ester bonds are found, the original
      * molecule remains unchanged.
+     * Note: SMIRKS transformations are not used here, since they create a copy of the molecule and that would destroy
+     * the atom and bond mapping to the original molecule.
      *
      * @param molecule The molecule in which ester bonds are to be split. Must not be null.
      * @param markAttachPointsByR If true, the attachment points are marked with R-groups; otherwise, they are saturated
-     *                            with implicit hydrogens.
+     *                            with implicit hydrogen atoms.
      * @param limitPostProcessingBySize If true, the bond will only be split if both resulting fragments are large enough
      *                                  to be preserved according to the set minimum size for linear sugars
      * @throws NullPointerException If the input molecule is null.
@@ -1584,13 +1616,15 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
      * The SMARTS pattern used for detection matches cross-linking ether bonds with the following structure:
      * <ul>
      *   <li>A carbon atom (not in a ring, no charge) single-bonded to an oxygen atom (not in a ring, degree 2, no charge).</li>
-     *   <li>The oxygen atom is single-bonded to another carbon atom (not in a ring, no charge) that is also single-bonded to a hydroxyl group.</li>
+     *   <li>The oxygen atom is single-bonded to another carbon atom (not in a ring, no charge) that is also single-bonded to a hydroxy group.</li>
      * </ul>
      * <p>
      * If bonds are split, the molecule may become disconnected. If no matching bonds are found, the original molecule remains unchanged.
+     * Note: SMIRKS transformations are not used here, since they create a copy of the molecule and that would destroy
+     * the atom and bond mapping to the original molecule.
      *
      * @param molecule The molecule in which cross-linking ether bonds are to be split. Must not be null.
-     * @param markAttachPointsByR If true, the attachment points are marked with R-groups; otherwise, they are saturated with implicit hydrogens.
+     * @param markAttachPointsByR If true, the attachment points are marked with R-groups; otherwise, they are saturated with implicit hydrogen atoms.
      * @param limitPostProcessingBySize If true, the bond will only be split if both resulting fragments are large enough
      *                                  to be preserved according to the set minimum size for linear sugars
      * @throws NullPointerException If the input molecule is null.
@@ -1678,9 +1712,11 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
      * </ul>
      * <p>
      * If bonds are split, the molecule may become disconnected. If no matching bonds are found, the original molecule remains unchanged.
+     * Note: SMIRKS transformations are not used here, since they create a copy of the molecule and that would destroy
+     * the atom and bond mapping to the original molecule.
      *
      * @param molecule The molecule in which ether bonds are to be split. Must not be null.
-     * @param markAttachPointsByR If true, the attachment points are marked with R-groups; otherwise, they are saturated with implicit hydrogens.
+     * @param markAttachPointsByR If true, the attachment points are marked with R-groups; otherwise, they are saturated with implicit hydrogen atoms.
      * @param limitPostProcessingBySize If true, the bond will only be split if both resulting fragments are large enough
      *                                  to be preserved according to the set minimum size for linear sugars
      * @throws NullPointerException If the input molecule is null.
@@ -1776,9 +1812,11 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
      * </ul>
      * <p>
      * If bonds are split, the molecule may become disconnected. If no matching bonds are found, the original molecule remains unchanged.
+     * Note: SMIRKS transformations are not used here, since they create a copy of the molecule and that would destroy
+     * the atom and bond mapping to the original molecule.
      *
      * @param molecule The molecule in which peroxide bonds are to be split. Must not be null.
-     * @param markAttachPointsByR If true, the attachment points are marked with R-groups; otherwise, they are saturated with implicit hydrogens.
+     * @param markAttachPointsByR If true, the attachment points are marked with R-groups; otherwise, they are saturated with implicit hydrogen atoms.
      * @param limitPostProcessingBySize If true, the bond will only be split if both resulting fragments are large enough
      *                                  to be preserved according to the set minimum size for linear sugars
      * @throws NullPointerException If the input molecule is null.
