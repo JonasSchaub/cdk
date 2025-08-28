@@ -1076,6 +1076,29 @@ class SugarDetectionUtilityTest {
     }
 
     /**
+     * Test for correct sugar extraction from a glycosidic natural product with a spiro sugar where both rings connected
+     * to the spiro atom are sugars.
+     *
+     * @throws Exception if anything goes wrong
+     */
+    @Test
+    void sugarExtractionTestSpiroInSugar() throws Exception {
+        SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
+        SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.Stereo);
+        //CNP0308702.1
+        IAtomContainer mol = smiPar.parseSmiles("CO[C@@H]1C[C@H](C[C@@H](O)CC[C@H](C)/C=C(/C)C(=O)O)O[C@]2(O[C@@](C)([C@@H]3CC[C@@](C)([C@H]4O[C@@H]([C@H]5O[C@@](O)(CO)[C@@H](C)C[C@H]5C)C[C@@H]4C)O3)C[C@@H]2C)[C@H]1C");
+        SugarDetectionUtility sdu = new SugarDetectionUtility(SilentChemObjectBuilder.getInstance());
+        sdu.setDetectSpiroRingsAsCircularSugarsSetting(true);
+        sdu.setDetectCircularSugarsOnlyWithEnoughExocyclicOxygenAtomsSetting(false);
+        List<IAtomContainer> candidates = sdu.copyAndExtractAglyconeAndSugars(mol, true, false, true, false);
+        Assertions.assertEquals(2, candidates.size());
+        // aglycone
+        Assertions.assertEquals("C([C@@H](O)CC[C@H](C)C=C(C)C(=O)O)*", smiGen.create(candidates.get(0)));
+        //sugar
+        Assertions.assertEquals("CO[C@@H]1CC(O[C@]2(O[C@@](C)([C@@H]3CC[C@@](C)([C@H]4O[C@@H]([C@H]5O[C@@](O)(CO)[C@@H](C)C[C@H]5C)C[C@@H]4C)O3)C[C@@H]2C)[C@H]1C)*", smiGen.create(candidates.get(1)));
+    }
+
+    /**
      * The following tests had the purpose to single out molecules that had issues in batch processing in the past.
      *
      * @throws Exception if anything goes wrong
