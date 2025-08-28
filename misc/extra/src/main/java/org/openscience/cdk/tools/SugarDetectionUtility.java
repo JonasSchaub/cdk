@@ -1,7 +1,5 @@
 /*
  * Copyright (c) 2025 Jonas Schaub <jonas.schaub@uni-jena.de>
- *                    Achim Zielesny <achim.zielesny@w-hs.de>
- *                    Christoph Steinbeck <christoph.steinbeck@uni-jena.de>
  *
  * Contact: cdk-devel@lists.sourceforge.net
  *
@@ -49,7 +47,7 @@ import java.util.Objects;
  *
  * <p>This class extends {@link SugarRemovalUtility} to provide functionality for separating
  * glycosides into their aglycone and sugar components.
- * The main feature is the ability to create copies of both the aglycone (non-sugar backbone)
+ * The main feature is the ability to create copies of both the aglycone
  * and individual sugar fragments from a given molecule, with proper handling of attachment
  * points and stereochemistry.
  *
@@ -57,14 +55,15 @@ import java.util.Objects;
  * <ul>
  *   <li>Detection and extraction of both circular and linear sugar moieties</li>
  *   <li>Preservation of stereochemistry at connection points</li>
- *   <li>Proper saturation of broken bonds with either R-groups or implicit hydrogens</li>
+ *   <li>Proper saturation of broken bonds with either R-groups or implicit hydrogen atoms</li>
  *   <li>Post-processing of sugar fragments including bond splitting (O-glycosidic, ether, ester, peroxide)</li>
- *   <li>Handling of connecting heteroatoms (oxygen, nitrogen, sulfur) in glycosidic bonds</li>
+ *   <li>Duplication of connecting heteroatoms (oxygen, nitrogen, sulfur) in glycosidic bonds, to produce more sensible educts</li>
+ *   <li>Optional mapping of atoms and bonds from the original molecule to their copies in the aglycone and sugar fragments</li>
  * </ul>
  *
  * <p>All sugar detection and removal operations respect the settings inherited from the
  * parent {@link SugarRemovalUtility} class, including terminal vs. non-terminal sugar
- * removal, preservation mode settings, and various detection thresholds.
+ * removal, preservation mode settings, various detection thresholds, etc.
  *
  * <p><strong>Usage Example:</strong>
  * <pre>{@code
@@ -80,17 +79,18 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
 
     /**
      * SMARTS pattern for detecting glycosidic bonds between circular sugar moieties for postprocessing after extraction.
-     * Defines an aliphatic C in a ring with degree 3 or 4 and no charge, connected to an aliphatic O not in a ring with degree 2 and no charge,
-     * connected to an aliphatic C with no charge (this side is left more promiscuous for corner cases).
+     * Defines an aliphatic C in a ring with degree 3 or 4 and no charge, connected to an aliphatic O not in a ring
+     * with degree 2 and no charge, connected to an aliphatic C with no charge (this side is left more promiscuous for
+     * matching cases like linear sugars connected to circular sugars or some corner cases).
      */
-    public static final String O_GLYCOSIDIC_BOND_SMARTS = "[C;R;D3,D4;+0:1]-!@[O;!R;D2;+0:2]-!@[C;+0:3]";
+    public static final String O_GLYCOSIDIC_BOND_SMARTS = "[C;R;D3,D4;+0]-!@[O;!R;D2;+0]-!@[C;+0]";
 
     /**
      * SMARTS pattern for detecting ester bonds between linear sugar moieties for postprocessing after extraction.
-     * Defines an aliphatic C not in a ring, with no charge, connected to a carbonyl oxygen and to another oxygen atom
-     * via a non-ring bond, which is connected in turn to another aliphatic carbon atom.
+     * Defines an aliphatic C not in a ring, with no charge, connected to a carbonyl oxygen (environment) and to another
+     * oxygen atom via a non-ring bond, which is connected in turn to another aliphatic carbon atom.
      */
-    public static final String ESTER_BOND_SMARTS = "[C;!R;+0;$(C=!@[O;!R;+0]):1]-!@[O;!R;D2;+0:2]-!@[C;!R;+0:3]";
+    public static final String ESTER_BOND_SMARTS = "[C;!R;+0;$(C=!@[O;!R;+0])]-!@[O;!R;D2;+0]-!@[C;!R;+0]";
 
     /**
      * SMARTS pattern for detecting cross-linking ether bonds between linear sugar moieties for postprocessing after extraction.
@@ -98,21 +98,46 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
      * via a non-ring bond, which is connected in turn to another aliphatic carbon atom that also has a hydroxy group
      * connected to it (to define the cross-linking nature).
      */
-    public static final String CROSS_LINKING_ETHER_BOND_SMARTS = "[C;!R;+0:1]-!@[O;!R;D2;+0:2]-!@[C;!R;+0;$(C-!@[OH1;!R;+0]):3]";
+    public static final String CROSS_LINKING_ETHER_BOND_SMARTS = "[C;!R;+0]-!@[O;!R;D2;+0]-!@[C;!R;+0;$(C-!@[OH1;!R;+0])]";
 
     /**
      * SMARTS pattern for detecting ether bonds between linear sugar moieties for postprocessing after extraction.
      * Defines an aliphatic C not in a ring, with no charge, connected to an oxygen atom
      * via a non-ring bond, which is connected in turn to another aliphatic carbon atom.
      */
-    public static final String ETHER_BOND_SMARTS = "[C;!R;+0:1]-!@[O;!R;D2;+0:2]-!@[C;!R;+0:3]";
+    public static final String ETHER_BOND_SMARTS = "[C;!R;+0]-!@[O;!R;D2;+0]-!@[C;!R;+0]";
 
     /**
      * SMARTS pattern for detecting peroxide bonds between linear sugar moieties for postprocessing after extraction.
      * Defines an aliphatic C not in a ring, with no charge, connected to an oxygen atom
      * via a non-ring bond, which is connected in turn to another oxygen atom and that to another aliphatic carbon atom.
      */
-    public static final String PEROXIDE_BOND_SMARTS = "[C;!R;+0:1]-!@[O;!R;D2;+0:2]-!@[O;!R;D2;+0:3]-!@[C;!R;+0:4]";
+    public static final String PEROXIDE_BOND_SMARTS = "[C;!R;+0]-!@[O;!R;D2;+0]-!@[O;!R;D2;+0]-!@[C;!R;+0]";
+
+    /**
+     * Default for extractCircularSugars parameter in copyAndExtractAglyconeAndSugars methods.
+     */
+    public static final boolean EXTRACT_CIRCULAR_SUGARS_DEFAULT = true;
+
+    /**
+     * Default for extractLinearSugars parameter in copyAndExtractAglyconeAndSugars methods.
+     */
+    public static final boolean EXTRACT_LINEAR_SUGARS_DEFAULT = false;
+
+    /**
+     * Default for markAttachPointsByR parameter in copyAndExtractAglyconeAndSugars methods.
+     */
+    public static final boolean MARK_ATTACH_POINTS_BY_R_DEFAULT = false;
+
+    /**
+     * Default for postProcessSugars parameter in copyAndExtractAglyconeAndSugars methods.
+     */
+    public static final boolean POST_PROCESS_SUGARS_DEFAULT = false;
+
+    /**
+     * Default for limitPostProcessingBySize parameter in copyAndExtractAglyconeAndSugars methods.
+     */
+    public static final boolean LIMIT_POST_PROCESSING_BY_SIZE_DEFAULT = true;
 
     /**
      * Logger of this class.
@@ -131,13 +156,15 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
     }
 
     /**
-     * Extracts copies of the aglycone and (specified) sugar parts of the given molecule (if there are any).
+     * Extracts copies of the aglycone and sugar parts of the given molecule (if there are any).
      * <p>
-     * This method creates a deep copy of the input molecule and removes the specified
-     * sugar moieties (circular and/or linear) to produce an aglycone. It then creates
+     * This method creates a deep copy of the input molecule and removes circular
+     * sugar moieties to produce an aglycone. It then creates
      * a second copy to extract the sugar fragments that were removed. The attachment
-     * points between the aglycone and sugars are handled by either adding R-groups
-     * (pseudo atoms) or implicit hydrogens to saturate the broken bonds.
+     * points between the aglycone and sugars are saturated with implicit hydrogen atoms.
+     * No postprocessing of the sugar fragments is performed, i.e. they are not separated
+     * from each other if they are connected in the original structure.
+     * Check the overloaded versions of this method for more options.
      *
      * <p>The method preserves stereochemistry information at connection points and
      * handles glycosidic bonds appropriately. When bonds are broken between sugar
@@ -147,7 +174,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
      *
      * <p>The extraction process respects all current sugar detection settings as described in
      * {@link SugarRemovalUtility}, including terminal vs. non-terminal sugar removal,
-     * preservation mode settings, and various detection thresholds.
+     * preservation mode settings, various detection thresholds, etc.
      *
      * <p>Note that atom types are not copied, they have to be re-perceived if needed.</p>
      *
@@ -168,7 +195,16 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
     public List<IAtomContainer> copyAndExtractAglyconeAndSugars(
             IAtomContainer mol) {
         return this.copyAndExtractAglyconeAndSugars(
-                mol, true, false, false, false, true, null, null, null, null);
+                mol,
+                SugarDetectionUtility.EXTRACT_CIRCULAR_SUGARS_DEFAULT,
+                SugarDetectionUtility.EXTRACT_LINEAR_SUGARS_DEFAULT,
+                SugarDetectionUtility.MARK_ATTACH_POINTS_BY_R_DEFAULT,
+                SugarDetectionUtility.POST_PROCESS_SUGARS_DEFAULT,
+                SugarDetectionUtility.LIMIT_POST_PROCESSING_BY_SIZE_DEFAULT,
+                null,
+                null,
+                null,
+                null);
     }
 
     /**
@@ -215,7 +251,16 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
             boolean extractCircularSugars,
             boolean extractLinearSugars) {
         return this.copyAndExtractAglyconeAndSugars(
-                mol, extractCircularSugars, extractLinearSugars, false, false, true, null, null, null, null);
+                mol,
+                extractCircularSugars,
+                extractLinearSugars,
+                SugarDetectionUtility.MARK_ATTACH_POINTS_BY_R_DEFAULT,
+                SugarDetectionUtility.POST_PROCESS_SUGARS_DEFAULT,
+                SugarDetectionUtility.LIMIT_POST_PROCESSING_BY_SIZE_DEFAULT,
+                null,
+                null,
+                null,
+                null);
     }
 
     /**
@@ -266,7 +311,16 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
             boolean extractLinearSugars,
             boolean markAttachPointsByR) {
         return this.copyAndExtractAglyconeAndSugars(
-                mol, extractCircularSugars, extractLinearSugars, markAttachPointsByR, false, true, null, null, null, null);
+                mol,
+                extractCircularSugars,
+                extractLinearSugars,
+                markAttachPointsByR,
+                SugarDetectionUtility.POST_PROCESS_SUGARS_DEFAULT,
+                SugarDetectionUtility.LIMIT_POST_PROCESSING_BY_SIZE_DEFAULT,
+                null,
+                null,
+                null,
+                null);
     }
 
     /**
@@ -320,8 +374,16 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
             boolean markAttachPointsByR,
             boolean postProcessSugars) {
         return this.copyAndExtractAglyconeAndSugars(
-                mol, extractCircularSugars, extractLinearSugars, markAttachPointsByR, postProcessSugars, true,
-                null, null, null, null);
+                mol,
+                extractCircularSugars,
+                extractLinearSugars,
+                markAttachPointsByR,
+                postProcessSugars,
+                SugarDetectionUtility.LIMIT_POST_PROCESSING_BY_SIZE_DEFAULT,
+                null,
+                null,
+                null,
+                null);
     }
 
     /**
@@ -385,25 +447,31 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
             boolean postProcessSugars,
             boolean limitPostProcessingBySize) {
         return this.copyAndExtractAglyconeAndSugars(
-                mol, extractCircularSugars, extractLinearSugars, markAttachPointsByR, postProcessSugars, limitPostProcessingBySize,
-                null, null, null, null);
+                mol,
+                extractCircularSugars,
+                extractLinearSugars,
+                markAttachPointsByR,
+                postProcessSugars,
+                limitPostProcessingBySize,
+                null,
+                null,
+                null,
+                null);
     }
 
-    //remove this method after all and incorporate the new behaviour into the existing methods? -> better to keep the original behaviour of the original methods
     //do not copy the aglycone? -> too much of a hassle because for postprocessing, we repeatedly need the original structure
     //implement alternative method that directly returns group indices? -> blows up the code too much and the atom container fragments are the main point of reference
     //TODO: make it also an option to split CC-bonds and esters, peroxides between circular sugars? See slides, to discuss
     //TODO: simplify this method by encapsulating more code
-    //TODO: look at other special cases in the test class that might require additional postprocessing
     //TODO: check doc of all overloaded methods and ensure that they are consistent; check docs in general
     /**
-     * Extracts copies of the aglycone and (specified) sugar parts of the given molecule (if there are any).
+     * Extracts copies of the aglycone and sugar parts of the given molecule (if there are any).
      * <p>
      * This method creates a deep copy of the input molecule and removes the specified
      * sugar moieties (circular and/or linear) to produce an aglycone. It then creates
      * a second copy to extract the sugar fragments that were removed. The attachment
      * points between the aglycone and sugars are handled by either adding R-groups
-     * (pseudo atoms) or implicit hydrogens to saturate the broken bonds.
+     * (pseudo atoms) or implicit hydrogen atoms to saturate the broken bonds.
      *
      * <p>The method preserves stereochemistry information at connection points and
      * handles glycosidic bonds appropriately. When bonds are broken between sugar
@@ -413,7 +481,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
      *
      * <p>The extraction process respects all current sugar detection settings as described in
      * {@link SugarRemovalUtility}, including terminal vs. non-terminal sugar removal,
-     * preservation mode settings, and various detection thresholds.
+     * preservation mode settings, various detection thresholds, etc.
      *
      * <p>Note that atom types are not copied, they have to be re-perceived if needed.</p>
      *
@@ -430,7 +498,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
      *                           and extracted according to current settings.
      * @param markAttachPointsByR If true, attachment points where sugars and the aglycone were connected
      *                           are marked with R-groups (pseudo atoms). If false,
-     *                           implicit hydrogens are added to saturate the connections.
+     *                           implicit hydrogen atoms are added to saturate the connections.
      * @param postProcessSugars If true, postprocessing of sugar fragments is performed, i.e. splitting O-glycosidic
      *                          bonds in circular and splitting ether, ester, and peroxide bonds in linear sugar moieties
      * @param limitPostProcessingBySize If true, sugar moieties will only be separated/split in postprocessing if they are larger
@@ -439,13 +507,13 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
      *                                  sugars. For linear sugars, the minimum size for linear sugar candidates is applied
      *                                  as a criterion.
      * @param inputAtomToAtomCopyInAglyconeMap Map to be filled with mappings from original atoms to their copies in the aglycone.
-     *                                         Can be null (a new map will be created) or an empty map with sufficient capacity.
+     *                                         Can be null (a new map will be created) but should be an empty map with sufficient capacity.
      * @param inputBondToBondCopyInAglyconeMap Map to be filled with mappings from original bonds to their copies in the aglycone.
-     *                                         Can be null (a new map will be created) or an empty map with sufficient capacity.
+     *                                         Can be null (a new map will be created) but should be an empty map with sufficient capacity.
      * @param inputAtomToAtomCopyInSugarsMap Map to be filled with mappings from original atoms to their copies in the sugar fragments.
-     *                                       Can be null (a new map will be created) or an empty map with sufficient capacity.
+     *                                       Can be null (a new map will be created) but should be an empty map with sufficient capacity.
      * @param inputBondToBondCopyInSugarsMap Map to be filled with mappings from original bonds to their copies in the sugar fragments.
-     *                                       Can be null (a new map will be created) or an empty map with sufficient capacity.
+     *                                       Can be null (a new map will be created) but should be an empty map with sufficient capacity.
      * @return A list of atom containers where the first element is the aglycone
      *         (copy molecule with sugars removed) and subsequent elements are the
      *         individual sugar fragments that were extracted (also copies). If no sugars were
@@ -472,7 +540,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
         if (mol == null) {
             throw new NullPointerException("Given molecule is null.");
         }
-        if (mol.isEmpty()) {
+        if (mol.isEmpty() || (!extractCircularSugars && !extractLinearSugars)) {
             List<IAtomContainer> results = new ArrayList<>(1);
             results.add(mol);
             return results;
@@ -495,6 +563,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
         } else if (extractCircularSugars) {
             wasSugarRemoved = this.removeCircularSugars(copyForAglycone);
         } else if (extractLinearSugars) {
+            //note: actually, extractLinearSugars must be true here if this is reached but the code was not simplified to have more clarity
             wasSugarRemoved = this.removeLinearSugars(copyForAglycone);
         } //else: wasSugarRemoved remains false, and input structure is returned, same as when no sugars were detected, see below
         if (!wasSugarRemoved) {

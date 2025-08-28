@@ -1283,6 +1283,50 @@ class SugarDetectionUtilityTest {
     }
 
     /**
+     * A circular and a linear sugar that are correctly detected and split in postprocessing.
+     *
+     * @throws Exception if anything goes wrong
+     */
+    @Test
+    void sugarExtractionIndividualTest10() throws Exception {
+        SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
+        SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.Stereo);
+        SugarDetectionUtility sdu = new SugarDetectionUtility(SilentChemObjectBuilder.getInstance());
+        //CNP0274023.1
+        String smiles = "CC(=O)N[C@H]1[C@@H](O[C@@H]([C@H](O)[C@@H](O)C=O)[C@H](O)CO)O[C@H](CO)[C@H](O)[C@@H]1O";
+        List<IAtomContainer> candidates =sdu.copyAndExtractAglyconeAndSugars(smiPar.parseSmiles(smiles), true, true, false, true);
+        List<String> expectedSmilesList = Arrays.asList(
+                "",
+                "CC(=O)N[C@H]1[C@H](O[C@H](CO)[C@H](O)[C@@H]1O)O",
+                "O[C@@H]([C@H](O)[C@@H](O)C=O)[C@H](O)CO"
+        );
+        List<String> generatedSmilesList = this.generateSmilesList(candidates, smiGen);
+        Assertions.assertLinesMatch(expectedSmilesList, generatedSmilesList);
+    }
+
+    /**
+     * Tribenoside (CNP0273794.1) is not split very optimal but it is seen as a corner case and added here for documentation.
+     *
+     * @throws Exception if anything goes wrong
+     */
+    @Test
+    void sugarExtractionIndividualTest11() throws Exception {
+        SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
+        SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.Stereo);
+        SugarDetectionUtility sdu = new SugarDetectionUtility(SilentChemObjectBuilder.getInstance());
+        sdu.setRemoveOnlyTerminalSugarsSetting(false);
+        //CNP0273794.1
+        String smiles = "CCOC1O[C@H]([C@@H](COCC2=CC=CC=C2)OCC2=CC=CC=C2)[C@H](OCC2=CC=CC=C2)[C@H]1O";
+        List<IAtomContainer> candidates =sdu.copyAndExtractAglyconeAndSugars(smiPar.parseSmiles(smiles), true, true, true, true);
+        List<String> expectedSmilesList = Arrays.asList(
+                "C(COCC1=CC=CC=C1)(OCC2=CC=CC=C2)*.O(CC1=CC=CC=C1)*",
+                "CCOC1OC([C@@H]([C@H]1O)O*)*"
+        );
+        List<String> generatedSmilesList = this.generateSmilesList(candidates, smiGen);
+        Assertions.assertLinesMatch(expectedSmilesList, generatedSmilesList);
+    }
+
+    /**
      * Tests a structure where the SRU cuts between the sugar and its C6 atom but the SDU should correct that in extraction.
      *
      * @throws Exception if anything goes wrong
