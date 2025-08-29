@@ -742,37 +742,41 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
                 }
             } //end of if condition looking for bonds broken during sugar extraction
         } // end of for loop over all bonds in the input molecule
+        //just a check to be safe, there was an issue in the past:
         if (!hasIdentifiedBrokenBond && !copyForAglycone.isEmpty() && ConnectivityChecker.isConnected(mol) && !containsSpiroSugars) {
             //note for disconnected glycosides, one could process each component separately, but this seems like
             // unnecessary overhead just for the sake of this check
             SugarDetectionUtility.LOGGER.error("No broken bonds found between aglycone and sugars, no saturation performed, this should not happen!");
         }
+        //postprocessing for spiro sugars, if there were any detected:
         if (this.areSpiroRingsDetectedAsCircularSugars() && containsSpiroSugars) {
-            for (IAtomContainer part : new IAtomContainer[]{copyForAglycone, copyForSugars}) {
+            for (IAtomContainer part : new IAtomContainer[] {copyForAglycone, copyForSugars}) {
                 for (IAtom atom : part.atoms()) {
                     if (atom.getProperty(SugarRemovalUtility.IS_SPIRO_ATOM_PROPERTY_KEY) != null) {
-                        if (part.getConnectedBondsCount(atom) == 4) {
-                            //both rings connected to the spiro atom are part of the sugar, no need to saturate
-                            continue;
-                        }
-                        if (markAttachPointsByR) {
-                            for (int i = 0; i < 2; i++) {
-                                IPseudoAtom tmpRAtom = atom.getBuilder().newInstance(IPseudoAtom.class, "R");
-                                tmpRAtom.setAttachPointNum(1);
-                                tmpRAtom.setImplicitHydrogenCount(0);
-                                part.addAtom(tmpRAtom);
-                                IBond bondToR = atom.getBuilder().newInstance(
-                                        IBond.class, atom, tmpRAtom, IBond.Order.SINGLE);
-                                part.addBond(bondToR);
+                        if (part.getConnectedBondsCount(atom) != 4) {
+                            //spiro carbon was part of sugar AND aglycone
+                            if (markAttachPointsByR) {
+                                for (int i = 0; i < 2; i++) {
+                                    IPseudoAtom tmpRAtom = atom.getBuilder().newInstance(IPseudoAtom.class, "R");
+                                    tmpRAtom.setAttachPointNum(1);
+                                    tmpRAtom.setImplicitHydrogenCount(0);
+                                    part.addAtom(tmpRAtom);
+                                    IBond bondToR = atom.getBuilder().newInstance(
+                                            IBond.class, atom, tmpRAtom, IBond.Order.SINGLE);
+                                    part.addBond(bondToR);
+                                }
+                            } else {
+                                int implHCount = atom.getImplicitHydrogenCount();
+                                atom.setImplicitHydrogenCount(implHCount + 2);
                             }
-                        } else {
-                            int implHCount = atom.getImplicitHydrogenCount();
-                            atom.setImplicitHydrogenCount(implHCount + 2);
-                        }
+                        } //else {
+                            //spiro carbon is only part of the sugar, nothing to do
+                        //}
                     }
                 }
             }
         }
+        //postprocessing of extracted sugars, if required:
         if (postProcessSugars) {
             if (extractLinearSugars) {
                 this.splitEtherEsterAndPeroxideBondsPostProcessing(copyForSugars, markAttachPointsByR, limitPostProcessingBySize);
@@ -781,7 +785,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
                 this.splitOGlycosidicBonds(copyForSugars, markAttachPointsByR, limitPostProcessingBySize);
             }
         }
-        //clean up the maps
+        //clean up the maps:
         for (IAtom atom : mol.atoms()) {
             if (!copyForAglycone.contains(inputAtomToAtomCopyInAglyconeMap.get(atom))) {
                 inputAtomToAtomCopyInAglyconeMap.remove(atom);
@@ -802,9 +806,9 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
                 inputBondToBondCopyInSugarsMap.remove(bond);
             }
         }
-        //return value preparations, partition disconnected sugars
-        List<IAtomContainer> resultsList = new ArrayList<>(5);
-        resultsList.add(0, copyForAglycone);
+        //return value preparations, partition disconnected sugars:
+        List<IAtomContainer> resultsList = new ArrayList<>(5); //magic number, totally arbitrary
+        resultsList.add(0, copyForAglycone); //aglycone is always first, even if disconnected
         if (ConnectivityChecker.isConnected(copyForSugars)) {
             resultsList.add(copyForSugars);
         } else {
