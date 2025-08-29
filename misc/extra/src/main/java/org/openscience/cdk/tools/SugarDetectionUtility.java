@@ -483,8 +483,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
 
     //do not copy the aglycone? -> too much of a hassle because for postprocessing, we repeatedly need the original structure
     //implement alternative method that directly returns group indices? -> blows up the code too much and the atom container fragments are the main point of reference
-    //TODO: make it also an option to split CC-bonds and esters, peroxides between circular sugars? See slides, to discuss
-    //TODO: simplify this method by encapsulating more code
+    //TODO: make it also an option to split CC-bonds and esters, peroxides between circular sugars? To discuss
     /**
      * Extracts copies of the aglycone and sugar parts of the given molecule (if there are any).
      * <p>
@@ -708,7 +707,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
                             origHeteroAtom,
                             bond);
                     //copy stereo elements for the broken bond to preserve the configuration
-                    this.mapSpecificStereoElement(
+                    this.mapBondStereoElement(
                             mol,
                             bond,
                             isHeteroAtomInSugars? copyForAglycone : copyForSugars,
@@ -752,26 +751,23 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
         if (this.areSpiroRingsDetectedAsCircularSugars() && containsSpiroSugars) {
             for (IAtomContainer part : new IAtomContainer[] {copyForAglycone, copyForSugars}) {
                 for (IAtom atom : part.atoms()) {
-                    if (atom.getProperty(SugarRemovalUtility.IS_SPIRO_ATOM_PROPERTY_KEY) != null) {
-                        if (part.getConnectedBondsCount(atom) != 4) {
-                            //spiro carbon was part of sugar AND aglycone
-                            if (markAttachPointsByR) {
-                                for (int i = 0; i < 2; i++) {
-                                    IPseudoAtom tmpRAtom = atom.getBuilder().newInstance(IPseudoAtom.class, "R");
-                                    tmpRAtom.setAttachPointNum(1);
-                                    tmpRAtom.setImplicitHydrogenCount(0);
-                                    part.addAtom(tmpRAtom);
-                                    IBond bondToR = atom.getBuilder().newInstance(
-                                            IBond.class, atom, tmpRAtom, IBond.Order.SINGLE);
-                                    part.addBond(bondToR);
-                                }
-                            } else {
-                                int implHCount = atom.getImplicitHydrogenCount();
-                                atom.setImplicitHydrogenCount(implHCount + 2);
+                    if (atom.getProperty(SugarRemovalUtility.IS_SPIRO_ATOM_PROPERTY_KEY) != null
+                            && part.getConnectedBondsCount(atom) != 4) {
+                        //spiro carbon was part of sugar AND aglycone, saturation needed
+                        if (markAttachPointsByR) {
+                            for (int i = 0; i < 2; i++) {
+                                IPseudoAtom tmpRAtom = atom.getBuilder().newInstance(IPseudoAtom.class, "R");
+                                tmpRAtom.setAttachPointNum(1);
+                                tmpRAtom.setImplicitHydrogenCount(0);
+                                part.addAtom(tmpRAtom);
+                                IBond bondToR = atom.getBuilder().newInstance(
+                                        IBond.class, atom, tmpRAtom, IBond.Order.SINGLE);
+                                part.addBond(bondToR);
                             }
-                        } //else {
-                            //spiro carbon is only part of the sugar, nothing to do
-                        //}
+                        } else {
+                            int implHCount = atom.getImplicitHydrogenCount();
+                            atom.setImplicitHydrogenCount(implHCount + 2);
+                        }
                     }
                 }
             }
@@ -1194,7 +1190,28 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
     }
 
     /**
-     * TODO
+     * Preprocesses the results of sugar removal to correct special cases where the separation was not chemically optimal.
+     * <p>
+     * The preprocessing handles the following cases:
+     * <ul>
+     *   <li><strong>C6 carbon separation:</strong> Corrects cases where C6 carbon atoms of sugar moieties
+     *       were incorrectly assigned to the aglycone instead of remaining with the sugar fragment.</li>
+     *   <li><strong>Carboxy group separation:</strong> Moves entire carboxy groups (sugar-C(=O)-O-aglycone)
+     *   from the aglycone to the sugar fragment.</li>
+     * </ul>
+     * <p>
+     * The method identifies problematic cases by examining bonds that were broken during sugar removal (bonds between
+     * carbon atoms that are no longer present in either the aglycone or sugar copies). It then applies specific
+     * correction methods in this class.
+     * No checks are performed!
+     *
+     * @param mol The original input molecule containing all atoms and bonds
+     * @param copyForAglycone The aglycone fragment that may need correction
+     * @param copyForSugars The sugar fragment that may receive corrected atoms/bonds
+     * @param inputAtomToAtomCopyInAglyconeMap Map from original atoms to their copies in the aglycone fragment
+     * @param inputBondToBondCopyInAglyconeMap Map from original bonds to their copies in the aglycone fragment
+     * @param inputAtomToAtomCopyInSugarsMap Map from original atoms to their copies in the sugar fragment
+     * @param inputBondToBondCopyInSugarsMap Map from original bonds to their copies in the sugar fragment
      */
     protected void preprocessSugarRemovalResults(
             IAtomContainer mol,
@@ -1271,7 +1288,33 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
     }
 
     /**
-     * TODO
+     * Corrects the separation of C6 carbon atoms that were incorrectly placed in the aglycone during sugar extraction.
+     * <p>
+     * This method addresses cases where a C6 carbon atom of a sugar moiety was incorrectly
+     * assigned to the aglycone fragment instead of remaining with the sugar during extraction. This can
+     * happen when the sugar removal utility breaks bonds between sugar moieties and their substituents.
+     * <p>
+     * The correction process:
+     * <ul>
+     *   <li>Removes the misplaced carbon atom from the aglycone fragment</li>
+     *   <li>Creates a copy of the original carbon atom and adds it to the sugar fragment</li>
+     *   <li>Recreates the bond between the carbon and its connected sugar atom</li>
+     *   <li>Updates the atom and bond mapping tables to reflect the changes</li>
+     *   <li>Preserves stereochemistry information for the moved bond</li>
+     * </ul>
+     * <p>
+     * This method is typically called during preprocessing when a carbon atom in the aglycone has only one
+     * connection, indicating it is likely a terminal carbon that should belong to a sugar moiety.
+     * No checks are performed!
+     *
+     * @param mol The original input molecule containing all atoms and bonds
+     * @param copyForAglycone The aglycone fragment from which the carbon atom will be removed
+     * @param copyForSugars The sugar fragment to which the carbon atom will be added
+     * @param inputAtomToAtomCopyInSugarsMap Map from original atoms to their copies in the sugar fragment
+     * @param inputBondToBondCopyInSugarsMap Map from original bonds to their copies in the sugar fragment
+     * @param aglyconeCarbon The carbon atom in the aglycone fragment to be moved
+     * @param aglyconeCarbonOriginalAtom The original carbon atom from the input molecule corresponding to the atom to be moved
+     * @param bond The bond between the carbon and the sugar fragment that needs to be recreated
      */
     protected void correctC6Separation(
             IAtomContainer mol,
@@ -1291,7 +1334,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
         //update the maps
         inputAtomToAtomCopyInSugarsMap.put(aglyconeCarbonOriginalAtom, newAtomCopyInSugars);
         inputBondToBondCopyInSugarsMap.put(bond, newBondInSugars);
-        this.mapSpecificStereoElement(
+        this.mapBondStereoElement(
                 mol,
                 bond,
                 copyForSugars,
@@ -1300,7 +1343,38 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
     }
 
     /**
-     * TODO
+     * Corrects the separation of carboxy groups that were incorrectly split between aglycone and sugar fragments during extraction.
+     * <p>
+     * This method addresses cases where a carboxy group (sugar-C(=O)-O-aglycone) was incorrectly separated during sugar removal,
+     * with the formic acid ester remaining in the aglycone.
+     * To maintain chemical validity and keep functional groups intact, this method moves the entire carboxy group
+     * to the sugar fragment.
+     * <p>
+     * The correction process:
+     * <ul>
+     *   <li>Removes the carbonyl carbon and keto oxygen from the aglycone fragment</li>
+     *   <li>Adds copies of both atoms to the sugar fragment</li>
+     *   <li>Recreates the bonds within the carboxy group and to the connecting sugar atom</li>
+     *   <li>Updates the atom and bond mapping tables to reflect the changes</li>
+     *   <li>Preserves stereochemistry information for the moved bonds</li>
+     * </ul>
+     * <p>
+     * This method is typically called during preprocessing to correct sugar removal results in special cases
+     * where functional groups are inadvertently split across fragments.
+     * No checks are performed!
+     *
+     * @param mol The original input molecule containing all atoms and bonds
+     * @param copyForAglycone The aglycone fragment from which the carboxy atoms will be removed
+     * @param copyForSugars The sugar fragment to which the carboxy atoms will be added
+     * @param inputAtomToAtomCopyInAglyconeMap Map from original atoms to their copies in the aglycone fragment
+     * @param inputBondToBondCopyInAglyconeMap Map from original bonds to their copies in the aglycone fragment
+     * @param inputAtomToAtomCopyInSugarsMap Map from original atoms to their copies in the sugar fragment
+     * @param inputBondToBondCopyInSugarsMap Map from original bonds to their copies in the sugar fragment
+     * @param aglyconeCarbon The carbonyl carbon atom in the aglycone fragment to be moved
+     * @param aglyconeCarbonOriginalAtom The original carbonyl carbon atom from the input molecule
+     * @param ketoOxygenInAglycone The keto oxygen atom in the aglycone fragment to be moved
+     * @param etherOxygenInAglycone The ether oxygen atom in the aglycone fragment
+     * @param bond The bond between the carbonyl carbon and the sugar fragment that needs to be recreated
      */
     protected void correctCarboxyGroupSeparation(
             IAtomContainer mol,
@@ -1331,41 +1405,65 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
         }
         if (ketoOxygenOriginalAtom == null || etherOxygenOriginalAtom == null) {
             SugarDetectionUtility.LOGGER.error("Could not find original atoms for carboxy group, this should not happen!");
-            //return;
-        } else {
-            //remove C and keto O from aglycone, add both to sugars, also add bond between them and bond between C and other sugar atom:
-            //copy carboxy C to sugar
-            IAtom newAtomCopyInSugars = this.deeperCopy(aglyconeCarbonOriginalAtom, copyForSugars);
-            IBond newBondInSugars = this.deeperCopy(bond, newAtomCopyInSugars, inputAtomToAtomCopyInSugarsMap.get(bond.getOther(aglyconeCarbonOriginalAtom)));
-            copyForSugars.addBond(newBondInSugars);
-            inputAtomToAtomCopyInSugarsMap.put(aglyconeCarbonOriginalAtom, newAtomCopyInSugars);
-            inputBondToBondCopyInSugarsMap.put(bond, newBondInSugars);
-            //copy keto O to sugar
-            IAtom newKetoOCopyInSugars = this.deeperCopy(ketoOxygenOriginalAtom, copyForSugars);
-            IBond originalBondToKetoO = mol.getBond(aglyconeCarbonOriginalAtom, ketoOxygenOriginalAtom);
-            IBond newKetoOBondInSugars = this.deeperCopy(originalBondToKetoO, newAtomCopyInSugars, newKetoOCopyInSugars);
-            copyForSugars.addBond(newKetoOBondInSugars);
-            inputAtomToAtomCopyInSugarsMap.put(ketoOxygenOriginalAtom, newKetoOCopyInSugars);
-            inputBondToBondCopyInSugarsMap.put(originalBondToKetoO, newKetoOBondInSugars);
-            //remove atoms and bonds from aglycone
-            copyForAglycone.removeAtom(ketoOxygenInAglycone);
-            copyForAglycone.removeBond(inputBondToBondCopyInAglyconeMap.get(originalBondToKetoO));
-            copyForAglycone.removeAtom(aglyconeCarbon);
-            IBond originalBondToEtherO = mol.getBond(aglyconeCarbonOriginalAtom, etherOxygenOriginalAtom);
-            copyForAglycone.removeBond(inputBondToBondCopyInAglyconeMap.get(originalBondToEtherO));
-            this.mapSpecificStereoElement(
-                    mol,
-                    bond,
-                    copyForSugars,
-                    inputAtomToAtomCopyInSugarsMap,
-                    inputBondToBondCopyInSugarsMap);
+            return;
         }
+        //remove C and keto O from aglycone, add both to sugars, also add bond between them and bond between C and other sugar atom:
+        //copy carboxy C to sugar
+        IAtom newAtomCopyInSugars = this.deeperCopy(aglyconeCarbonOriginalAtom, copyForSugars);
+        IBond newBondInSugars = this.deeperCopy(bond, newAtomCopyInSugars, inputAtomToAtomCopyInSugarsMap.get(bond.getOther(aglyconeCarbonOriginalAtom)));
+        copyForSugars.addBond(newBondInSugars);
+        inputAtomToAtomCopyInSugarsMap.put(aglyconeCarbonOriginalAtom, newAtomCopyInSugars);
+        inputBondToBondCopyInSugarsMap.put(bond, newBondInSugars);
+        //copy keto O to sugar
+        IAtom newKetoOCopyInSugars = this.deeperCopy(ketoOxygenOriginalAtom, copyForSugars);
+        IBond originalBondToKetoO = mol.getBond(aglyconeCarbonOriginalAtom, ketoOxygenOriginalAtom);
+        IBond newKetoOBondInSugars = this.deeperCopy(originalBondToKetoO, newAtomCopyInSugars, newKetoOCopyInSugars);
+        copyForSugars.addBond(newKetoOBondInSugars);
+        inputAtomToAtomCopyInSugarsMap.put(ketoOxygenOriginalAtom, newKetoOCopyInSugars);
+        inputBondToBondCopyInSugarsMap.put(originalBondToKetoO, newKetoOBondInSugars);
+        //remove atoms and bonds from aglycone
+        copyForAglycone.removeAtom(ketoOxygenInAglycone);
+        copyForAglycone.removeBond(inputBondToBondCopyInAglyconeMap.get(originalBondToKetoO));
+        copyForAglycone.removeAtom(aglyconeCarbon);
+        IBond originalBondToEtherO = mol.getBond(aglyconeCarbonOriginalAtom, etherOxygenOriginalAtom);
+        copyForAglycone.removeBond(inputBondToBondCopyInAglyconeMap.get(originalBondToEtherO));
+        this.mapBondStereoElement(
+                mol,
+                bond,
+                copyForSugars,
+                inputAtomToAtomCopyInSugarsMap,
+                inputBondToBondCopyInSugarsMap);
     }
 
     /**
-     * TODO
+     * Maps a stereo element from the original molecule (mol) to the receiving container (a copy of the former) if the
+     * specified bond is involved in it and all its components (focus and carriers) are part of the receiving container.
+     * <p>
+     * This method searches for stereo elements in the original molecule that involve both atoms of the specified bond
+     * and maps them to the corresponding atoms and bonds in the receiving container. Only stereo elements where
+     * the focus atom and all carrier atoms/bonds are present in the receiving container will be mapped.
+     * <p>
+     * This is typically used during the sugar extraction process when atoms and bonds are moved between the aglycone
+     * and sugar fragments to ensure that stereochemistry information is preserved in the correct fragment.
+     * <p>
+     * The method performs the following checks before mapping a stereo element:
+     * <ul>
+     *   <li>The stereo element must contain both atoms of the specified bond</li>
+     *   <li>The focus atom of the stereo element must be present in the receiving container</li>
+     *   <li>All carrier atoms and bonds must be present in the receiving container</li>
+     * </ul>
+     * <p>
+     * If all conditions are met, the stereo element is mapped using the provided atom and bond maps and added
+     * to the receiving container.
+     * No checks are performed!
+     *
+     * @param mol The original molecule containing the stereo elements to be mapped
+     * @param bond The bond whose associated stereo elements should be mapped
+     * @param receivingContainer The container that should receive the mapped stereo elements
+     * @param inputAtomToAtomCopyMap Map from original atoms to their copies in the receiving container
+     * @param inputBondToBondCopyMap Map from original bonds to their copies in the receiving container
      */
-    protected void mapSpecificStereoElement(
+    protected void mapBondStereoElement(
             IAtomContainer mol,
             IBond bond,
             IAtomContainer receivingContainer,
@@ -1400,7 +1498,20 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
     }
 
     /**
-     * TODO
+     * Saturates a broken bond at an attachment point by either adding an R-group or increasing the implicit hydrogen count.
+     * <p>
+     * This method is used during the sugar extraction process to handle attachment points where bonds between
+     * the aglycone and sugar moieties have been broken.
+     * No checks are performed!
+     *
+     * @param copyAtomToSaturate The atom in the copy container that needs to be saturated due to a broken bond
+     * @param copyContainer The atom container containing the atom to be saturated
+     * @param markAttachPointsByR If true, an R-group pseudo atom is added to mark the attachment point;
+     *                           if false, the implicit hydrogen count is increased.
+     * @param originalAtom The original atom from the input molecule corresponding to the atom to be saturated.
+     *                     Used for determining bond properties
+     * @param originalBond The original bond that was broken during the extraction process.
+     *                     Used for determining the bond order of the new R-group bond
      */
     protected void saturate(
             IAtom copyAtomToSaturate,
@@ -1440,7 +1551,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
      * Note: SMIRKS transformations are not used here, since they create a copy of the molecule and that would destroy
      * the atom and bond mapping to the original molecule.
      *
-     * @param molecule The molecule in which O-glycosidic bonds are to be split.
+     * @param molecule The molecule in which O-glycosidic bonds are to be split. Must not be null.
      * @param markAttachPointsByR If true, the attachment points are marked with R-groups; otherwise, they are saturated with implicit H.
      * @param limitPostProcessingBySize If true, the bond will only be split if both resulting fragments are large enough
      *                                  to be preserved according to the set preservation mode and threshold
@@ -1470,51 +1581,30 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
                     }
                 }
                 IBond bondToBreak = molecule.getBond(carbonOne, connectingOxygen);
-                boolean isFragmentTooSmall = false;
-                if (limitPostProcessingBySize) {
-                    //split the detected bond in a copy first to see whether the resulting fragment is large enough
-                    float loadFactor = 0.75f; //default load factor for HashMaps
-                    //ensuring sufficient initial capacity
-                    int atomMapInitCapacity = (int)((molecule.getAtomCount() / loadFactor) + 3.0f);
-                    int bondMapInitCapacity = (int)((molecule.getBondCount() / loadFactor) + 3.0f);
-                    Map<IAtom, IAtom> inputAtomToAtomCopyMap = new HashMap<>(atomMapInitCapacity);
-                    Map<IBond, IBond> inputBondToBondCopyMap = new HashMap<>(bondMapInitCapacity);
-                    IAtomContainer moleculeCopy = this.deeperCopy(molecule, inputAtomToAtomCopyMap, inputBondToBondCopyMap);
-                    moleculeCopy.removeBond(inputBondToBondCopyMap.get(bondToBreak));
-                    //do not split the bond if a resulting fragment is too small
-                    for (IAtomContainer fragment : ConnectivityChecker.partitionIntoMolecules(moleculeCopy)) {
-                        if (this.isTooSmallToPreserve(fragment)) {
-                            isFragmentTooSmall = true;
-                            break;
-                        }
+                if (limitPostProcessingBySize && this.isFragmentTooSmall(molecule, bondToBreak, true)) {
+                    continue;
+                }
+                IAtom newOxygen = molecule.newAtom(IElement.O);
+                molecule.newBond(carbonOne, newOxygen, IBond.Order.SINGLE);
+                IStereoElement updatedStereoElement = null;
+                for (IStereoElement stereoElement : molecule.stereoElements()) {
+                    if (stereoElement.getFocus().equals(carbonOne) && stereoElement.contains(connectingOxygen)) {
+                        updatedStereoElement = stereoElement.updateCarriers(connectingOxygen, newOxygen);
+                        break;
                     }
-                } //else {
-                    //no limit by size, so we can split the bond; but this value is already assigned
-                    //isFragmentTooSmall = false;
-                //}
-                if (!isFragmentTooSmall) {
-                    IAtom newOxygen = molecule.newAtom(IElement.O);
-                    molecule.newBond(carbonOne, newOxygen, IBond.Order.SINGLE);
-                    IStereoElement updatedStereoElement = null;
-                    for (IStereoElement stereoElement : molecule.stereoElements()) {
-                        if (stereoElement.getFocus().equals(carbonOne) && stereoElement.contains(connectingOxygen)) {
-                            updatedStereoElement = stereoElement.updateCarriers(connectingOxygen, newOxygen);
-                            break;
-                        }
-                    }
-                    if (updatedStereoElement != null) {
-                        molecule.addStereoElement(updatedStereoElement);
-                    }
-                    molecule.removeBond(bondToBreak);
-                    IAtom[] oxygens = new IAtom[] {connectingOxygen, newOxygen};
-                    for (IAtom oxygen : oxygens) {
-                        this.saturate(
-                                oxygen,
-                                molecule,
-                                markAttachPointsByR,
-                                oxygen,
-                                bondToBreak);
-                    }
+                }
+                if (updatedStereoElement != null) {
+                    molecule.addStereoElement(updatedStereoElement);
+                }
+                molecule.removeBond(bondToBreak);
+                IAtom[] oxygens = new IAtom[] {connectingOxygen, newOxygen};
+                for (IAtom oxygen : oxygens) {
+                    this.saturate(
+                            oxygen,
+                            molecule,
+                            markAttachPointsByR,
+                            oxygen,
+                            bondToBreak);
                 }
             }
         }
@@ -1531,7 +1621,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
      * Note: SMIRKS transformations are not used here, since they create a copy of the molecule and that would destroy
      * the atom and bond mapping to the original molecule.
      *
-     * @param molecule The molecule in which ether, ester, and peroxide bonds are to be split.
+     * @param molecule The molecule in which ether, ester, and peroxide bonds are to be split. Must not be null.
      * @param markAttachPointsByR If true, the attachment points are marked with R-groups; otherwise, they are saturated with implicit H.
      * @param limitPostProcessingBySize If true, the bond will only be split if both resulting fragments are large enough
      *                                  to be preserved according to the set minimum size for linear sugars
@@ -1550,7 +1640,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
         }
         //note: the order is important here, since the ether pattern is very promiscuous and matches esters and cross-linking ethers as well
         this.splitEsters(molecule, markAttachPointsByR, limitPostProcessingBySize);
-        this.splitEthersCrosslinking(molecule, markAttachPointsByR, limitPostProcessingBySize);
+        this.splitEthersCrossLinking(molecule, markAttachPointsByR, limitPostProcessingBySize);
         this.splitEthers(molecule, markAttachPointsByR, limitPostProcessingBySize);
         this.splitPeroxides(molecule, markAttachPointsByR, limitPostProcessingBySize);
     }
@@ -1606,51 +1696,30 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
                     }
                 }
                 IBond bondToBreak = molecule.getBond(carbonOne, connectingOxygen);
-                boolean isFragmentTooSmall = false;
-                if (limitPostProcessingBySize) {
-                    //split the detected bond in a copy first to see whether the resulting fragment is large enough
-                    float loadFactor = 0.75f; //default load factor for HashMaps
-                    //ensuring sufficient initial capacity
-                    int atomMapInitCapacity = (int)((molecule.getAtomCount() / loadFactor) + 3.0f);
-                    int bondMapInitCapacity = (int)((molecule.getBondCount() / loadFactor) + 3.0f);
-                    Map<IAtom, IAtom> inputAtomToAtomCopyMap = new HashMap<>(atomMapInitCapacity);
-                    Map<IBond, IBond> inputBondToBondCopyMap = new HashMap<>(bondMapInitCapacity);
-                    IAtomContainer moleculeCopy = this.deeperCopy(molecule, inputAtomToAtomCopyMap, inputBondToBondCopyMap);
-                    moleculeCopy.removeBond(inputBondToBondCopyMap.get(bondToBreak));
-                    //do not split the bond if a resulting fragment is too small
-                    for (IAtomContainer fragment : ConnectivityChecker.partitionIntoMolecules(moleculeCopy)) {
-                        if (fragment.getAtomCount() < this.getLinearSugarCandidateMinSizeSetting()) {
-                            isFragmentTooSmall = true;
-                            break;
-                        }
+                if (limitPostProcessingBySize && this.isFragmentTooSmall(molecule, bondToBreak, false)) {
+                    continue;
+                }
+                IAtom newOxygen = molecule.newAtom(IElement.O);
+                molecule.newBond(carbonOne, newOxygen, IBond.Order.SINGLE);
+                IStereoElement updatedStereoElement = null;
+                for (IStereoElement stereoElement : molecule.stereoElements()) {
+                    if (stereoElement.getFocus().equals(carbonOne) && stereoElement.contains(connectingOxygen)) {
+                        updatedStereoElement = stereoElement.updateCarriers(connectingOxygen, newOxygen);
+                        break;
                     }
-                } //else {
-                    //no limit by size, so we can split the bond; but this value is already assigned
-                    //isFragmentTooSmall = false;
-                //}
-                if (!isFragmentTooSmall) {
-                    IAtom newOxygen = molecule.newAtom(IElement.O);
-                    molecule.newBond(carbonOne, newOxygen, IBond.Order.SINGLE);
-                    IStereoElement updatedStereoElement = null;
-                    for (IStereoElement stereoElement : molecule.stereoElements()) {
-                        if (stereoElement.getFocus().equals(carbonOne) && stereoElement.contains(connectingOxygen)) {
-                            updatedStereoElement = stereoElement.updateCarriers(connectingOxygen, newOxygen);
-                            break;
-                        }
-                    }
-                    if (updatedStereoElement != null) {
-                        molecule.addStereoElement(updatedStereoElement);
-                    }
-                    molecule.removeBond(bondToBreak);
-                    IAtom[] oxygens = new IAtom[] {connectingOxygen, newOxygen};
-                    for (IAtom oxygen : oxygens) {
-                        this.saturate(
-                                oxygen,
-                                molecule,
-                                markAttachPointsByR,
-                                oxygen,
-                                bondToBreak);
-                    }
+                }
+                if (updatedStereoElement != null) {
+                    molecule.addStereoElement(updatedStereoElement);
+                }
+                molecule.removeBond(bondToBreak);
+                IAtom[] oxygens = new IAtom[] {connectingOxygen, newOxygen};
+                for (IAtom oxygen : oxygens) {
+                    this.saturate(
+                            oxygen,
+                            molecule,
+                            markAttachPointsByR,
+                            oxygen,
+                            bondToBreak);
                 }
             }
         }
@@ -1680,7 +1749,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
      *                                  to be preserved according to the set minimum size for linear sugars
      * @throws NullPointerException If the input molecule is null.
      */
-    protected void splitEthersCrosslinking(
+    protected void splitEthersCrossLinking(
             IAtomContainer molecule,
             boolean markAttachPointsByR,
             boolean limitPostProcessingBySize
@@ -1708,39 +1777,18 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
                 }
                 //no need to copy stereo elements, the connecting oxygen is not duplicated
                 IBond bondToBreak = molecule.getBond(carbonTwo, connectingOxygen);
-                boolean isFragmentTooSmall = false;
-                if (limitPostProcessingBySize) {
-                    //split the detected bond in a copy first to see whether the resulting fragment is large enough
-                    float loadFactor = 0.75f; //default load factor for HashMaps
-                    //ensuring sufficient initial capacity
-                    int atomMapInitCapacity = (int)((molecule.getAtomCount() / loadFactor) + 3.0f);
-                    int bondMapInitCapacity = (int)((molecule.getBondCount() / loadFactor) + 3.0f);
-                    Map<IAtom, IAtom> inputAtomToAtomCopyMap = new HashMap<>(atomMapInitCapacity);
-                    Map<IBond, IBond> inputBondToBondCopyMap = new HashMap<>(bondMapInitCapacity);
-                    IAtomContainer moleculeCopy = this.deeperCopy(molecule, inputAtomToAtomCopyMap, inputBondToBondCopyMap);
-                    moleculeCopy.removeBond(inputBondToBondCopyMap.get(bondToBreak));
-                    //do not split the bond if a resulting fragment is too small
-                    for (IAtomContainer fragment : ConnectivityChecker.partitionIntoMolecules(moleculeCopy)) {
-                        if (fragment.getAtomCount() < this.getLinearSugarCandidateMinSizeSetting()) {
-                            isFragmentTooSmall = true;
-                            break;
-                        }
-                    }
-                } //else {
-                    //no limit by size, so we can split the bond; but this value is already assigned
-                    //isFragmentTooSmall = false;
-                //}
-                if (!isFragmentTooSmall) {
-                    molecule.removeBond(bondToBreak);
-                    IAtom[] atoms = new IAtom[] {connectingOxygen, carbonTwo};
-                    for (IAtom atom : atoms) {
-                        this.saturate(
-                                atom,
-                                molecule,
-                                markAttachPointsByR,
-                                atom,
-                                bondToBreak);
-                    }
+                if (limitPostProcessingBySize && this.isFragmentTooSmall(molecule, bondToBreak, false)) {
+                    continue;
+                }
+                molecule.removeBond(bondToBreak);
+                IAtom[] atoms = new IAtom[] {connectingOxygen, carbonTwo};
+                for (IAtom atom : atoms) {
+                    this.saturate(
+                            atom,
+                            molecule,
+                            markAttachPointsByR,
+                            atom,
+                            bondToBreak);
                 }
             }
         }
@@ -1784,7 +1832,6 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
         Mappings mappings = SmartsPattern.create(SugarDetectionUtility.ETHER_BOND_SMARTS).matchAll(molecule).uniqueAtoms();
         if (mappings.atLeast(1)) {
             for (IAtomContainer esterGroup : mappings.toSubstructures()) {
-
                 IAtom carbonOne = null;
                 IAtom connectingOxygen = null;
                 for (IAtom atom : esterGroup.atoms()) {
@@ -1795,50 +1842,29 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
                     }
                 }
                 IBond bondToBreak = molecule.getBond(carbonOne, connectingOxygen);
-                boolean isFragmentTooSmall = false;
-                if (limitPostProcessingBySize) {
-                    //split the detected bond in a copy first to see whether the resulting fragment is large enough
-                    float loadFactor = 0.75f; //default load factor for HashMaps
-                    //ensuring sufficient initial capacity
-                    int atomMapInitCapacity = (int)((molecule.getAtomCount() / loadFactor) + 3.0f);
-                    int bondMapInitCapacity = (int)((molecule.getBondCount() / loadFactor) + 3.0f);
-                    Map<IAtom, IAtom> inputAtomToAtomCopyMap = new HashMap<>(atomMapInitCapacity);
-                    Map<IBond, IBond> inputBondToBondCopyMap = new HashMap<>(bondMapInitCapacity);
-                    IAtomContainer moleculeCopy = this.deeperCopy(molecule, inputAtomToAtomCopyMap, inputBondToBondCopyMap);
-                    moleculeCopy.removeBond(inputBondToBondCopyMap.get(bondToBreak));
-                    //do not split the bond if a resulting fragment is too small
-                    for (IAtomContainer fragment : ConnectivityChecker.partitionIntoMolecules(moleculeCopy)) {
-                        if (fragment.getAtomCount() < this.getLinearSugarCandidateMinSizeSetting()) {
-                            isFragmentTooSmall = true;
-                            break;
-                        }
+                if (limitPostProcessingBySize && this.isFragmentTooSmall(molecule, bondToBreak, false)) {
+                    continue;
+                }
+                IAtom newOxygen = molecule.newAtom(IElement.O);
+                molecule.newBond(carbonOne, newOxygen, IBond.Order.SINGLE);
+                IStereoElement updatedStereoElement = null;
+                for (IStereoElement stereoElement : molecule.stereoElements()) {
+                    if (stereoElement.getFocus().equals(carbonOne) && stereoElement.contains(connectingOxygen)) {
+                        updatedStereoElement = stereoElement.updateCarriers(connectingOxygen, newOxygen);
+                        break;
                     }
-                } //else {
-                    //no limit by size, so we can split the bond; but this value is already assigned
-                    //isFragmentTooSmall = false;
-                //}
-                if (!isFragmentTooSmall) {
-                    IAtom newOxygen = molecule.newAtom(IElement.O);
-                    molecule.newBond(carbonOne, newOxygen, IBond.Order.SINGLE);
-                    IStereoElement updatedStereoElement = null;
-                    for (IStereoElement stereoElement : molecule.stereoElements()) {
-                        if (stereoElement.getFocus().equals(carbonOne) && stereoElement.contains(connectingOxygen)) {
-                            updatedStereoElement = stereoElement.updateCarriers(connectingOxygen, newOxygen);
-                            break;
-                        }
-                    }
-                    if (updatedStereoElement != null) {
-                        molecule.addStereoElement(updatedStereoElement);
-                    }
-                    molecule.removeBond(bondToBreak);
-                    IAtom[] oxygens = new IAtom[] {connectingOxygen, newOxygen};
-                    for (IAtom oxygen : oxygens) {
-                        this.saturate(oxygen,
-                                molecule,
-                                markAttachPointsByR,
-                                oxygen,
-                                bondToBreak);
-                    }
+                }
+                if (updatedStereoElement != null) {
+                    molecule.addStereoElement(updatedStereoElement);
+                }
+                molecule.removeBond(bondToBreak);
+                IAtom[] oxygens = new IAtom[] {connectingOxygen, newOxygen};
+                for (IAtom oxygen : oxygens) {
+                    this.saturate(oxygen,
+                            molecule,
+                            markAttachPointsByR,
+                            oxygen,
+                            bondToBreak);
                 }
             }
         }
@@ -1882,7 +1908,6 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
         Mappings mappings = SmartsPattern.create(SugarDetectionUtility.PEROXIDE_BOND_SMARTS).matchAll(molecule).uniqueAtoms();
         if (mappings.atLeast(1)) {
             for (IAtomContainer esterGroup : mappings.toSubstructures()) {
-
                 IAtom oxygenOne = null;
                 IAtom oxygenTwo = null;
                 for (IAtom atom : esterGroup.atoms()) {
@@ -1895,43 +1920,70 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
                     }
                 }
                 IBond bondToBreak = molecule.getBond(oxygenOne, oxygenTwo);
-                boolean isFragmentTooSmall = false;
-                if (limitPostProcessingBySize) {
-                    //split the detected bond in a copy first to see whether the resulting fragment is large enough
-                    float loadFactor = 0.75f; //default load factor for HashMaps
-                    //ensuring sufficient initial capacity
-                    int atomMapInitCapacity = (int)((molecule.getAtomCount() / loadFactor) + 3.0f);
-                    int bondMapInitCapacity = (int)((molecule.getBondCount() / loadFactor) + 3.0f);
-                    Map<IAtom, IAtom> inputAtomToAtomCopyMap = new HashMap<>(atomMapInitCapacity);
-                    Map<IBond, IBond> inputBondToBondCopyMap = new HashMap<>(bondMapInitCapacity);
-                    IAtomContainer moleculeCopy = this.deeperCopy(molecule, inputAtomToAtomCopyMap, inputBondToBondCopyMap);
-                    moleculeCopy.removeBond(inputBondToBondCopyMap.get(bondToBreak));
-                    //do not split the bond if a resulting fragment is too small
-
-                    for (IAtomContainer fragment : ConnectivityChecker.partitionIntoMolecules(moleculeCopy)) {
-                        if (fragment.getAtomCount() < this.getLinearSugarCandidateMinSizeSetting()) {
-                            isFragmentTooSmall = true;
-                            break;
-                        }
-                    }
-                } //else {
-                    //no limit by size, so we can split the bond; but this value is already assigned
-                    //isFragmentTooSmall = false;
-                //}
-                if (!isFragmentTooSmall) {
-                    //no need to copy stereo elements, the connecting oxygen is not duplicated
-                    molecule.removeBond(bondToBreak);
-                    IAtom[] atoms = new IAtom[] {oxygenOne, oxygenTwo};
-                    for (IAtom atom : atoms) {
-                        this.saturate(
-                                atom,
-                                molecule,
-                                markAttachPointsByR,
-                                atom,
-                                bondToBreak);
-                    }
+                if (limitPostProcessingBySize && this.isFragmentTooSmall(molecule, bondToBreak, false)) {
+                    continue;
+                }
+                //no need to copy stereo elements, the connecting oxygen is not duplicated
+                molecule.removeBond(bondToBreak);
+                IAtom[] atoms = new IAtom[] {oxygenOne, oxygenTwo};
+                for (IAtom atom : atoms) {
+                    this.saturate(
+                            atom,
+                            molecule,
+                            markAttachPointsByR,
+                            atom,
+                            bondToBreak);
                 }
             }
         }
+    }
+
+    /**
+     * Checks whether breaking the specified bond would result in a fragment that is too small by the set criterion.
+     * <p>
+     * This method creates a temporary copy of the input molecule, removes the specified bond, and then
+     * checks if any of the resulting disconnected fragments would be smaller than the preservation
+     * threshold for circular sugars or smaller than the linear sugar candidate minimum size for linear sugars.
+     * This is used during postprocessing to prevent the splitting of bonds that would
+     * create fragments too small to be meaningful (e.g., small substituents like methyl groups).
+     * <p>
+     * This method is typically called before actually breaking bonds during postprocessing to ensure
+     * that only bonds connecting sufficiently large fragments are split.
+     * <p>
+     * No checks are performed!
+     *
+     * @param molecule The molecule containing the bond to be evaluated
+     * @param bondToBreak The bond whose removal would be tested for fragment size
+     * @param isCriterionForCircularSugars if true, the size evaluated based on the set preservation mode
+     *                                     threshold; otherwise, the linear sugar candidate minimum size is used
+     * @return True if breaking the bond would result in at least one fragment that is too small
+     *         to preserve according to the applied criterion; false if all resulting
+     *         fragments would be large enough to preserve.
+     */
+    protected boolean isFragmentTooSmall(IAtomContainer molecule, IBond bondToBreak, boolean isCriterionForCircularSugars) {
+        //split the detected bond in a copy first to see whether the resulting fragment is large enough
+        float loadFactor = 0.75f; //default load factor for HashMaps
+        //ensuring sufficient initial capacity
+        int atomMapInitCapacity = (int)((molecule.getAtomCount() / loadFactor) + 3.0f);
+        int bondMapInitCapacity = (int)((molecule.getBondCount() / loadFactor) + 3.0f);
+        Map<IAtom, IAtom> inputAtomToAtomCopyMap = new HashMap<>(atomMapInitCapacity);
+        Map<IBond, IBond> inputBondToBondCopyMap = new HashMap<>(bondMapInitCapacity);
+        IAtomContainer moleculeCopy = this.deeperCopy(molecule, inputAtomToAtomCopyMap, inputBondToBondCopyMap);
+        moleculeCopy.removeBond(inputBondToBondCopyMap.get(bondToBreak));
+        //do not split the bond if a resulting fragment is too small
+        for (IAtomContainer fragment : ConnectivityChecker.partitionIntoMolecules(moleculeCopy)) {
+            if (isCriterionForCircularSugars) {
+                if (this.isTooSmallToPreserve(fragment)) {
+                    return true;
+                }
+            } else {
+                //criterion for LINEAR sugars
+                if (fragment.getAtomCount() < this.getLinearSugarCandidateMinSizeSetting()) {
+                    return true;
+                }
+            }
+
+        }
+        return false;
     }
 }

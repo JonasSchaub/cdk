@@ -1422,11 +1422,11 @@ class SugarDetectionUtilityTest {
         //CNP0138295
         String smiles = "O=CC(O)C(O)C(O)C(O)COC(O)(C(O)COC(=O)C(O)C(O)C(O)C(O)COC1=CC=CC=2C(=O)C3=CC(=CC(O)=C3C(=O)C12)C)C(O)C(O)C=O";
         IAtomContainer molecule = smiPar.parseSmiles(smiles);
-        sdu.splitEthersCrosslinking(molecule, false, false);
+        sdu.splitEthersCrossLinking(molecule, false, false);
         Assertions.assertEquals("O=CC(O)C(O)C(O)C(O)CO.O=CC(O)C(O)C(O)C(O)COC(=O)C(O)C(O)C(O)C(O)COC1=CC=CC=2C(=O)C3=CC(=CC(O)=C3C(=O)C12)C",
                 smiGen.create(molecule));
         molecule = smiPar.parseSmiles(smiles);
-        sdu.splitEthersCrosslinking(molecule, true, false);
+        sdu.splitEthersCrossLinking(molecule, true, false);
         Assertions.assertEquals("*OCC(O)C(O)C(O)C(O)C=O.*C(O)(C(O)COC(=O)C(O)C(O)C(O)C(O)COC1=CC=CC=2C(=O)C3=CC(=CC(O)=C3C(=O)C12)C)C(O)C(O)C=O",
                 smiGen.create(molecule));
     }
