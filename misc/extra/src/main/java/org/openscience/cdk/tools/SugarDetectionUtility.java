@@ -20,7 +20,6 @@
 package org.openscience.cdk.tools;
 
 import org.openscience.cdk.Bond;
-import org.openscience.cdk.exception.CDKException;
 import org.openscience.cdk.graph.ConnectivityChecker;
 import org.openscience.cdk.interfaces.IAtom;
 import org.openscience.cdk.interfaces.IAtomContainer;
@@ -33,8 +32,6 @@ import org.openscience.cdk.interfaces.ISingleElectron;
 import org.openscience.cdk.interfaces.IStereoElement;
 import org.openscience.cdk.isomorphism.Mappings;
 import org.openscience.cdk.smarts.SmartsPattern;
-import org.openscience.cdk.smiles.SmiFlavor;
-import org.openscience.cdk.smiles.SmilesGenerator;
 
 import javax.vecmath.Point2d;
 import javax.vecmath.Point3d;
@@ -45,6 +42,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+//TODO: update doc because postprocessing of circular sugars now involves more steps
 /**
  * Utility class for detecting and extracting sugar moieties from molecular structures.
  *
@@ -88,8 +86,14 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
      */
     public static final String O_GLYCOSIDIC_BOND_CIRCULAR_SUGARS_SMARTS = "[C;R;D3,D4;+0]-!@[O;!R;D2;+0]-!@[C;+0]";
 
+    /**
+     * TODO
+     */
     public static final String ESTER_BOND_CIRCULAR_SUGARS_SMARTS = "[C;R;D3,D4;+0;$(C=!@[O;!R;+0])]-!@[O;!R;D2;+0]-!@[C;+0]";
 
+    /**
+     * TODO
+     */
     public static final String PEROXIDE_BOND_CIRCULAR_SUGARS_SMARTS = "[C;R;D3,D4;+0]-!@[O;!R;D2;+0]-!@[O;!R;D2;+0]-!@[C;+0]";
 
     /**
@@ -490,7 +494,6 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
 
     //do not copy the aglycone? -> too much of a hassle because for postprocessing, we repeatedly need the original structure
     //implement alternative method that directly returns group indices? -> blows up the code too much and the atom container fragments are the main point of reference
-    //TODO: split also esters and peroxides between circular sugars
     /**
      * Extracts copies of the aglycone and sugar parts of the given molecule (if there are any).
      * <p>
@@ -592,11 +595,6 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
             inputBondToBondCopyInAglyconeMap = new HashMap<>(bondMapInitCapacity);
         }
         IAtomContainer copyForAglycone = this.deeperCopy(mol, inputAtomToAtomCopyInAglyconeMap, inputBondToBondCopyInAglyconeMap);
-        try {
-            System.out.println(new SmilesGenerator(SmiFlavor.Stereo).create(copyForAglycone));
-        } catch (CDKException e) {
-            throw new RuntimeException(e);
-        }
         boolean wasSugarRemoved = false;
         if (extractCircularSugars && extractLinearSugars) {
             wasSugarRemoved = this.removeCircularAndLinearSugars(copyForAglycone);
@@ -610,11 +608,6 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
             List<IAtomContainer> results = new ArrayList<>(1);
             results.add(copyForAglycone);
             return results;
-        }
-        try {
-            System.out.println(new SmilesGenerator(SmiFlavor.Stereo).create(copyForAglycone));
-        } catch (CDKException e) {
-            throw new RuntimeException(e);
         }
         //sugars were found and removed from the aglycone, so carry on extracting the sugars:
         //copying for sugars
@@ -791,11 +784,11 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
         }
         //postprocessing of extracted sugars, if required:
         if (postProcessSugars) {
-            if (extractLinearSugars) {
-                this.splitEtherEsterPeroxideBondsLinearSugarPostProcessing(copyForSugars, markAttachPointsByR, limitPostProcessingBySize);
-            }
             if (extractCircularSugars) {
-                this.splitOGlycosidicEsterPeroxideBondsCircularSugarPostProcessing(copyForSugars, markAttachPointsByR, limitPostProcessingBySize);
+                this.splitOGlycosidicEsterPeroxideBondsCircularSugarsPostProcessing(copyForSugars, markAttachPointsByR, limitPostProcessingBySize);
+            }
+            if (extractLinearSugars) {
+                this.splitEtherEsterPeroxideBondsLinearSugarsPostProcessing(copyForSugars, markAttachPointsByR, limitPostProcessingBySize);
             }
         }
         //clean up the maps:
@@ -1560,11 +1553,12 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
 
     /**
      * TODO
+     *
      * @param molecule
      * @param markAttachPointsByR
      * @param limitPostProcessingBySize
      */
-    protected void splitOGlycosidicEsterPeroxideBondsCircularSugarPostProcessing(
+    protected void splitOGlycosidicEsterPeroxideBondsCircularSugarsPostProcessing(
             IAtomContainer molecule,
             boolean markAttachPointsByR,
             boolean limitPostProcessingBySize
@@ -1597,7 +1591,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
      *                                  to be preserved according to the set minimum size for linear sugars
      * @throws NullPointerException If the input molecule is null.
      */
-    protected void splitEtherEsterPeroxideBondsLinearSugarPostProcessing(
+    protected void splitEtherEsterPeroxideBondsLinearSugarsPostProcessing(
             IAtomContainer molecule,
             boolean markAttachPointsByR,
             boolean limitPostProcessingBySize
@@ -1615,6 +1609,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
         this.splitPeroxides(molecule, markAttachPointsByR, limitPostProcessingBySize, false);
     }
 
+    //TODO: update doc
     /**
      * Splits ester bonds in the given molecule and optionally marks the attachment points with R-groups.
      * <p>
@@ -1864,6 +1859,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
         }
     }
 
+    //TODO: update doc
     /**
      * Splits peroxide groups connecting linear sugars in the given molecule and optionally marks the attachment points with R-groups.
      * <p>

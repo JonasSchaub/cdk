@@ -168,7 +168,7 @@ class SugarDetectionUtilityTest {
         testCases.put(
                 "CC(=O)N[C@H]1[C@H](O[C@H]2[C@H](O)[C@@H](NC(C)=O)[C@@H](OP(=O)(O)OP(=O)(O)OCCC(C)CC/C=C(\\C)CC/C=C(\\C)CC/C=C(\\C)CCC=C(C)C)O[C@@H]2CO)O[C@H](CO)[C@@H](O[C@@H]2O[C@H](CO[C@H]3O[C@H](CO[C@H]4O[C@H](CO)[C@@H](O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]5O)[C@H](O)[C@@H]4O)[C@@H](O)[C@H](O[C@H]4O[C@H](CO)[C@@H](O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]5O)[C@H](O)[C@@H]4O)[C@@H]3O)[C@@H](O)[C@H](O[C@H]3O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]3O[C@H]3O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]3O[C@H]3O[C@H](CO)[C@@H](O)[C@H](O[C@H]4O[C@H](CO)[C@@H](O)[C@H](O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@H]5O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@H]5O)[C@H]4O)[C@@H]3O)[C@@H]2O)[C@@H]1O",
                 Arrays.asList(
-                        "OP(=O)(O)OP(=O)(O)OCCC(C)CCC=C(C)CCC=C(C)CCC=C(C)CCC=C(C)C",
+                        "OP(=O)(O)OP(=O)(O)OCCC(C)CC/C=C(\\C)/CC/C=C(\\C)/CC/C=C(\\C)/CCC=C(C)C",
                         "CC(=O)N[C@H]1[C@H](O[C@H]2[C@H](O)[C@@H](NC(C)=O)[C@H](O[C@@H]2CO)O)O[C@H](CO)[C@@H](O[C@@H]3O[C@H](CO[C@H]4O[C@H](CO[C@H]5O[C@H](CO)[C@@H](O[C@H]6O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]6O)[C@H](O)[C@@H]5O)[C@@H](O)[C@H](O[C@H]7O[C@H](CO)[C@@H](O[C@H]8O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]8O)[C@H](O)[C@@H]7O)[C@@H]4O)[C@@H](O)[C@H](O[C@H]9O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]9O[C@H]%10O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]%10O[C@H]%11O[C@H](CO)[C@@H](O)[C@H](O[C@H]%12O[C@H](CO)[C@@H](O)[C@H](O[C@H]%13O[C@H](CO)[C@@H](O)[C@H](O)[C@H]%13O[C@H]%14O[C@H](CO)[C@@H](O)[C@H](O)[C@H]%14O)[C@H]%12O)[C@@H]%11O)[C@@H]3O)[C@@H]1O"
                 )
         );
@@ -531,7 +531,7 @@ class SugarDetectionUtilityTest {
         testCases.put(
                 "CC(=O)N[C@H]1[C@H](O[C@H]2[C@H](O)[C@@H](NC(C)=O)[C@@H](OP(=O)(O)OP(=O)(O)OCCC(C)CC/C=C(\\C)CC/C=C(\\C)CC/C=C(\\C)CCC=C(C)C)O[C@@H]2CO)O[C@H](CO)[C@@H](O[C@@H]2O[C@H](CO[C@H]3O[C@H](CO[C@H]4O[C@H](CO)[C@@H](O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]5O)[C@H](O)[C@@H]4O)[C@@H](O)[C@H](O[C@H]4O[C@H](CO)[C@@H](O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]5O)[C@H](O)[C@@H]4O)[C@@H]3O)[C@@H](O)[C@H](O[C@H]3O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]3O[C@H]3O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]3O[C@H]3O[C@H](CO)[C@@H](O)[C@H](O[C@H]4O[C@H](CO)[C@@H](O)[C@H](O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@H]5O[C@H]5O[C@H](CO)[C@@H](O)[C@H](O)[C@H]5O)[C@H]4O)[C@@H]3O)[C@@H]2O)[C@@H]1O",
                 Arrays.asList(
-                        "O(P(=O)(O)OP(=O)(O)OCCC(C)CCC=C(C)CCC=C(C)CCC=C(C)CCC=C(C)C)*",
+                        "O(P(=O)(O)OP(=O)(O)OCCC(C)CC/C=C(\\C)/CC/C=C(\\C)/CC/C=C(\\C)/CCC=C(C)C)*",
                         "CC(=O)N[C@H]1[C@H](O[C@H]2[C@H](O)[C@@H](NC(C)=O)[C@H](O[C@@H]2CO)O*)O[C@H](CO)[C@@H](O[C@@H]3O[C@H](CO[C@H]4O[C@H](CO[C@H]5O[C@H](CO)[C@@H](O[C@H]6O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]6O)[C@H](O)[C@@H]5O)[C@@H](O)[C@H](O[C@H]7O[C@H](CO)[C@@H](O[C@H]8O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]8O)[C@H](O)[C@@H]7O)[C@@H]4O)[C@@H](O)[C@H](O[C@H]9O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]9O[C@H]%10O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]%10O[C@H]%11O[C@H](CO)[C@@H](O)[C@H](O[C@H]%12O[C@H](CO)[C@@H](O)[C@H](O[C@H]%13O[C@H](CO)[C@@H](O)[C@H](O)[C@H]%13O[C@H]%14O[C@H](CO)[C@@H](O)[C@H](O)[C@H]%14O)[C@H]%12O)[C@@H]%11O)[C@@H]3O)[C@@H]1O"
                 )
         );
@@ -826,14 +826,14 @@ class SugarDetectionUtilityTest {
         List<IAtomContainer> candidates = sdu.copyAndExtractAglyconeAndSugars(mol, true, false, false);
         Assertions.assertEquals(2, candidates.size());
         //aglycone
-        Assertions.assertEquals("CCCCC/C=C/C=CC(O)C/C=C/C=CC(=O)O[C@@H]1[C@@H](O)[C@H](C2=C(O)C=C(O)C=C2CO)O[C@H](CO)[C@H]1O", smiGen.create(candidates.get(0)));
+        Assertions.assertEquals("CCCCC/C=C/C=C/C(O)C/C=C/C=C/C(=O)O[C@@H]1[C@@H](O)[C@H](C2=C(O)C=C(O)C=C2CO)O[C@H](CO)[C@H]1O", smiGen.create(candidates.get(0)));
         //2-O-beta-D-galactopyranosyl-beta-D-galactopyranose
         Assertions.assertEquals("[C@H]1(O[C@H](CO)[C@H](O)[C@H](O)[C@H]1O[C@@H]2O[C@H](CO)[C@H](O)[C@H](O)[C@H]2O)O", smiGen.create(candidates.get(1)));
         sdu.setRemoveOnlyTerminalSugarsSetting(false);
         candidates = sdu.copyAndExtractAglyconeAndSugars(mol, true, false, false);
         Assertions.assertEquals(2, candidates.size());
         //disconnected aglycone
-        Assertions.assertEquals("CCCCCC=CC=CC(O)CC=CC=CC(=O)O.C1=C(O)C=C(O)C=C1CO", smiGen.create(candidates.get(0)));
+        Assertions.assertEquals("CCCCC/C=C/C=C/C(O)C/C=C/C=C/C(=O)O.C1=C(O)C=C(O)C=C1CO", smiGen.create(candidates.get(0)));
         //triple sugar
         Assertions.assertEquals("[C@H]1([C@@H](O)CO[C@H](CO)[C@H]1O[C@@H]2O[C@H](CO)[C@H](O)[C@H](O)[C@H]2O[C@@H]3O[C@H](CO)[C@H](O)[C@H](O)[C@H]3O)O", smiGen.create(candidates.get(1)));
     }
@@ -1020,7 +1020,7 @@ class SugarDetectionUtilityTest {
         List<IAtomContainer> candidates = sdu.copyAndExtractAglyconeAndSugars(mol, true, false, false);
         Assertions.assertEquals(2, candidates.size());
         //aglycone
-        Assertions.assertEquals("OP(=O)(O)OP(=O)(O)OCCC(C)CCC=C(C)CCC=C(C)CCC=C(C)CCC=C(C)C", smiGen.create(candidates.get(0)));
+        Assertions.assertEquals("OP(=O)(O)OP(=O)(O)OCCC(C)CC/C=C(\\C)/CC/C=C(\\C)/CC/C=C(\\C)/CCC=C(C)C", smiGen.create(candidates.get(0)));
         //sugars
         Assertions.assertEquals("CC(=O)N[C@H]1[C@H](O[C@H]2[C@H](O)[C@@H](NC(C)=O)[C@H](O[C@@H]2CO)O)O[C@H](CO)[C@@H](O[C@@H]3O[C@H](CO[C@H]4O[C@H](CO[C@H]5O[C@H](CO)[C@@H](O[C@H]6O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]6O)[C@H](O)[C@@H]5O)[C@@H](O)[C@H](O[C@H]7O[C@H](CO)[C@@H](O[C@H]8O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]8O)[C@H](O)[C@@H]7O)[C@@H]4O)[C@@H](O)[C@H](O[C@H]9O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]9O[C@H]%10O[C@H](CO)[C@@H](O)[C@H](O)[C@@H]%10O[C@H]%11O[C@H](CO)[C@@H](O)[C@H](O[C@H]%12O[C@H](CO)[C@@H](O)[C@H](O[C@H]%13O[C@H](CO)[C@@H](O)[C@H](O)[C@H]%13O[C@H]%14O[C@H](CO)[C@@H](O)[C@H](O)[C@H]%14O)[C@H]%12O)[C@@H]%11O)[C@@H]3O)[C@@H]1O", smiGen.create(candidates.get(1)));
     }
@@ -1085,7 +1085,7 @@ class SugarDetectionUtilityTest {
         List<IAtomContainer> candidates = sdu.copyAndExtractAglyconeAndSugars(mol, true, false, true, false);
         Assertions.assertEquals(2, candidates.size());
         // aglycone
-        Assertions.assertEquals("C([C@@H](O)CC[C@H](C)C=C(C)C(=O)O)*", smiGen.create(candidates.get(0)));
+        Assertions.assertEquals("C([C@@H](O)CC[C@H](C)/C=C(/C)\\C(=O)O)*", smiGen.create(candidates.get(0)));
         //sugar
         Assertions.assertEquals("CO[C@@H]1CC(O[C@]2(O[C@@](C)([C@@H]3CC[C@@](C)([C@H]4O[C@@H]([C@H]5O[C@@](O)(CO)[C@@H](C)C[C@H]5C)C[C@@H]4C)O3)C[C@@H]2C)[C@H]1C)*", smiGen.create(candidates.get(1)));
     }
@@ -1387,6 +1387,7 @@ class SugarDetectionUtilityTest {
         Assertions.assertLinesMatch(expectedSmilesList, generatedSmilesList);
     }
 
+    //TODO update test names and doc because esters and peroxides are now also split in circular sugars
     /**
      * Tests the postprocessing split of ester groups connecting linear sugar moieties.
      *
@@ -1526,6 +1527,10 @@ class SugarDetectionUtilityTest {
                 smiGen.create(molecule));
     }
 
+    /**
+     * TODO
+     * @throws Exception
+     */
     @Test
     void testSplitEsterBondsWithStereo() throws Exception {
         SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
@@ -1545,24 +1550,46 @@ class SugarDetectionUtilityTest {
     }
 
     /**
+     * TODO
+     * @throws Exception
+     */
+    @Test
+    void testSplitPeroxideBondsWithStereo() throws Exception {
+        SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
+        SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.Stereo | SmiFlavor.UseAromaticSymbols);
+        SugarDetectionUtility sdu = new SugarDetectionUtility(SilentChemObjectBuilder.getInstance());
+        //CNP0125702.0 but with artificially added stereochemistry
+        String smiles = "C[C@@H]1O[C@@H](OO[C@@H]2O[C@@H](Oc3ccccc3O)[C@@H](O)[C@@H](O)[C@@H]2O)[C@@H](O)[C@@H](O)[C@@H]1O";
+        IAtomContainer molecule = smiPar.parseSmiles(smiles);
+        List<IAtomContainer> candidates = sdu.copyAndExtractAglyconeAndSugars(molecule, true, true, true, true, false);
+        List<String> expectedSmilesList = Arrays.asList(
+                "O(c1ccccc1O)*",
+                "C[C@@H]1O[C@@H](O*)[C@@H](O)[C@@H](O)[C@@H]1O",
+                "O([C@@H]1O[C@H]([C@@H](O)[C@@H](O)[C@@H]1O)O*)*"
+        );
+        List<String> generatedSmilesList = this.generateSmilesList(candidates, smiGen);
+        Assertions.assertLinesMatch(expectedSmilesList, generatedSmilesList);
+    }
+
+    /**
      * Test for splitting ether, ester, and peroxide bonds in a molecule, using the postprocessing method for extracted
      * sugar moieties.
      *
      * @throws Exception if anything goes wrong
      */
     @Test
-    void testSplitEtherEsterPeroxideBondsPostprocessing() throws Exception {
+    void testSplitEtherEsterPeroxideBondsLinearSugarsPostprocessing() throws Exception {
         SmilesParser smiPar = new SmilesParser(SilentChemObjectBuilder.getInstance());
         SmilesGenerator smiGen = new SmilesGenerator(SmiFlavor.Canonical);
         SugarDetectionUtility sdu = new SugarDetectionUtility(SilentChemObjectBuilder.getInstance());
         //CNP0138295
         String smiles = "O=CC(O)C(O)C(O)C(O)COC(O)(C(O)COC(=O)C(O)C(O)C(O)C(O)COC1=CC=CC=2C(=O)C3=CC(=CC(O)=C3C(=O)C12)C)C(O)C(O)C=O";
         IAtomContainer molecule = smiPar.parseSmiles(smiles);
-        sdu.splitEtherEsterPeroxideBondsLinearSugarPostProcessing(molecule, false, false);
+        sdu.splitEtherEsterPeroxideBondsLinearSugarsPostProcessing(molecule, false, false);
         Assertions.assertEquals("O=CC(O)C(O)C(O)C(O)CO.O=CC(O)C(O)C(O)C(O)CO.O=C(O)C(O)C(O)C(O)C(O)COC1=CC=CC=2C(=O)C3=CC(=CC(O)=C3C(=O)C12)C",
                 smiGen.create(molecule));
         molecule = smiPar.parseSmiles(smiles);
-        sdu.splitEtherEsterPeroxideBondsLinearSugarPostProcessing(molecule, true, false);
+        sdu.splitEtherEsterPeroxideBondsLinearSugarsPostProcessing(molecule, true, false);
         Assertions.assertEquals("*OC(=O)C(O)C(O)C(O)C(O)COC1=CC=CC=2C(=O)C3=CC(=CC(O)=C3C(=O)C12)C.*OCC(O)C(O)C(O)C(O)C=O.*OCC(O)C(*)(O)C(O)C(O)C=O",
                 smiGen.create(molecule));
     }

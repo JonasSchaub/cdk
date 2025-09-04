@@ -1125,7 +1125,8 @@ public class AtomContainer extends ChemObject implements IAtomContainer {
                     if (otherBond != null)
                         stereo.set(i, ((IStereoElement<IBond,IBond>)se).updateCarriers(removedBond, otherBond));
                 } else {
-                    invalidated.add(se);
+                    //TODO: temporary fix!
+                    //invalidated.add(se);
                 }
             }
         }
