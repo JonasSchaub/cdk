@@ -20,6 +20,7 @@
 package org.openscience.cdk.tools;
 
 import org.openscience.cdk.Bond;
+import org.openscience.cdk.exception.CDKException;
 import org.openscience.cdk.graph.ConnectivityChecker;
 import org.openscience.cdk.interfaces.IAtom;
 import org.openscience.cdk.interfaces.IAtomContainer;
@@ -32,6 +33,8 @@ import org.openscience.cdk.interfaces.ISingleElectron;
 import org.openscience.cdk.interfaces.IStereoElement;
 import org.openscience.cdk.isomorphism.Mappings;
 import org.openscience.cdk.smarts.SmartsPattern;
+import org.openscience.cdk.smiles.SmiFlavor;
+import org.openscience.cdk.smiles.SmilesGenerator;
 
 import javax.vecmath.Point2d;
 import javax.vecmath.Point3d;
@@ -84,6 +87,10 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
      * matching cases like linear sugars connected to circular sugars or some corner cases).
      */
     public static final String O_GLYCOSIDIC_BOND_CIRCULAR_SUGARS_SMARTS = "[C;R;D3,D4;+0]-!@[O;!R;D2;+0]-!@[C;+0]";
+
+    public static final String ESTER_BOND_CIRCULAR_SUGARS_SMARTS = "[C;R;D3,D4;+0;$(C=!@[O;!R;+0])]-!@[O;!R;D2;+0]-!@[C;+0]";
+
+    public static final String PEROXIDE_BOND_CIRCULAR_SUGARS_SMARTS = "[C;R;D3,D4;+0]-!@[O;!R;D2;+0]-!@[O;!R;D2;+0]-!@[C;+0]";
 
     /**
      * SMARTS pattern for detecting ester bonds between linear sugar moieties for postprocessing after extraction.
@@ -585,6 +592,11 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
             inputBondToBondCopyInAglyconeMap = new HashMap<>(bondMapInitCapacity);
         }
         IAtomContainer copyForAglycone = this.deeperCopy(mol, inputAtomToAtomCopyInAglyconeMap, inputBondToBondCopyInAglyconeMap);
+        try {
+            System.out.println(new SmilesGenerator(SmiFlavor.Stereo).create(copyForAglycone));
+        } catch (CDKException e) {
+            throw new RuntimeException(e);
+        }
         boolean wasSugarRemoved = false;
         if (extractCircularSugars && extractLinearSugars) {
             wasSugarRemoved = this.removeCircularAndLinearSugars(copyForAglycone);
@@ -598,6 +610,11 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
             List<IAtomContainer> results = new ArrayList<>(1);
             results.add(copyForAglycone);
             return results;
+        }
+        try {
+            System.out.println(new SmilesGenerator(SmiFlavor.Stereo).create(copyForAglycone));
+        } catch (CDKException e) {
+            throw new RuntimeException(e);
         }
         //sugars were found and removed from the aglycone, so carry on extracting the sugars:
         //copying for sugars
@@ -775,10 +792,10 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
         //postprocessing of extracted sugars, if required:
         if (postProcessSugars) {
             if (extractLinearSugars) {
-                this.splitEtherEsterAndPeroxideBondsPostProcessing(copyForSugars, markAttachPointsByR, limitPostProcessingBySize);
+                this.splitEtherEsterPeroxideBondsLinearSugarPostProcessing(copyForSugars, markAttachPointsByR, limitPostProcessingBySize);
             }
             if (extractCircularSugars) {
-                this.splitOGlycosidicBonds(copyForSugars, markAttachPointsByR, limitPostProcessingBySize);
+                this.splitOGlycosidicEsterPeroxideBondsCircularSugarPostProcessing(copyForSugars, markAttachPointsByR, limitPostProcessingBySize);
             }
         }
         //clean up the maps:
@@ -1542,22 +1559,12 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
     }
 
     /**
-     * Splits O-glycosidic bonds in the given molecule (circular sugar moieties) and optionally marks the attachment points with R-groups.
-     * This method identifies O-glycosidic bonds in the molecule using a SMARTS pattern and then breaks these bonds.
-     * The transformation can either mark the attachment points with R-groups or saturate the
-     * resulting open valences with implicit H atoms, depending on the `markAttachPointsByR` parameter.
-     * If bonds are split, an unconnected atom container results. If no O-glycosidic bonds are found, the original
-     * molecule remains unchanged.
-     * Note: SMIRKS transformations are not used here, since they create a copy of the molecule and that would destroy
-     * the atom and bond mapping to the original molecule.
-     *
-     * @param molecule The molecule in which O-glycosidic bonds are to be split. Must not be null.
-     * @param markAttachPointsByR If true, the attachment points are marked with R-groups; otherwise, they are saturated with implicit H.
-     * @param limitPostProcessingBySize If true, the bond will only be split if both resulting fragments are large enough
-     *                                  to be preserved according to the set preservation mode and threshold
-     * @throws NullPointerException If the input molecule is null.
+     * TODO
+     * @param molecule
+     * @param markAttachPointsByR
+     * @param limitPostProcessingBySize
      */
-    protected void splitOGlycosidicBonds(
+    protected void splitOGlycosidicEsterPeroxideBondsCircularSugarPostProcessing(
             IAtomContainer molecule,
             boolean markAttachPointsByR,
             boolean limitPostProcessingBySize
@@ -1568,46 +1575,9 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
         if (molecule.isEmpty()) {
             return; //nothing to do
         }
-        Mappings mappings = SmartsPattern.create(SugarDetectionUtility.O_GLYCOSIDIC_BOND_CIRCULAR_SUGARS_SMARTS).matchAll(molecule).uniqueAtoms();
-        if (mappings.atLeast(1)) {
-            for (IAtomContainer esterGroup : mappings.toSubstructures()) {
-                IAtom carbonOne = null;
-                IAtom connectingOxygen = null;
-                for (IAtom atom : esterGroup.atoms()) {
-                    if (atom.getAtomicNumber() == IElement.O) {
-                        connectingOxygen = atom;
-                    } else if (carbonOne == null ) {
-                        carbonOne = atom;
-                    }
-                }
-                IBond bondToBreak = molecule.getBond(carbonOne, connectingOxygen);
-                if (limitPostProcessingBySize && this.isFragmentTooSmall(molecule, bondToBreak, true)) {
-                    continue;
-                }
-                IAtom newOxygen = molecule.newAtom(IElement.O);
-                molecule.newBond(carbonOne, newOxygen, IBond.Order.SINGLE);
-                IStereoElement updatedStereoElement = null;
-                for (IStereoElement stereoElement : molecule.stereoElements()) {
-                    if (stereoElement.getFocus().equals(carbonOne) && stereoElement.contains(connectingOxygen)) {
-                        updatedStereoElement = stereoElement.updateCarriers(connectingOxygen, newOxygen);
-                        break;
-                    }
-                }
-                if (updatedStereoElement != null) {
-                    molecule.addStereoElement(updatedStereoElement);
-                }
-                molecule.removeBond(bondToBreak);
-                IAtom[] oxygens = new IAtom[] {connectingOxygen, newOxygen};
-                for (IAtom oxygen : oxygens) {
-                    this.saturate(
-                            oxygen,
-                            molecule,
-                            markAttachPointsByR,
-                            oxygen,
-                            bondToBreak);
-                }
-            }
-        }
+        this.splitEsters(molecule, markAttachPointsByR, limitPostProcessingBySize, true);
+        this.splitPeroxides(molecule, markAttachPointsByR, limitPostProcessingBySize, true);
+        this.splitOGlycosidicBondsAndEthers(molecule, markAttachPointsByR, limitPostProcessingBySize, true);
     }
 
     /**
@@ -1627,7 +1597,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
      *                                  to be preserved according to the set minimum size for linear sugars
      * @throws NullPointerException If the input molecule is null.
      */
-    protected void splitEtherEsterAndPeroxideBondsPostProcessing(
+    protected void splitEtherEsterPeroxideBondsLinearSugarPostProcessing(
             IAtomContainer molecule,
             boolean markAttachPointsByR,
             boolean limitPostProcessingBySize
@@ -1639,10 +1609,10 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
             return; //nothing to do
         }
         //note: the order is important here, since the ether pattern is very promiscuous and matches esters and cross-linking ethers as well
-        this.splitEsters(molecule, markAttachPointsByR, limitPostProcessingBySize);
+        this.splitEsters(molecule, markAttachPointsByR, limitPostProcessingBySize, false);
         this.splitEthersCrossLinking(molecule, markAttachPointsByR, limitPostProcessingBySize);
-        this.splitEthers(molecule, markAttachPointsByR, limitPostProcessingBySize);
-        this.splitPeroxides(molecule, markAttachPointsByR, limitPostProcessingBySize);
+        this.splitOGlycosidicBondsAndEthers(molecule, markAttachPointsByR, limitPostProcessingBySize, false);
+        this.splitPeroxides(molecule, markAttachPointsByR, limitPostProcessingBySize, false);
     }
 
     /**
@@ -1675,7 +1645,8 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
     protected void splitEsters(
             IAtomContainer molecule,
             boolean markAttachPointsByR,
-            boolean limitPostProcessingBySize
+            boolean limitPostProcessingBySize,
+            boolean splitCircularSugars
     ) {
         if (molecule == null) {
             throw new NullPointerException("The input molecule must not be null.");
@@ -1683,7 +1654,9 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
         if (molecule.isEmpty()) {
             return; //nothing to do
         }
-        Mappings esterMappings = SmartsPattern.create(SugarDetectionUtility.ESTER_BOND_LINEAR_SUGARS_SMARTS).matchAll(molecule).uniqueAtoms();
+        Mappings esterMappings = SmartsPattern.create(
+                splitCircularSugars? SugarDetectionUtility.ESTER_BOND_CIRCULAR_SUGARS_SMARTS : SugarDetectionUtility.ESTER_BOND_LINEAR_SUGARS_SMARTS)
+                .matchAll(molecule).uniqueAtoms();
         if (esterMappings.atLeast(1)) {
             for (IAtomContainer esterGroup : esterMappings.toSubstructures()) {
                 IAtom carbonOne = null;
@@ -1696,7 +1669,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
                     }
                 }
                 IBond bondToBreak = molecule.getBond(carbonOne, connectingOxygen);
-                if (limitPostProcessingBySize && this.isFragmentTooSmall(molecule, bondToBreak, false)) {
+                if (limitPostProcessingBySize && this.isFragmentTooSmall(molecule, bondToBreak, splitCircularSugars)) {
                     continue;
                 }
                 IAtom newOxygen = molecule.newAtom(IElement.O);
@@ -1795,6 +1768,23 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
     }
 
     /**
+     * Splits O-glycosidic bonds in the given molecule (circular sugar moieties) and optionally marks the attachment points with R-groups.
+     * This method identifies O-glycosidic bonds in the molecule using a SMARTS pattern and then breaks these bonds.
+     * The transformation can either mark the attachment points with R-groups or saturate the
+     * resulting open valences with implicit H atoms, depending on the `markAttachPointsByR` parameter.
+     * If bonds are split, an unconnected atom container results. If no O-glycosidic bonds are found, the original
+     * molecule remains unchanged.
+     * Note: SMIRKS transformations are not used here, since they create a copy of the molecule and that would destroy
+     * the atom and bond mapping to the original molecule.
+     *
+     * @param molecule The molecule in which O-glycosidic bonds are to be split. Must not be null.
+     * @param markAttachPointsByR If true, the attachment points are marked with R-groups; otherwise, they are saturated with implicit H.
+     * @param limitPostProcessingBySize If true, the bond will only be split if both resulting fragments are large enough
+     *                                  to be preserved according to the set preservation mode and threshold
+     * @throws NullPointerException If the input molecule is null.
+     */
+    //TODO: combine doc
+    /**
      * Splits ether groups connecting linear sugars in the given molecule and optionally marks the attachment points with R-groups.
      * <p>
      * This method identifies ether bonds in the molecule using a SMARTS pattern and then breaks these bonds while
@@ -1818,10 +1808,11 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
      *                                  to be preserved according to the set minimum size for linear sugars
      * @throws NullPointerException If the input molecule is null.
      */
-    protected void splitEthers(
+    protected void splitOGlycosidicBondsAndEthers(
             IAtomContainer molecule,
             boolean markAttachPointsByR,
-            boolean limitPostProcessingBySize
+            boolean limitPostProcessingBySize,
+            boolean splitCircularSugars
     ) {
         if (molecule == null) {
             throw new NullPointerException("The input molecule must not be null.");
@@ -1829,7 +1820,9 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
         if (molecule.isEmpty()) {
             return; //nothing to do
         }
-        Mappings mappings = SmartsPattern.create(SugarDetectionUtility.ETHER_BOND_LINEAR_SUGARS_SMARTS).matchAll(molecule).uniqueAtoms();
+        Mappings mappings = SmartsPattern.create(
+                splitCircularSugars? SugarDetectionUtility.O_GLYCOSIDIC_BOND_CIRCULAR_SUGARS_SMARTS : SugarDetectionUtility.ETHER_BOND_LINEAR_SUGARS_SMARTS)
+                .matchAll(molecule).uniqueAtoms();
         if (mappings.atLeast(1)) {
             for (IAtomContainer esterGroup : mappings.toSubstructures()) {
                 IAtom carbonOne = null;
@@ -1842,7 +1835,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
                     }
                 }
                 IBond bondToBreak = molecule.getBond(carbonOne, connectingOxygen);
-                if (limitPostProcessingBySize && this.isFragmentTooSmall(molecule, bondToBreak, false)) {
+                if (limitPostProcessingBySize && this.isFragmentTooSmall(molecule, bondToBreak, splitCircularSugars)) {
                     continue;
                 }
                 IAtom newOxygen = molecule.newAtom(IElement.O);
@@ -1898,7 +1891,8 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
     protected void splitPeroxides(
             IAtomContainer molecule,
             boolean markAttachPointsByR,
-            boolean limitPostProcessingBySize
+            boolean limitPostProcessingBySize,
+            boolean splitCircularSugars
     ) {
         if (molecule == null) {
             throw new NullPointerException("The input molecule must not be null.");
@@ -1906,7 +1900,9 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
         if (molecule.isEmpty()) {
             return; //nothing to do
         }
-        Mappings mappings = SmartsPattern.create(SugarDetectionUtility.PEROXIDE_BOND_LINEAR_SUGARS_SMARTS).matchAll(molecule).uniqueAtoms();
+        Mappings mappings = SmartsPattern.create(
+                splitCircularSugars? SugarDetectionUtility.PEROXIDE_BOND_CIRCULAR_SUGARS_SMARTS: SugarDetectionUtility.PEROXIDE_BOND_LINEAR_SUGARS_SMARTS)
+                .matchAll(molecule).uniqueAtoms();
         if (mappings.atLeast(1)) {
             for (IAtomContainer esterGroup : mappings.toSubstructures()) {
                 IAtom oxygenOne = null;
@@ -1921,7 +1917,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
                     }
                 }
                 IBond bondToBreak = molecule.getBond(oxygenOne, oxygenTwo);
-                if (limitPostProcessingBySize && this.isFragmentTooSmall(molecule, bondToBreak, false)) {
+                if (limitPostProcessingBySize && this.isFragmentTooSmall(molecule, bondToBreak, splitCircularSugars)) {
                     continue;
                 }
                 //no need to copy stereo elements, the connecting oxygen is not duplicated
