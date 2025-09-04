@@ -42,15 +42,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-//TODO: update doc because postprocessing of circular sugars now involves more steps
 /**
  * Utility class for detecting and extracting sugar moieties from molecular structures.
  *
  * <p>This class extends {@link SugarRemovalUtility} to provide functionality for separating
- * glycosides into their aglycone and sugar components.
+ * glycosides into their aglycone and glycosidic components.
  * The main feature is the ability to create copies of both the aglycone
  * and individual sugar fragments from a given molecule, with proper handling of attachment
- * points and stereochemistry.
+ * points and stereochemistry, and some optional postprocessing possibilities.
  *
  * <p>The extraction process supports:
  * <ul>
@@ -64,11 +63,17 @@ import java.util.Objects;
  *
  * <p>All sugar detection and removal operations respect the settings inherited from the
  * parent {@link SugarRemovalUtility} class, including terminal vs. non-terminal sugar
- * removal, preservation mode settings, various detection thresholds, etc.
+ * removal, preservation mode settings, various detection thresholds, etc. In two cases, the initial
+ * {@link SugarRemovalUtility} results are corrected for extraction:
+ * <ul>
+ *     <li>When a sugar would lose its C6</li>
+ *     <li>When a sugar is on the "carboxy end" of an ester bond to the aglycone</li>
+ * </ul>
  *
  * <p><strong>Usage Example:</strong>
  * <pre>{@code
  * SugarDetectionUtility utility = new SugarDetectionUtility(SilentChemObjectBuilder.getInstance());
+ * //check the overloaded variants of this method for more options
  * List<IAtomContainer> fragments = utility.copyAndExtractAglyconeAndSugars(molecule);
  * IAtomContainer aglycone = fragments.get(0);  // First element is always the aglycone
  * // Subsequent elements are individual sugar fragments
@@ -79,7 +84,7 @@ import java.util.Objects;
 public class SugarDetectionUtility extends SugarRemovalUtility {
 
     /**
-     * SMARTS pattern for detecting glycosidic bonds between circular sugar moieties for postprocessing after extraction.
+     * SMARTS pattern for detecting glycosidic bonds (ether bonds) between circular sugar moieties for postprocessing after extraction.
      * Defines an aliphatic C in a ring with degree 3 or 4 and no charge, connected to an aliphatic O not in a ring
      * with degree 2 and no charge, connected to an aliphatic C with no charge (this side is left more promiscuous for
      * matching cases like linear sugars connected to circular sugars or some corner cases).
@@ -87,12 +92,18 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
     public static final String O_GLYCOSIDIC_BOND_CIRCULAR_SUGARS_SMARTS = "[C;R;D3,D4;+0]-!@[O;!R;D2;+0]-!@[C;+0]";
 
     /**
-     * TODO
+     * SMARTS pattern for detecting ester bonds between circular sugar moieties for postprocessing after extraction.
+     * Defines an aliphatic C in a ring with degree 3 or 4 and no charge, connected to a carbonyl oxygen (environment)
+     * and to another oxygen atom via a non-ring bond, which is connected in turn to another aliphatic carbon atom
+     * (this side is left more promiscuous for matching cases like linear sugars connected to circular sugars or some corner cases).
      */
     public static final String ESTER_BOND_CIRCULAR_SUGARS_SMARTS = "[C;R;D3,D4;+0;$(C=!@[O;!R;+0])]-!@[O;!R;D2;+0]-!@[C;+0]";
 
     /**
-     * TODO
+     * SMARTS pattern for detecting peroxide bonds between circular sugar moieties for postprocessing after extraction.
+     * Defines an aliphatic C in a ring with degree 3 or 4 and no charge, connected to an oxygen atom via a non-ring bond,
+     * which is connected in turn to another oxygen atom and that to another aliphatic carbon atom
+     * (this side is left more promiscuous for matching cases like linear sugars connected to circular sugars or some corner cases).
      */
     public static final String PEROXIDE_BOND_CIRCULAR_SUGARS_SMARTS = "[C;R;D3,D4;+0]-!@[O;!R;D2;+0]-!@[O;!R;D2;+0]-!@[C;+0]";
 
@@ -351,8 +362,8 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
      * points between the aglycone and sugars are handled by either adding R-groups
      * (pseudo atoms) or implicit hydrogen atoms to saturate the broken bonds.
      * Optionally, postprocessing of the sugar fragments is performed, i.e. they are separated
-     * from each other if they are connected in the original structure via O-glycosidic bonds
-     * (circular sugars), ether, ester, or peroxide bonds (linear sugars). This postprocessing
+     * from each other if they are connected in the original structure via O-glycosidic (ether),
+     * ester, or peroxide bonds. This postprocessing
      * is limited by size, i.e. sugars and their substituents are only split if both resulting
      * parts are larger than the set preservation mode threshold for circular sugars and
      * the minimum size for linear sugar candidates, respectively, to prevent smaller substituents
@@ -382,7 +393,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
      *                           are marked with R-groups (pseudo atoms). If false,
      *                           implicit hydrogen atoms are added to saturate the connections.
      * @param postProcessSugars If true, postprocessing of sugar fragments is performed, i.e. splitting O-glycosidic
-     *                          bonds in circular and splitting ether, ester, and peroxide bonds in linear sugar moieties
+     *                          (ether), ester, and peroxide bonds between sugar moieties
      * @return A list of atom containers where the first element is the aglycone
      *         (copy molecule with sugars removed) and subsequent elements are the
      *         individual sugar fragments that were extracted (also copies). If no sugars were
@@ -423,8 +434,8 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
      * points between the aglycone and sugars are handled by either adding R-groups
      * (pseudo atoms) or implicit hydrogen atoms to saturate the broken bonds.
      * Optionally, postprocessing of the sugar fragments is performed, i.e. they are separated
-     * from each other if they are connected in the original structure via O-glycosidic bonds
-     * (circular sugars), ether, ester, or peroxide bonds (linear sugars). Optionally, this postprocessing
+     * from each other if they are connected in the original structure via O-glycosidic (ether),
+     * ester, or peroxide bonds. Optionally, this postprocessing
      * is limited by size, i.e. sugars and their substituents are only split if both resulting
      * parts are larger than the set preservation mode threshold for circular sugars and
      * the minimum size for linear sugar candidates, respectively, to prevent smaller substituents
@@ -454,7 +465,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
      *                           are marked with R-groups (pseudo atoms). If false,
      *                           implicit hydrogen atoms are added to saturate the connections.
      * @param postProcessSugars If true, postprocessing of sugar fragments is performed, i.e. splitting O-glycosidic
-     *                          bonds in circular and splitting ether, ester, and peroxide bonds in linear sugar moieties
+     *                          (ether), ester, and peroxide bonds between sugar moieties
      * @param limitPostProcessingBySize If true, sugar moieties will only be separated/split in postprocessing if they are larger
      *                                  than the set preservation mode threshold (see {@link SugarRemovalUtility}). This is
      *                                  to prevent smaller substituents like, e.g. methyl ethers, being separated from the
@@ -503,8 +514,8 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
      * points between the aglycone and sugars are handled by either adding R-groups
      * (pseudo atoms) or implicit hydrogen atoms to saturate the broken bonds.
      * Optionally, postprocessing of the sugar fragments is performed, i.e. they are separated
-     * from each other if they are connected in the original structure via O-glycosidic bonds
-     * (circular sugars), ether, ester, or peroxide bonds (linear sugars). Optionally, this postprocessing
+     * from each other if they are connected in the original structure via O-glycosidic (ether),
+     * ester, or peroxide bonds. Optionally, this postprocessing
      * is limited by size, i.e. sugars and their substituents are only split if both resulting
      * parts are larger than the set preservation mode threshold for circular sugars and
      * the minimum size for linear sugar candidates, respectively, to prevent smaller substituents
@@ -537,7 +548,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
      *                           are marked with R-groups (pseudo atoms). If false,
      *                           implicit hydrogen atoms are added to saturate the connections.
      * @param postProcessSugars If true, postprocessing of sugar fragments is performed, i.e. splitting O-glycosidic
-     *                          bonds in circular and splitting ether, ester, and peroxide bonds in linear sugar moieties
+     *                          (ether), ester, and peroxide bonds between sugar moieties
      * @param limitPostProcessingBySize If true, sugar moieties will only be separated/split in postprocessing if they are larger
      *                                  than the set preservation mode threshold (see {@link SugarRemovalUtility}). This is
      *                                  to prevent smaller substituents like, e.g. methyl ethers, being separated from the
@@ -1552,11 +1563,21 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
     }
 
     /**
-     * TODO
+     * Splits O-glycosidic (ether), ester, and peroxide bonds in the given molecule (circular sugar moieties) and optionally marks the
+     * attachment points with R-groups.
+     * This method identifies specific bond types (ether, ester, and peroxide) in the molecule using SMARTS patterns and
+     * then breaks these bonds, duplicating oxygen atoms where adequate. The transformation can either mark the attachment points with R-groups or
+     * saturate the resulting open valences with implicit H atoms, depending on the `markAttachPointsByR` parameter.
+     * If bonds are split, an unconnected atom container results. If no matching bonds are found, the original molecule
+     * remains unchanged.
+     * Note: SMIRKS transformations are not used here, since they create a copy of the molecule and that would destroy
+     * the atom and bond mapping to the original molecule.
      *
-     * @param molecule
-     * @param markAttachPointsByR
-     * @param limitPostProcessingBySize
+     * @param molecule The molecule in which ether, ester, and peroxide bonds are to be split. Must not be null.
+     * @param markAttachPointsByR If true, the attachment points are marked with R-groups; otherwise, they are saturated with implicit H.
+     * @param limitPostProcessingBySize If true, the bond will only be split if both resulting fragments are large enough
+     *                                  to be preserved according to the set preservation mode threshold
+     * @throws NullPointerException If the input molecule is null.
      */
     protected void splitOGlycosidicEsterPeroxideBondsCircularSugarsPostProcessing(
             IAtomContainer molecule,
@@ -1609,21 +1630,17 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
         this.splitPeroxides(molecule, markAttachPointsByR, limitPostProcessingBySize, false);
     }
 
-    //TODO: update doc
     /**
-     * Splits ester bonds in the given molecule and optionally marks the attachment points with R-groups.
+     * Splits ester bonds in the given molecule (circular or linear sugar moieties) and optionally marks the attachment
+     * points with R-groups.
      * <p>
      * This method identifies ester bonds in the molecule using a SMARTS pattern and then breaks these bonds while
      * duplicating the formerly connecting oxygen atom to produce a carboxy acid and an alcohol as educts.
      * The transformation can either mark the attachment points with R-groups or saturate the resulting open
      * valences with implicit hydrogen atoms, depending on the `markAttachPointsByR` parameter.
      * <p>
-     * The SMARTS pattern used for detection matches ester bonds with the following structure:
-     * <ul>
-     *   <li>A carbon atom (not in a ring, no charge) double-bonded to an oxygen atom.</li>
-     *   <li>The carbon atom is single-bonded to an oxygen atom (not in a ring, degree 2, no charge).</li>
-     *   <li>The second oxygen atom is single-bonded to another carbon atom (not in a ring, no charge).</li>
-     * </ul>
+     * Depending on the `splitCircularSugars` parameter, the method uses either the SMARTS pattern for circular sugar
+     * ester bonds or the pattern for linear sugar ester bonds (see the public constants).
      * <p>
      * If bonds are split, the molecule may become disconnected. If no ester bonds are found, the original
      * molecule remains unchanged.
@@ -1634,7 +1651,10 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
      * @param markAttachPointsByR If true, the attachment points are marked with R-groups; otherwise, they are saturated
      *                            with implicit hydrogen atoms.
      * @param limitPostProcessingBySize If true, the bond will only be split if both resulting fragments are large enough
-     *                                  to be preserved according to the set minimum size for linear sugars
+     *                                  to be preserved according to the set preservation mode threshold or the set
+     *                                  minimum size for linear sugars (depends on 'splitCircularSugars').
+     * @param splitCircularSugars If true, the SMARTS pattern for circular sugar ester bonds is used;
+     *                            if false, the pattern for linear sugar ester bonds is used.
      * @throws NullPointerException If the input molecule is null.
      */
     protected void splitEsters(
@@ -1694,18 +1714,12 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
     }
 
     /**
-     * Splits cross-linking ether bonds in the given molecule and optionally marks the attachment points with R-groups.
+     * Splits cross-linking ether bonds in the given molecule (linear sugar moieties) and optionally marks the attachment points with R-groups.
      * <p>
      * This method identifies cross-linking ether bonds in the molecule using a SMARTS pattern and then breaks these bonds
      * while duplicating the formerly connecting oxygen atom.
      * The transformation can either mark the attachment points with R-groups or saturate the resulting open valences
      * with implicit hydrogen atoms, depending on the `markAttachPointsByR` parameter.
-     * <p>
-     * The SMARTS pattern used for detection matches cross-linking ether bonds with the following structure:
-     * <ul>
-     *   <li>A carbon atom (not in a ring, no charge) single-bonded to an oxygen atom (not in a ring, degree 2, no charge).</li>
-     *   <li>The oxygen atom is single-bonded to another carbon atom (not in a ring, no charge) that is also single-bonded to a hydroxy group.</li>
-     * </ul>
      * <p>
      * If bonds are split, the molecule may become disconnected. If no matching bonds are found, the original molecule remains unchanged.
      * Note: SMIRKS transformations are not used here, since they create a copy of the molecule and that would destroy
@@ -1763,44 +1777,28 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
     }
 
     /**
-     * Splits O-glycosidic bonds in the given molecule (circular sugar moieties) and optionally marks the attachment points with R-groups.
-     * This method identifies O-glycosidic bonds in the molecule using a SMARTS pattern and then breaks these bonds.
-     * The transformation can either mark the attachment points with R-groups or saturate the
-     * resulting open valences with implicit H atoms, depending on the `markAttachPointsByR` parameter.
-     * If bonds are split, an unconnected atom container results. If no O-glycosidic bonds are found, the original
-     * molecule remains unchanged.
-     * Note: SMIRKS transformations are not used here, since they create a copy of the molecule and that would destroy
-     * the atom and bond mapping to the original molecule.
-     *
-     * @param molecule The molecule in which O-glycosidic bonds are to be split. Must not be null.
-     * @param markAttachPointsByR If true, the attachment points are marked with R-groups; otherwise, they are saturated with implicit H.
-     * @param limitPostProcessingBySize If true, the bond will only be split if both resulting fragments are large enough
-     *                                  to be preserved according to the set preservation mode and threshold
-     * @throws NullPointerException If the input molecule is null.
-     */
-    //TODO: combine doc
-    /**
-     * Splits ether groups connecting linear sugars in the given molecule and optionally marks the attachment points with R-groups.
+     * Splits O-glycosidic (ether) groups connecting circular or linear sugars in the given molecule and optionally
+     * marks the attachment points with R-groups.
      * <p>
      * This method identifies ether bonds in the molecule using a SMARTS pattern and then breaks these bonds while
      * duplicating the formerly connecting oxygen atom.
      * The transformation can either mark the attachment points with R-groups or saturate the resulting open valences
      * with implicit hydrogen atoms, depending on the `markAttachPointsByR` parameter.
      * <p>
-     * The SMARTS pattern used for detection matches ether bonds with the following structure:
-     * <ul>
-     *   <li>A carbon atom (not in a ring, no charge) single-bonded to an oxygen atom (not in a ring, degree 2, no charge).</li>
-     *   <li>The oxygen atom is single-bonded to another carbon atom (not in a ring, no charge).</li>
-     * </ul>
+     * Depending on the `splitCircularSugars` parameter, the method uses either the SMARTS pattern for circular sugar
+     * ester bonds or the pattern for linear sugar ester bonds (see the public constants).
      * <p>
      * If bonds are split, the molecule may become disconnected. If no matching bonds are found, the original molecule remains unchanged.
      * Note: SMIRKS transformations are not used here, since they create a copy of the molecule and that would destroy
      * the atom and bond mapping to the original molecule.
      *
-     * @param molecule The molecule in which ether bonds are to be split. Must not be null.
+     * @param molecule The molecule in which O-glycosidic (ether) bonds are to be split. Must not be null.
      * @param markAttachPointsByR If true, the attachment points are marked with R-groups; otherwise, they are saturated with implicit hydrogen atoms.
      * @param limitPostProcessingBySize If true, the bond will only be split if both resulting fragments are large enough
-     *                                  to be preserved according to the set minimum size for linear sugars
+     *                                  to be preserved according to the set preservation mode threshold or the set
+     *                                  minimum size for linear sugars (depends on 'splitCircularSugars').
+     * @param splitCircularSugars If true, the SMARTS pattern for circular sugar ester bonds is used;
+     *                            if false, the pattern for linear sugar ester bonds is used.
      * @throws NullPointerException If the input molecule is null.
      */
     protected void splitOGlycosidicBondsAndEthers(
@@ -1859,20 +1857,16 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
         }
     }
 
-    //TODO: update doc
     /**
-     * Splits peroxide groups connecting linear sugars in the given molecule and optionally marks the attachment points with R-groups.
+     * Splits peroxide groups in the given molecule (circular or linear sugar moieties) and
+     * optionally marks the attachment points with R-groups.
      * <p>
      * This method identifies peroxide bonds in the molecule using a SMARTS pattern and then breaks these bonds.
      * The transformation can either mark the attachment points with R-groups or saturate the resulting open valences
      * with implicit hydrogen atoms, depending on the `markAttachPointsByR` parameter.
      * <p>
-     * The SMARTS pattern used for detection matches peroxide bonds with the following structure:
-     * <ul>
-     *   <li>A carbon atom (not in a ring, no charge) single-bonded to an oxygen atom (not in a ring, degree 2, no charge).</li>
-     *   <li>The oxygen atom is single-bonded to another oxygen atom  and that in turn to another carbon atom, each with
-     *   the same properties as the other two.</li>
-     * </ul>
+     * Depending on the `splitCircularSugars` parameter, the method uses either the SMARTS pattern for circular sugar
+     * ester bonds or the pattern for linear sugar ester bonds (see the public constants).
      * <p>
      * If bonds are split, the molecule may become disconnected. If no matching bonds are found, the original molecule remains unchanged.
      * Note: SMIRKS transformations are not used here, since they create a copy of the molecule and that would destroy
@@ -1881,7 +1875,10 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
      * @param molecule The molecule in which peroxide bonds are to be split. Must not be null.
      * @param markAttachPointsByR If true, the attachment points are marked with R-groups; otherwise, they are saturated with implicit hydrogen atoms.
      * @param limitPostProcessingBySize If true, the bond will only be split if both resulting fragments are large enough
-     *                                  to be preserved according to the set minimum size for linear sugars
+     *                                  to be preserved according to the set preservation mode threshold or the set
+     *                                  minimum size for linear sugars (depends on 'splitCircularSugars').
+     * @param splitCircularSugars If true, the SMARTS pattern for circular sugar ester bonds is used;
+     *                            if false, the pattern for linear sugar ester bonds is used.
      * @throws NullPointerException If the input molecule is null.
      */
     protected void splitPeroxides(
