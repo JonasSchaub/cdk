@@ -83,14 +83,14 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
      * with degree 2 and no charge, connected to an aliphatic C with no charge (this side is left more promiscuous for
      * matching cases like linear sugars connected to circular sugars or some corner cases).
      */
-    public static final String O_GLYCOSIDIC_BOND_SMARTS = "[C;R;D3,D4;+0]-!@[O;!R;D2;+0]-!@[C;+0]";
+    public static final String O_GLYCOSIDIC_BOND_CIRCULAR_SUGARS_SMARTS = "[C;R;D3,D4;+0]-!@[O;!R;D2;+0]-!@[C;+0]";
 
     /**
      * SMARTS pattern for detecting ester bonds between linear sugar moieties for postprocessing after extraction.
      * Defines an aliphatic C not in a ring, with no charge, connected to a carbonyl oxygen (environment) and to another
      * oxygen atom via a non-ring bond, which is connected in turn to another aliphatic carbon atom.
      */
-    public static final String ESTER_BOND_SMARTS = "[C;!R;+0;$(C=!@[O;!R;+0])]-!@[O;!R;D2;+0]-!@[C;!R;+0]";
+    public static final String ESTER_BOND_LINEAR_SUGARS_SMARTS = "[C;!R;+0;$(C=!@[O;!R;+0])]-!@[O;!R;D2;+0]-!@[C;!R;+0]";
 
     /**
      * SMARTS pattern for detecting cross-linking ether bonds between linear sugar moieties for postprocessing after extraction.
@@ -98,21 +98,21 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
      * via a non-ring bond, which is connected in turn to another aliphatic carbon atom that also has a hydroxy group
      * connected to it (to define the cross-linking nature).
      */
-    public static final String CROSS_LINKING_ETHER_BOND_SMARTS = "[C;!R;+0]-!@[O;!R;D2;+0]-!@[C;!R;+0;$(C-!@[OH1;!R;+0])]";
+    public static final String CROSS_LINKING_ETHER_BOND_LINEAR_SUGARS_SMARTS = "[C;!R;+0]-!@[O;!R;D2;+0]-!@[C;!R;+0;$(C-!@[OH1;!R;+0])]";
 
     /**
      * SMARTS pattern for detecting ether bonds between linear sugar moieties for postprocessing after extraction.
      * Defines an aliphatic C not in a ring, with no charge, connected to an oxygen atom
      * via a non-ring bond, which is connected in turn to another aliphatic carbon atom.
      */
-    public static final String ETHER_BOND_SMARTS = "[C;!R;+0]-!@[O;!R;D2;+0]-!@[C;!R;+0]";
+    public static final String ETHER_BOND_LINEAR_SUGARS_SMARTS = "[C;!R;+0]-!@[O;!R;D2;+0]-!@[C;!R;+0]";
 
     /**
      * SMARTS pattern for detecting peroxide bonds between linear sugar moieties for postprocessing after extraction.
      * Defines an aliphatic C not in a ring, with no charge, connected to an oxygen atom
      * via a non-ring bond, which is connected in turn to another oxygen atom and that to another aliphatic carbon atom.
      */
-    public static final String PEROXIDE_BOND_SMARTS = "[C;!R;+0]-!@[O;!R;D2;+0]-!@[O;!R;D2;+0]-!@[C;!R;+0]";
+    public static final String PEROXIDE_BOND_LINEAR_SUGARS_SMARTS = "[C;!R;+0]-!@[O;!R;D2;+0]-!@[O;!R;D2;+0]-!@[C;!R;+0]";
 
     /**
      * Default for extractCircularSugars parameter in copyAndExtractAglyconeAndSugars methods.
@@ -483,7 +483,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
 
     //do not copy the aglycone? -> too much of a hassle because for postprocessing, we repeatedly need the original structure
     //implement alternative method that directly returns group indices? -> blows up the code too much and the atom container fragments are the main point of reference
-    //TODO: make it also an option to split CC-bonds and esters, peroxides between circular sugars? To discuss
+    //TODO: split also esters and peroxides between circular sugars
     /**
      * Extracts copies of the aglycone and sugar parts of the given molecule (if there are any).
      * <p>
@@ -1568,7 +1568,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
         if (molecule.isEmpty()) {
             return; //nothing to do
         }
-        Mappings mappings = SmartsPattern.create(SugarDetectionUtility.O_GLYCOSIDIC_BOND_SMARTS).matchAll(molecule).uniqueAtoms();
+        Mappings mappings = SmartsPattern.create(SugarDetectionUtility.O_GLYCOSIDIC_BOND_CIRCULAR_SUGARS_SMARTS).matchAll(molecule).uniqueAtoms();
         if (mappings.atLeast(1)) {
             for (IAtomContainer esterGroup : mappings.toSubstructures()) {
                 IAtom carbonOne = null;
@@ -1683,7 +1683,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
         if (molecule.isEmpty()) {
             return; //nothing to do
         }
-        Mappings esterMappings = SmartsPattern.create(SugarDetectionUtility.ESTER_BOND_SMARTS).matchAll(molecule).uniqueAtoms();
+        Mappings esterMappings = SmartsPattern.create(SugarDetectionUtility.ESTER_BOND_LINEAR_SUGARS_SMARTS).matchAll(molecule).uniqueAtoms();
         if (esterMappings.atLeast(1)) {
             for (IAtomContainer esterGroup : esterMappings.toSubstructures()) {
                 IAtom carbonOne = null;
@@ -1760,7 +1760,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
         if (molecule.isEmpty()) {
             return; //nothing to do
         }
-        Mappings mappings = SmartsPattern.create(SugarDetectionUtility.CROSS_LINKING_ETHER_BOND_SMARTS).matchAll(molecule).uniqueAtoms();
+        Mappings mappings = SmartsPattern.create(SugarDetectionUtility.CROSS_LINKING_ETHER_BOND_LINEAR_SUGARS_SMARTS).matchAll(molecule).uniqueAtoms();
         if (mappings.atLeast(1)) {
             for (IAtomContainer esterGroup : mappings.toSubstructures()) {
                 IAtom carbonOne = null;
@@ -1829,7 +1829,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
         if (molecule.isEmpty()) {
             return; //nothing to do
         }
-        Mappings mappings = SmartsPattern.create(SugarDetectionUtility.ETHER_BOND_SMARTS).matchAll(molecule).uniqueAtoms();
+        Mappings mappings = SmartsPattern.create(SugarDetectionUtility.ETHER_BOND_LINEAR_SUGARS_SMARTS).matchAll(molecule).uniqueAtoms();
         if (mappings.atLeast(1)) {
             for (IAtomContainer esterGroup : mappings.toSubstructures()) {
                 IAtom carbonOne = null;
@@ -1860,7 +1860,8 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
                 molecule.removeBond(bondToBreak);
                 IAtom[] oxygens = new IAtom[] {connectingOxygen, newOxygen};
                 for (IAtom oxygen : oxygens) {
-                    this.saturate(oxygen,
+                    this.saturate(
+                            oxygen,
                             molecule,
                             markAttachPointsByR,
                             oxygen,
@@ -1905,7 +1906,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
         if (molecule.isEmpty()) {
             return; //nothing to do
         }
-        Mappings mappings = SmartsPattern.create(SugarDetectionUtility.PEROXIDE_BOND_SMARTS).matchAll(molecule).uniqueAtoms();
+        Mappings mappings = SmartsPattern.create(SugarDetectionUtility.PEROXIDE_BOND_LINEAR_SUGARS_SMARTS).matchAll(molecule).uniqueAtoms();
         if (mappings.atLeast(1)) {
             for (IAtomContainer esterGroup : mappings.toSubstructures()) {
                 IAtom oxygenOne = null;
