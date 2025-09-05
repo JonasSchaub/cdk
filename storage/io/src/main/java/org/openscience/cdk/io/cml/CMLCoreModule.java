@@ -1611,9 +1611,9 @@ public class CMLCoreModule implements ICMLModule {
                     //                                          (String)stereos.next());
                     String nextStereo = stereos.next();
                     if ("H".equals(nextStereo)) {
-                        currentBond.setDisplay(IBond.Display.WedgedHashBegin);
+                        currentBond.setStereo(IBond.Stereo.DOWN);
                     } else if ("W".equals(nextStereo)) {
-                        currentBond.setDisplay(IBond.Display.WedgeBegin);
+                        currentBond.setStereo(IBond.Stereo.UP);
                     } else if (nextStereo != null && !nextStereo.isEmpty()) {
                         logger.warn("Cannot interpret bond display information: '" + nextStereo + "'");
                     }

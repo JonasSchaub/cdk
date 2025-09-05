@@ -149,10 +149,10 @@ public class BasicSceneGenerator implements IGenerator<IAtomContainer> {
     public static class BondLength extends AbstractGeneratorParameter<Double> {
 
         /** Returns the default value.
-         * @return 26 */
+         * @return 40.0 */
         @Override
         public Double getDefault() {
-            return 26.1;
+            return 40.0;
         }
     }
 

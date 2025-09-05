@@ -36,8 +36,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.openscience.cdk.interfaces.IBond.Stereo.DOWN_INVERTED;
-
 /**
  * A stereo encoder factory for tetrahedral centres. This factory generates
  * {@link StereoEncoder}s for centres with specified by 2D and 3D coordinates.
@@ -229,18 +227,17 @@ public class GeometricTetrahedralEncoderFactory implements StereoEncoderFactory 
     private static int nStereoBonds(List<IBond> bonds) {
         int count = 0;
         for (IBond bond : bonds) {
-            IBond.Display display = bond.getDisplay();
-            switch (display) {
+            IBond.Stereo stereo = bond.getStereo();
+            switch (stereo) {
             // query bonds... no configuration possible
-                case Wavy:
-                case Crossed:
+                case E_OR_Z:
+                case UP_OR_DOWN:
+                case UP_OR_DOWN_INVERTED:
                     return -1;
-                case WedgeEnd:
-                case WedgeBegin:
-                case HollowWedgeBegin:
-                case HollowWedgeEnd:
-                case WedgedHashEnd:
-                case WedgedHashBegin:
+                case UP:
+                case DOWN:
+                case UP_INVERTED:
+                case DOWN_INVERTED:
                     count++;
                     break;
             }
@@ -261,15 +258,13 @@ public class GeometricTetrahedralEncoderFactory implements StereoEncoderFactory 
         for (IBond bond : bonds) {
 
             int elevation = 0;
-            switch (bond.getDisplay()) {
-                case WedgeBegin:
-                case WedgedHashEnd:
-                case HollowWedgeBegin:
+            switch (bond.getStereo()) {
+                case UP:
+                case DOWN_INVERTED:
                     elevation = +1;
                     break;
-                case WedgedHashBegin:
-                case WedgeEnd:
-                case HollowWedgeEnd:
+                case DOWN:
+                case UP_INVERTED:
                     elevation = -1;
                     break;
             }

@@ -141,10 +141,10 @@ final class CorrectGeometricConfiguration {
         // note: IDoubleBondStereochemistry doesn't indicate this yet
         if (p == 0) {
             for (IBond bond : container.getConnectedBondsList(left))
-                bond.setDisplay(IBond.Display.Solid);
+                bond.setStereo(IBond.Stereo.NONE);
             for (IBond bond : container.getConnectedBondsList(right))
-                bond.setDisplay(IBond.Display.Solid);
-            bonds[0].setDisplay(IBond.Display.Wavy);
+                bond.setStereo(IBond.Stereo.NONE);
+            bonds[0].setStereo(IBond.Stereo.UP_OR_DOWN);
             return;
         }
 
@@ -155,7 +155,7 @@ final class CorrectGeometricConfiguration {
         visited[atomToIndex.get(left)] = true;
 
         if (ringSearch.cyclic(atomToIndex.get(left), atomToIndex.get(right))) {
-            db.setDisplay(IBond.Display.Crossed);
+            db.setStereo(IBond.Stereo.E_OR_Z);
             return;
         }
 
@@ -187,10 +187,10 @@ final class CorrectGeometricConfiguration {
         // note: IDoubleBondStereochemistry doesn't indicate this yet
         if (p == 0) {
             for (IBond bond : container.getConnectedBondsList(left))
-                bond.setDisplay(IBond.Display.Solid);
+                bond.setStereo(IBond.Stereo.NONE);
             for (IBond bond : container.getConnectedBondsList(right))
-                bond.setDisplay(IBond.Display.Solid);
-            bonds[0].setDisplay(IBond.Display.Wavy);
+                bond.setStereo(IBond.Stereo.NONE);
+            bonds[0].setStereo(IBond.Stereo.UP_OR_DOWN);
             return;
         }
 

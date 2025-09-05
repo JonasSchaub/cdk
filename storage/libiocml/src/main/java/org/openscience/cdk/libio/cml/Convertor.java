@@ -674,13 +674,10 @@ public class Convertor {
             cmlBond.appendChild(bType);
         }
 
-        // JWM: Fix me! this is possibly wrong, we should also be checking
-        // reversed wedged WedgeEnd (old UP_INVERTED etc)
-        if (cdkBond.getDisplay() == IBond.Display.Up ||
-            cdkBond.getDisplay() == IBond.Display.Down) {
+        if (cdkBond.getStereo() == IBond.Stereo.UP || cdkBond.getStereo() == IBond.Stereo.DOWN) {
             CMLBondStereo bondStereo = new CMLBondStereo();
             this.checkPrefix(bondStereo);
-            if (cdkBond.getDisplay() == IBond.Display.Up) {
+            if (cdkBond.getStereo() == IBond.Stereo.UP) {
                 bondStereo.setDictRef("cml:W");
                 bondStereo.setXMLContent("W");
             } else {
@@ -689,8 +686,7 @@ public class Convertor {
             }
             cmlBond.appendChild(bondStereo);
         }
-        if (cdkBond.getProperties().size() > 0)
-            writeProperties(cdkBond, cmlBond);
+        if (cdkBond.getProperties().size() > 0) writeProperties(cdkBond, cmlBond);
 
         for (String s : customizers.keySet()) {
             ICMLCustomizer customizer = customizers.get(s);

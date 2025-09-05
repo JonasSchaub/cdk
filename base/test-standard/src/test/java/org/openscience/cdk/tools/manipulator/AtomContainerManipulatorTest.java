@@ -686,7 +686,7 @@ class AtomContainerManipulatorTest extends CDKTestCase {
     void testRemoveNonChiralHydrogens_StereoBond() throws Exception {
 
         IAtomContainer molecule = getChiralMolTemplate();
-        molecule.getBond(2).setDisplay(IBond.Display.Up);
+        molecule.getBond(2).setStereo(IBond.Stereo.UP);
 
         Assertions.assertEquals(8, molecule.getAtomCount());
         IAtomContainer ac = AtomContainerManipulator.removeNonChiralHydrogens(molecule);
@@ -697,7 +697,7 @@ class AtomContainerManipulatorTest extends CDKTestCase {
     void testRemoveNonChiralHydrogens_StereoBondHeteroAtom() throws Exception {
 
         IAtomContainer molecule = getChiralMolTemplate();
-        molecule.getBond(3).setDisplay(IBond.Display.Up);
+        molecule.getBond(3).setStereo(IBond.Stereo.UP);
 
         Assertions.assertEquals(8, molecule.getAtomCount());
         IAtomContainer ac = AtomContainerManipulator.removeNonChiralHydrogens(molecule);

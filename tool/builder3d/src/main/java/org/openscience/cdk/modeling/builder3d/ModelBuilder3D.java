@@ -387,17 +387,6 @@ public class ModelBuilder3D {
         }
     }
 
-    private static boolean isWedged(IBond bond) {
-        switch (bond.getDisplay()) {
-            case WedgeBegin:
-            case WedgedHashBegin:
-            case HollowWedgeBegin:
-                return true;
-            default:
-                return false;
-        }
-    }
-
     /**
      * Sets a branch atom to a ring or aliphatic chain.
      *
@@ -444,9 +433,8 @@ public class ModelBuilder3D {
 
         int stereo = -1;
         IBond unplacedBond = molecule.getBond(atomA, unplacedAtom);
-        // JWM: this should is IStereoElement!
         if (atomA.getStereoParity() != CDKConstants.UNSET && atomA.getStereoParity() != 0
-                || (isWedged(unplacedBond))
+                || (unplacedBond.getStereo() == IBond.Stereo.UP || unplacedBond.getStereo() == IBond.Stereo.DOWN)
                 && molecule.getMaximumBondOrder(atomA) == IBond.Order.SINGLE) {
             if (atomNeighbours.getAtomCount() > 1) {
                 stereo = atlp3d.makeStereocenter(atomA.getPoint3d(), molecule.getBond(atomA, unplacedAtom),

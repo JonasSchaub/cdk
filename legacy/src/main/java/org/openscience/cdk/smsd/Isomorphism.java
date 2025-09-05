@@ -801,11 +801,7 @@ public final class Isomorphism extends AbstractMCS implements Serializable {
                     IAtom targetAtom2 = indexJPlus;
                     IBond pBond = product.getBond(targetAtom1, targetAtom2);
 
-                    // JWM: this logic is not correct, even if the stereo/display
-                    // bonds are not the same the stereo still might be since
-                    // is depends on layout!
-                    // IStereoElement should be used
-                    if ((rBond != null && pBond != null) && (rBond.getDisplay() != pBond.getDisplay())) {
+                    if ((rBond != null && pBond != null) && (rBond.getStereo() != pBond.getStereo())) {
                         score++;
                     }
                 }

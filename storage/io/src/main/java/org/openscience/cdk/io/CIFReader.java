@@ -245,10 +245,7 @@ public class CIFReader extends DefaultChemObjectReader {
     }
 
     private String processLoopBlock() throws IOException {
-        String line = input.readLine();
-        if (line == null)
-            return null;
-        line = line.trim();
+        String line = input.readLine().trim();
         if (line.startsWith("_atom")) {
             logger.info("Found atom loop block");
             return processAtomLoopBlock(line);

@@ -50,7 +50,7 @@ public class WriterFactory {
     private static final ILoggingTool                          logger          = LoggingToolFactory
                                                                                  .createLoggingTool(WriterFactory.class);
 
-    private static List<IChemFormat>                     formats  = new ArrayList<>();
+    private static List<IChemFormat>                     formats         = null;
 
     private static Map<String, Class<IChemObjectWriter>> registeredReaders;
 
@@ -78,7 +78,8 @@ public class WriterFactory {
      * @see    org.openscience.cdk.tools.DataFeatures
      */
     public IChemFormat[] findChemFormats(int features) {
-        if (formats.isEmpty()) loadFormats();
+        if (formats == null) loadFormats();
+
         Iterator<IChemFormat> iter = formats.iterator();
         List<IChemFormat> matches = new ArrayList<>();
         while (iter.hasNext()) {
@@ -90,13 +91,14 @@ public class WriterFactory {
     }
 
     public int formatCount() {
-        if (formats.isEmpty()) loadFormats();
+        if (formats == null) loadFormats();
+
         return formats.size();
     }
 
     private void loadFormats() {
-        if (formats.isEmpty()) {
-            List<IChemFormat> localFormats = new ArrayList<>();
+        if (formats == null) {
+            formats = new ArrayList<>();
             try {
                 logger.debug("Starting loading Formats...");
                 BufferedReader reader = new BufferedReader(new InputStreamReader(this.getClass().getClassLoader()
@@ -111,7 +113,7 @@ public class WriterFactory {
                         Method getinstanceMethod = formatClass.getMethod("getInstance", new Class[0]);
                         IResourceFormat format = (IResourceFormat) getinstanceMethod.invoke(null, new Object[0]);
                         if (format instanceof IChemFormat) {
-                            localFormats.add((IChemFormat) format);
+                            formats.add((IChemFormat) format);
                             logger.info("Loaded IChemFormat: " + format.getClass().getName());
                         }
                     } catch (ClassNotFoundException exception) {
@@ -127,7 +129,6 @@ public class WriterFactory {
                 logger.error("Could not load this io format list: ", IO_FORMATS_LIST);
                 logger.debug(exception);
             }
-            formats = localFormats;
         }
     }
 

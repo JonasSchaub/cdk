@@ -313,7 +313,7 @@ public class MDLReader extends DefaultChemObjectReader {
         int atom1;
         int atom2;
         int order;
-        IBond.Display display = IBond.Display.Solid;
+        IBond.Stereo stereo = (IBond.Stereo) CDKConstants.UNSET;
         int RGroupCounter = 1;
         int Rnumber;
         String[] rGroup;
@@ -537,19 +537,19 @@ public class MDLReader extends DefaultChemObjectReader {
                     int mdlStereo = Integer.parseInt(line.substring(9, 12).trim());
                     if (mdlStereo == 1) {
                         // MDL up bond
-                        display = IBond.Display.WedgeBegin;
+                        stereo = IBond.Stereo.UP;
                     } else if (mdlStereo == 6) {
                         // MDL down bond
-                        display = IBond.Display.WedgedHashBegin;
+                        stereo = IBond.Stereo.DOWN;
                     } else if (mdlStereo == 0) {
                         // bond has no stereochemistry
-                        display = IBond.Display.Solid;
+                        stereo = IBond.Stereo.NONE;
                     } else if (mdlStereo == 4) {
                         //MDL up or down bond
-                        display = IBond.Display.Wavy;
+                        stereo = IBond.Stereo.UP_OR_DOWN;
                     } else if (mdlStereo == 3) {
                         //MDL e or z undefined
-                        display = IBond.Display.Crossed;
+                        stereo = IBond.Stereo.E_OR_Z;
                     }
                 } else {
                     logger.warn("Missing expected stereo field at line: " + line);
@@ -565,17 +565,24 @@ public class MDLReader extends DefaultChemObjectReader {
                     IBond.Order cdkOrder = IBond.Order.SINGLE;
                     if (order == 2) cdkOrder = IBond.Order.DOUBLE;
                     if (order == 3) cdkOrder = IBond.Order.TRIPLE;
-                    newBond = molecule.newBond(a1, a2, cdkOrder);
-                    newBond.setDisplay(display);
+                    if (stereo != null) {
+                        newBond = molecule.getBuilder().newInstance(IBond.class, a1, a2, cdkOrder, stereo);
+                    } else {
+                        newBond = molecule.getBuilder().newInstance(IBond.class, a1, a2, cdkOrder);
+                    }
                 } else if (order == 4) {
                     // aromatic bond
-                    newBond = molecule.newBond(a1, a2, IBond.Order.SINGLE);
-                    newBond.setDisplay(display);
+                    if (stereo != null) {
+                        newBond = molecule.getBuilder().newInstance(IBond.class, a1, a2, IBond.Order.SINGLE, stereo);
+                    } else {
+                        newBond = molecule.getBuilder().newInstance(IBond.class, a1, a2, IBond.Order.SINGLE);
+                    }
                     // mark both atoms and the bond as aromatic
                     newBond.setFlag(IChemObject.AROMATIC, true);
                     a1.setFlag(IChemObject.AROMATIC, true);
                     a2.setFlag(IChemObject.AROMATIC, true);
                 }
+                molecule.addBond(newBond);
             }
 
         } catch (IOException | CDKException | IllegalArgumentException exception) {
