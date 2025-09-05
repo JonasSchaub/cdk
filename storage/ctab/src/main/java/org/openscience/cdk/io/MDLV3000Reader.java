@@ -859,16 +859,13 @@ public class MDLV3000Reader extends DefaultChemObjectReader {
                                 case "CFG":
                                     int configuration = Integer.parseInt(value);
                                     if (configuration == 0) {
-                                        bond.setDisplay(IBond.Display.Solid);
+                                        bond.setStereo(IBond.Stereo.NONE);
                                     } else if (configuration == 1) {
-                                        bond.setDisplay(IBond.Display.WedgeBegin);
+                                        bond.setStereo(IBond.Stereo.UP);
                                     } else if (configuration == 2) {
-                                        if (bond.getOrder() == IBond.Order.DOUBLE)
-                                            bond.setDisplay(IBond.Display.Crossed);
-                                        else
-                                            bond.setDisplay(IBond.Display.Wavy);
+                                        bond.setStereo(IBond.Stereo.UP_OR_DOWN);
                                     } else if (configuration == 3) {
-                                        bond.setDisplay(IBond.Display.WedgedHashBegin);
+                                        bond.setStereo(IBond.Stereo.DOWN);
                                     }
                                     break;
                                 case "ENDPTS":

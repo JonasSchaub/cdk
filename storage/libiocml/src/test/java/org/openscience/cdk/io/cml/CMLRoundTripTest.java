@@ -397,8 +397,8 @@ class CMLRoundTripTest extends CDKTestCase {
         mol.addAtom(atom);
         mol.addAtom(atom2);
         Bond bond = new Bond(atom, atom2, IBond.Order.SINGLE);
-        IBond.Display stereo = IBond.Display.WedgeBegin;
-        bond.setDisplay(stereo);
+        IBond.Stereo stereo = IBond.Stereo.DOWN;
+        bond.setStereo(stereo);
         mol.addBond(bond);
 
         IAtomContainer roundTrippedMol = CMLRoundTripTool.roundTripMolecule(convertor, mol);
@@ -406,7 +406,7 @@ class CMLRoundTripTest extends CDKTestCase {
         Assertions.assertEquals(2, roundTrippedMol.getAtomCount());
         Assertions.assertEquals(1, roundTrippedMol.getBondCount());
         IBond roundTrippedBond = roundTrippedMol.getBond(0);
-        Assertions.assertEquals(bond.getDisplay(), roundTrippedBond.getDisplay());
+        Assertions.assertEquals(bond.getStereo(), roundTrippedBond.getStereo());
     }
 
     @Test

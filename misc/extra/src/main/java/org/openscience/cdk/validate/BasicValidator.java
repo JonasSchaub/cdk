@@ -205,8 +205,7 @@ public class BasicValidator extends AbstractValidator {
         ValidationReport report = new ValidationReport();
         ValidationTest bondStereo = new ValidationTest(bond, "Defining stereochemistry on bonds is not safe.",
                 "Use atom based stereochemistry.");
-        // JWM: Eh? but there is no test to check if the atom stereo is set?
-        if (bond.getDisplay() != IBond.Display.Solid) {
+        if (bond.getStereo() != IBond.Stereo.NONE) {
             report.addWarning(bondStereo);
         } else {
             report.addOK(bondStereo);

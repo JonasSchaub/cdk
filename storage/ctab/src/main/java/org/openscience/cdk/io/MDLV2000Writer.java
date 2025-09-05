@@ -580,9 +580,8 @@ public class MDLV2000Writer extends DefaultChemObjectWriter {
             if (bond.getAtomCount() != 2) {
                 logger.warn("Skipping bond with more/less than two atoms: " + bond);
             } else {
-                if (bond.getDisplay() == IBond.Display.WedgeEnd ||
-                    bond.getDisplay() == IBond.Display.WedgedHashEnd ||
-                    bond.getDisplay() == IBond.Display.HollowWedgeEnd) {
+                if (bond.getStereo() == IBond.Stereo.UP_INVERTED || bond.getStereo() == IBond.Stereo.DOWN_INVERTED
+                    || bond.getStereo() == IBond.Stereo.UP_OR_DOWN_INVERTED) {
                     // turn around atom coding to correct for inv stereo
                     line.append(formatMDLInt(atomindex.get(bond.getEnd()) + 1, 3));
                     line.append(formatMDLInt(atomindex.get(bond.getBegin()) + 1, 3));
@@ -660,22 +659,27 @@ public class MDLV2000Writer extends DefaultChemObjectWriter {
 
                 line.append(formatMDLInt(bondType, 3));
                 line.append("  ");
-                switch (bond.getDisplay()) {
-                    case WedgeBegin:
-                    case WedgeEnd:
-                    case HollowWedgeBegin:
-                    case HollowWedgeEnd:
+                switch (bond.getStereo()) {
+                    case UP:
                         line.append("1");
                         break;
-                    case WedgedHashBegin:
-                    case WedgedHashEnd:
+                    case UP_INVERTED:
+                        line.append("1");
+                        break;
+                    case DOWN:
                         line.append("6");
                         break;
-                    case Crossed:
-                        line.append("3");
+                    case DOWN_INVERTED:
+                        line.append("6");
                         break;
-                    case Wavy:
+                    case UP_OR_DOWN:
                         line.append("4");
+                        break;
+                    case UP_OR_DOWN_INVERTED:
+                        line.append("4");
+                        break;
+                    case E_OR_Z:
+                        line.append("3");
                         break;
                     default:
                         line.append("0");

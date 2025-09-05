@@ -298,7 +298,7 @@ final class FischerRecognition {
     private static boolean isPlanarSigmaBond(IBond bond) {
         return bond != null &&
                 IBond.Order.SINGLE.equals(bond.getOrder()) &&
-                IBond.Display.Solid == bond.getDisplay();
+                IBond.Stereo.NONE.equals(bond.getStereo());
     }
 
     /**

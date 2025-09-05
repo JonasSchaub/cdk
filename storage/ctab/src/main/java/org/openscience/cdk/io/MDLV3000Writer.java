@@ -451,11 +451,11 @@ public final class MDLV3000Writer extends DefaultChemObjectWriter {
             if (begIdx < 0 || endIdx < 0)
                 throw new IllegalStateException("Bond " + bondIdx + " has atoms not present in the molecule.");
 
-            final IBond.Display display = bond.getDisplay();
+            final IBond.Stereo stereo = bond.getStereo();
             // swap beg/end if needed
-            if (display == IBond.Display.WedgeEnd ||
-                display == IBond.Display.WedgedHashEnd ||
-                display == IBond.Display.HollowWedgeEnd) {
+            if (stereo == IBond.Stereo.UP_INVERTED ||
+                stereo == IBond.Stereo.DOWN_INVERTED ||
+                stereo == IBond.Stereo.UP_OR_DOWN_INVERTED) {
                 int tmp = begIdx;
                 begIdx = endIdx;
                 endIdx = tmp;
@@ -505,22 +505,20 @@ public final class MDLV3000Writer extends DefaultChemObjectWriter {
                   .write(endIdx);
 
 
-            switch (display) {
-                case WedgeBegin:
-                case WedgeEnd:
-                case HollowWedgeBegin:
-                case HollowWedgeEnd:
+            switch (stereo) {
+                case UP:
+                case UP_INVERTED:
                     writer.write(" CFG=1");
                     break;
-                case Wavy:
-                case Crossed:
+                case UP_OR_DOWN:
+                case UP_OR_DOWN_INVERTED:
                     writer.write(" CFG=2");
                     break;
-                case WedgedHashBegin:
-                case WedgedHashEnd:
+                case DOWN:
+                case DOWN_INVERTED:
                     writer.write(" CFG=3");
                     break;
-                case Solid:
+                case NONE:
                     break;
                 default:
                     // warn?

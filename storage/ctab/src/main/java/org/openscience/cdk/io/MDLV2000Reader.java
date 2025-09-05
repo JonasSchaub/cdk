@@ -849,11 +849,11 @@ public class MDLV2000Reader extends DefaultChemObjectReader {
         switch (type) {
             case 1: // single
                 bond.setOrder(IBond.Order.SINGLE);
-                bond.setDisplay(toDisplay(stereo, type));
+                bond.setStereo(toStereo(stereo, type));
                 break;
             case 2: // double
                 bond.setOrder(IBond.Order.DOUBLE);
-                bond.setDisplay(toDisplay(stereo, type));
+                bond.setStereo(toStereo(stereo, type));
                 break;
             case 3: // triple
                 bond.setOrder(IBond.Order.TRIPLE);
@@ -1507,29 +1507,29 @@ public class MDLV2000Reader extends DefaultChemObjectReader {
      * @return bond stereo
      * @throws CDKException the stereo value was invalid (strict mode).
      */
-    private IBond.Display toDisplay(final int stereo, final int type) throws CDKException {
+    private IBond.Stereo toStereo(final int stereo, final int type) throws CDKException {
         switch (stereo) {
             case 0:
-                return IBond.Display.Solid;
+                return type == 2 ? IBond.Stereo.E_Z_BY_COORDINATES : IBond.Stereo.NONE;
             case 1:
                 if (mode == Mode.STRICT && type == 2)
                     throw new CDKException("stereo flag was 'up' but bond order was 2");
-                return IBond.Display.WedgeBegin;
+                return IBond.Stereo.UP;
             case 3:
                 if (mode == Mode.STRICT && type == 1)
                     throw new CDKException("stereo flag was 'cis/trans' but bond order was 1");
-                return IBond.Display.Crossed;
+                return IBond.Stereo.E_OR_Z;
             case 4:
                 if (mode == Mode.STRICT && type == 2)
                     throw new CDKException("stereo flag was 'up/down' but bond order was 2");
-                return IBond.Display.Wavy;
+                return IBond.Stereo.UP_OR_DOWN;
             case 6:
                 if (mode == Mode.STRICT && type == 2)
                     throw new CDKException("stereo flag was 'down' but bond order was 2");
-                return IBond.Display.WedgedHashBegin;
+                return IBond.Stereo.DOWN;
         }
         if (mode == Mode.STRICT) throw new CDKException("unknown bond stereo type: " + stereo);
-        return IBond.Display.Solid;
+        return IBond.Stereo.NONE;
     }
 
     /**
@@ -2029,27 +2029,33 @@ public class MDLV2000Reader extends DefaultChemObjectReader {
         int atom1 = Integer.parseInt(line.substring(0, 3).trim());
         int atom2 = Integer.parseInt(line.substring(3, 6).trim());
         int order = Integer.parseInt(line.substring(6, 9).trim());
-        IBond.Display display = null;
+        IBond.Stereo stereo = null;
         if (line.length() >= 12) {
             int mdlStereo = line.length() > 12 ? Integer.parseInt(line.substring(9, 12).trim()) : Integer.parseInt(line
                     .substring(9).trim());
             if (mdlStereo == 1) {
                 // MDL up bond
-                display = IBond.Display.WedgeBegin;
+                stereo = IBond.Stereo.UP;
             } else if (mdlStereo == 6) {
                 // MDL down bond
-                display = IBond.Display.WedgedHashBegin;
+                stereo = IBond.Stereo.DOWN;
             } else if (mdlStereo == 0) {
-                display = IBond.Display.Solid;
+                if (order == 2) {
+                    // double bond stereo defined by coordinates
+                    stereo = IBond.Stereo.E_Z_BY_COORDINATES;
+                } else {
+                    // bond has no stereochemistry
+                    stereo = IBond.Stereo.NONE;
+                }
             } else if (mdlStereo == 3 && order == 2) {
                 // unknown E/Z stereochemistry
-                display = IBond.Display.Wavy;
+                stereo = IBond.Stereo.E_OR_Z;
             } else if (mdlStereo == 4) {
                 //MDL bond undefined
-                display = IBond.Display.Wavy;
+                stereo = IBond.Stereo.UP_OR_DOWN;
             }
         } else {
-            handleError("Missing expected display field at line: ", linecount, 10, 12);
+            handleError("Missing expected stereo field at line: ", linecount, 10, 12);
         }
         if (logger.isDebugEnabled()) {
             logger.debug("Bond: " + atom1 + " - " + atom2 + "; order " + order);
@@ -2062,8 +2068,8 @@ public class MDLV2000Reader extends DefaultChemObjectReader {
             IBond.Order cdkOrder = IBond.Order.SINGLE;
             if (order == 2) cdkOrder = IBond.Order.DOUBLE;
             if (order == 3) cdkOrder = IBond.Order.TRIPLE;
-            if (display != null) {
-                newBond = builder.newInstance(IBond.class, a1, a2, cdkOrder, display);
+            if (stereo != null) {
+                newBond = builder.newInstance(IBond.class, a1, a2, cdkOrder, stereo);
             } else {
                 newBond = builder.newInstance(IBond.class, a1, a2, cdkOrder);
             }
@@ -2071,8 +2077,8 @@ public class MDLV2000Reader extends DefaultChemObjectReader {
             explicitValence[atom2 - 1] += cdkOrder.numeric();
         } else if (order == 4) {
             // aromatic bond
-            if (display != null) {
-                newBond = builder.newInstance(IBond.class, a1, a2, IBond.Order.UNSET, display);
+            if (stereo != null) {
+                newBond = builder.newInstance(IBond.class, a1, a2, IBond.Order.UNSET, stereo);
             } else {
                 newBond = builder.newInstance(IBond.class, a1, a2, IBond.Order.UNSET);
             }
@@ -2104,7 +2110,7 @@ public class MDLV2000Reader extends DefaultChemObjectReader {
                                          .setPrimitive(Expr.Type.TRUE);
                     break;
             }
-            newBond.setDisplay(display);
+            newBond.setStereo(stereo);
             explicitValence[atom1 - 1] = explicitValence[atom2 - 1] = Integer.MIN_VALUE;
         }
         return newBond;

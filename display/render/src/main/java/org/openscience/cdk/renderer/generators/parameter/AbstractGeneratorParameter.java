@@ -27,7 +27,7 @@ import org.openscience.cdk.renderer.generators.IGeneratorParameter;
  */
 public abstract class AbstractGeneratorParameter<T> implements IGeneratorParameter<T> {
 
-    private T parameterSetting = getDefault();
+    private T parameterSetting;
 
     /**
      * Sets the value for this parameter.
@@ -47,7 +47,10 @@ public abstract class AbstractGeneratorParameter<T> implements IGeneratorParamet
      */
     @Override
     public T getValue() {
-       return this.parameterSetting;
+        if (this.parameterSetting == null)
+            return getDefault();
+        else
+            return this.parameterSetting;
     }
 
 }

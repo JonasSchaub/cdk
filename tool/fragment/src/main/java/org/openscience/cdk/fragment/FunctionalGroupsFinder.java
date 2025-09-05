@@ -181,7 +181,7 @@ public class FunctionalGroupsFinder {
          * Stereo information of the bond connecting this environmental C
          * atom to the marked functional group atom.
          */
-        private final IBond.Display bondDisp;
+        private final IBond.Stereo bondStereo;
 
         /**
          * Flags of the bond connecting this environmental C atom to the marked
@@ -202,7 +202,7 @@ public class FunctionalGroupsFinder {
             this.type = type;
             this.bondIndex = idx;
             this.bondOrder = bond.getOrder();
-            this.bondDisp = bond.getDisplay();
+            this.bondStereo = bond.getStereo();
             this.bondFlags = bond.getFlags();
         }
 
@@ -239,7 +239,7 @@ public class FunctionalGroupsFinder {
                 tmpBond.setAtoms(new IAtom[] {aTargetAtom, anEnvCAtom});
             }
             tmpBond.setOrder(this.bondOrder);
-            tmpBond.setDisplay(this.bondDisp);
+            tmpBond.setStereo(this.bondStereo);
             tmpBond.setFlags(this.bondFlags);
             return tmpBond;
         }

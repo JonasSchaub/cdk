@@ -1417,12 +1417,8 @@ public class AtomContainer extends ChemObject implements IAtomContainer {
      * {@inheritDoc}
      */
     @Override
-    public void addBond(int beg, int end, Order order, IBond.Display display) {
-        IBond bond = getBuilder().newBond();
-        bond.setAtoms(new IAtom[]{getAtom(beg), getAtom(end)});
-        bond.setOrder(order);
-        bond.setDisplay(display);
-        addBond(bond);
+    public void addBond(int beg, int end, Order order) {
+        addBond(beg, end, order, Stereo.NONE);
     }
 
     /**

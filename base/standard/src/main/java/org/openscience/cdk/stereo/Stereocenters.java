@@ -268,7 +268,7 @@ public final class Stereocenters {
 
             if (x < 2 || x > 4 || h > 1) continue;
 
-            int piNeighbor = -1;
+            int piNeighbor = 0;
             for (int w : g[i]) {
                 if (atomicNumber(container.getAtom(w)) == 1 &&
                     container.getAtom(w).getMassNumber() == null)
@@ -286,7 +286,6 @@ public final class Stereocenters {
                         continue VERTICES;
                 }
             }
-
 
             // check the type of stereo chemistry supported
             switch (supportedType(i, v, d, h, x)) {
@@ -309,25 +308,21 @@ public final class Stereocenters {
 
                     u = i;
                     w = piNeighbor;
+
                     tricoordinate[u] = true;
 
-                    if (piNeighbor >= 0) {
-                        if (!tricoordinate[w]) {
-                            if (elements[w] != null && elements[w].type == Type.Bicoordinate) {
-                                stereocenters[u] = Stereocenter.Potential;
-                                elements[u] = new Tricoordinate(u, w, g[u]);
-                            }
-                            continue;
+                    if (!tricoordinate[w]) {
+                        if (elements[w] != null && elements[w].type == Type.Bicoordinate) {
+                            stereocenters[u] = Stereocenter.Potential;
+                            elements[u] = new Tricoordinate(u, w, g[u]);
                         }
-
-                        stereocenters[w] = Stereocenter.Potential;
-                        stereocenters[u] = Stereocenter.Potential;
-                        elements[u] = new Tricoordinate(u, w, g[u]);
-                        elements[w] = new Tricoordinate(w, u, g[w]);
-                    } else {
-                        stereocenters[u] = Stereocenter.Potential;
-                        elements[u] = new Tricoordinate(u, -1, g[u]);
+                        continue;
                     }
+
+                    stereocenters[w] = Stereocenter.Potential;
+                    stereocenters[u] = Stereocenter.Potential;
+                    elements[u] = new Tricoordinate(u, w, g[u]);
+                    elements[w] = new Tricoordinate(w, u, g[w]);
                     nElements++;
                     break;
 
@@ -342,7 +337,7 @@ public final class Stereocenters {
             }
         }
 
-        // link up tetracoordinate atoms across cumulate systems
+        // link up tetracoordinate atoms accross cumulate systems
         for (int v = 0; v < g.length; v++) {
             if (elements[v] != null && elements[v].type == Type.Bicoordinate) {
                 int u = elements[v].neighbors[0];
@@ -466,7 +461,7 @@ public final class Stereocenters {
                     if (deg == 4 && nUnique == 1 && terminal) stereocenters[element.focus] = Stereocenter.Non;
                 } else if (element.type == Type.Tricoordinate) {
                     Tricoordinate either = (Tricoordinate) element;
-                    if (either.other >= 0 && stereocenters[either.other] == Stereocenter.True) paraElements.add(element);
+                    if (stereocenters[either.other] == Stereocenter.True) paraElements.add(element);
                 }
             }
 
@@ -530,10 +525,8 @@ public final class Stereocenters {
                 if (x == 4 && h == 0 && (q == 0 && v == 5 || q == 1 && v == 4))
                     return verifyTerminalHCount(i) ? Type.Tetracoordinate : Type.None;
                 // note: bridgehead not allowed by InChI but makes sense
-                if (x == 3 && h == 0 && v == 3 && q == 0) {
-                    return (isBridgeHead(i) || inThreeMemberRing(i)) ? Type.Tetracoordinate : Type.Tricoordinate;
-                }
-                return Type.None;
+                return x == 3 && h == 0 && v == 3 && q == 0 &&
+                        (isBridgeHead(i) || inThreeMemberRing(i)) ? Type.Tetracoordinate : Type.None;
 
             case 14: // silicon
                 if (v != 4 || q != 0) return Type.None;
@@ -890,7 +883,7 @@ public final class Stereocenters {
             this.focus = v;
             this.other = w;
             this.type = Type.Tricoordinate;
-            this.neighbors = new int[w < 0 ? neighbors.length : neighbors.length - 1];
+            this.neighbors = new int[neighbors.length - 1];
             int n = 0;
 
             // remove the other neighbor from neighbors when checking
@@ -898,8 +891,6 @@ public final class Stereocenters {
             for (int neighbor : neighbors) {
                 if (neighbor != other) this.neighbors[n++] = neighbor;
             }
-            if (n != this.neighbors.length)
-                this.neighbors[n] = other;
         }
     }
 }
