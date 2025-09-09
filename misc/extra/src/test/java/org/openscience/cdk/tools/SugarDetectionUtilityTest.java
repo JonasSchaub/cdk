@@ -1210,7 +1210,7 @@ class SugarDetectionUtilityTest {
         sdu.setRemoveOnlyTerminalSugarsSetting(false);
         //CNP0273794.1
         String smiles = "CCOC1O[C@H]([C@@H](COCC2=CC=CC=C2)OCC2=CC=CC=C2)[C@H](OCC2=CC=CC=C2)[C@H]1O";
-        List<IAtomContainer> candidates =sdu.copyAndExtractAglyconeAndSugars(smiPar.parseSmiles(smiles), true, true, true, true);
+        List<IAtomContainer> candidates =sdu.copyAndExtractAglyconeAndSugars(smiPar.parseSmiles(smiles), true, true, true, true, true);
         List<String> expectedSmilesList = Arrays.asList(
                 "C(COCC1=CC=CC=C1)(OCC2=CC=CC=C2)*.O(CC1=CC=CC=C1)*",
                 "CCOC1OC([C@@H]([C@H]1O)O*)*"
