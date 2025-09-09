@@ -159,7 +159,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
     /**
      * Default for limitPostProcessingBySize parameter in copyAndExtractAglyconeAndSugars methods.
      */
-    public static final boolean LIMIT_POST_PROCESSING_BY_SIZE_DEFAULT = true;
+    public static final boolean LIMIT_POST_PROCESSING_BY_SIZE_DEFAULT = false;
 
     /**
      * Logger of this class.
@@ -363,11 +363,7 @@ public class SugarDetectionUtility extends SugarRemovalUtility {
      * (pseudo atoms) or implicit hydrogen atoms to saturate the broken bonds.
      * Optionally, postprocessing of the sugar fragments is performed, i.e. they are separated
      * from each other if they are connected in the original structure via O-glycosidic (ether),
-     * ester, or peroxide bonds. This postprocessing
-     * is limited by size, i.e. sugars and their substituents are only split if both resulting
-     * parts are larger than the set preservation mode threshold for circular sugars and
-     * the minimum size for linear sugar candidates, respectively, to prevent smaller substituents
-     * being split off of the sugars.
+     * ester, or peroxide bonds.
      * Check the overloaded versions of this method for more options.
      *
      * <p>The method preserves stereochemistry information at connection points and
