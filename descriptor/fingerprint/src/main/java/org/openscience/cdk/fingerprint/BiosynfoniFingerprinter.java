@@ -5,7 +5,6 @@ import org.openscience.cdk.interfaces.IAtomContainer;
 import org.openscience.cdk.interfaces.IChemObject;
 import org.openscience.cdk.interfaces.IChemObjectBuilder;
 import org.openscience.cdk.smarts.SmartsPattern;
-
 import java.util.*;
 
 public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IFingerprinter{
@@ -80,15 +79,15 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
      * - The outer list corresponds to the ordered set of SMARTS keys.
      *  -Each inner list contains all matches (int[]) found for the respective SMARTS pattern
      * @param aMolecule
-     * @param builder
      * @return
      */
-    private List<List<int[]>> getFilteredMatchesDefault(IAtomContainer aMolecule,IChemObjectBuilder builder) {
+    private List<List<int[]>> getFilteredMatchesDefault(IAtomContainer aMolecule) {
+
         List<List<int[]>> filteredMatches = new ArrayList<>(DefaultBiosynfoniKey.values().length);
         Set<Integer> intersubBlockedAtoms = new HashSet<>();
         for (DefaultBiosynfoniKey key : DefaultBiosynfoniKey.values()) {
             List<int[]> subMatches = new ArrayList<>();
-            SmartsPattern pattern = SmartsPattern.create(key.smarts, builder);
+            SmartsPattern pattern = SmartsPattern.create(key.smarts);
 
 
                 int[][] uniqueMatches = pattern.matchAll(aMolecule)
@@ -108,7 +107,15 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
      */
     @Override
     public IBitFingerprint getBitFingerprint(IAtomContainer container) throws CDKException {
-        return null;
+        BitSet BIOSYNFingerprintBIT = new BitSet();
+        List<List<int[]>> filteredMatches = getFilteredMatchesDefault(container);
+        for(int i=0; i <  filteredMatches.size();){
+            if (!filteredMatches.get(i).isEmpty()){
+                BIOSYNFingerprintBIT.set(i);
+            }
+
+        }
+        return new BitSetFingerprint(BIOSYNFingerprintBIT);
     }
 
     /**
@@ -116,7 +123,68 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
      */
     @Override
     public ICountFingerprint getCountFingerprint(IAtomContainer container) throws CDKException {
-        return null;
+        List<List<int[]>> filteredMatches = getFilteredMatchesDefault(container);
+        int[] BIOSYNFONIFingerprintCount = new int[DefaultBiosynfoniKey.values().length];
+        for (int i = 0; i < filteredMatches.size();){
+             BIOSYNFONIFingerprintCount[i] = filteredMatches.get(i).size();
+        }
+        return new ICountFingerprint() {
+            @Override
+            public long size() {
+                return filteredMatches.size();
+            }
+
+            @Override
+            public int numOfPopulatedbins() {
+                int Populatedbins = 0;
+                for(int i = 0; i < BIOSYNFONIFingerprintCount.length;){
+                    if(BIOSYNFONIFingerprintCount[i] > 0){
+                        Populatedbins +=1;
+                    }
+                }
+                return Populatedbins;
+            }
+
+            @Override
+            public int getCount(int index) {
+                return BIOSYNFONIFingerprintCount[index];
+            }
+
+            /**
+             * Note the Fingerprint is Key based.
+             * The position of the Smart in the SmartsList equals the position of the hash
+             * @param index the index of the bin to return the hash for.
+             * @return hash from the given feature index
+             */
+            @Override
+            public int getHash(int index) {
+                return index;
+            }
+
+            @Override
+            public void merge(ICountFingerprint fp) {
+
+            }
+
+            @Override
+            public void setBehaveAsBitFingerprint(boolean behaveAsBitFingerprint) {
+
+            }
+
+            @Override
+            public boolean hasHash(int hash) {
+                if(hash > BIOSYNFONIFingerprintCount.length){
+                return false;
+                }else{
+                    return true;
+                }
+            }
+
+            @Override
+            public int getCountForHash(int hash) {
+                return 0;
+            }
+        }
     }
 
     @Override
