@@ -1,19 +1,25 @@
 package org.openscience.cdk.fingerprint;
 
+
+import org.openscience.cdk.aromaticity.Aromaticity;
+import org.openscience.cdk.aromaticity.ElectronDonation;
 import org.openscience.cdk.exception.CDKException;
-import org.openscience.cdk.interfaces.IAtomContainer;
-import org.openscience.cdk.interfaces.IChemObject;
-import org.openscience.cdk.interfaces.IChemObjectBuilder;
+import org.openscience.cdk.graph.Cycles;
+import org.openscience.cdk.interfaces.*;
 import org.openscience.cdk.smarts.SmartsPattern;
+import org.openscience.cdk.tools.CDKHydrogenAdder;
+import org.openscience.cdk.tools.manipulator.AtomContainerManipulator;
+
 import java.util.*;
 
-public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IFingerprinter{
-    public enum DefaultBiosynfoniKey{
-        CO_COA("co_coa","SCCN~C(~O)CCN~C(~O)C(C(C)(C)COP(O)(~O)OP(~O)(O)OCC1C(C(C(O1)[#7]2~[#6]~[#7]~[#6]~3~[#6](~[#7]~[#6]~[#7]~[#6]~3~2)~[#7])O)OP(~O)(O)O)~O"),
-        CO_NADH("co_nadh","[#6]~1~[#6]~[#6]~[#7](~[#6]~[#6]~1~[#6](~O)~[#7])~[#6]~2~[#6](~[#6](~[#6](~O~2)~[#6]~O~P(~O)(~O)~O~P(~O)(~O)~O~[#6]~[#6]~3~[#6](~[#6](~[#6](~O~3)~[#7]~4~[#6]~[#7]~[#6]~5~[#6](~[#7]~[#6]~[#7]~[#6]~5~4)~[#7])~O)~O)~O)~O"),// 1: co_nadh
+public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IFingerprinter {
+    public enum DefaultBiosynfoniKey {
+
+        CO_COA("co_coa", "SCCN~C(~O)CCN~C(~O)C(C(C)(C)COP(O)(~O)OP(~O)(O)OCC1C(C(C(O1)[#7]2~[#6]~[#7]~[#6]~3~[#6](~[#7]~[#6]~[#7]~[#6]~3~2)~[#7])O)OP(~O)(O)O)~O"),
+        CO_NADH("co_nadh", "[#6]~1~[#6]~[#6]~[#7](~[#6]~[#6]~1~[#6](~O)~[#7])~[#6]~2~[#6](~[#6](~[#6](~O~2)~[#6]~O~P(~O)(~O)~O~P(~O)(~O)~O~[#6]~[#6]~3~[#6](~[#6](~[#6](~O~3)~[#7]~4~[#6]~[#7]~[#6]~5~[#6](~[#7]~[#6]~[#7]~[#6]~5~4)~[#7])~O)~O)~O)~O"),// 1: co_nadh
         CO_NADPH("co_nadph", "[#6]~1~[#6]~[#6]~[#7](~[#6]~[#6]~1~[#6](~O)~[#7])~[#6]~2~[#6](~[#6](~[#6](~O~2)~[#6]~O~P(~O)(~O)~O~P(~O)(~O)~O~[#6]~[#6]~3~[#6](~[#6](~[#6](~O~3)~[#7]~4~[#6]~[#7]~[#6]~5~[#6](~[#7]~[#6]~[#7]~[#6]~5~4)~[#7])~O~P(~O)(~O)~O)~O)~O)~O"),
 
-        ALL_STD_AMINOS("allstnd_aminos","[$([$([NX3H,NX4H2+]),$([NX3](C)(C)(C))]1[CX4H]([CH2][CH2][CH2]1)[CX3](=[OX1])[OX2H,OX1-,N]),$([$([NX3H2,NX4H3+]),$([NX3H](C)(C))][CX4H2][CX3](=[OX1])[OX2H,OX1-,N]),$([$([NX3H2,NX4H3+]),$([NX3H](C)(C))][CX4H]([$([CH3X4]),$([CH2X4][CH2X4][CH2X4][NHX3][CH0X3](=[NH2X3+,NHX2+0])[NH2X3]),$([CH2X4][CX3](=[OX1])[NX3H2]),$([CH2X4][CX3](=[OX1])[OH0-,OH]),$([CH2X4][SX2H,SX1H0-]),$([CH2X4][CH2X4][CX3](=[OX1])[OH0-,OH]),$([CH2X4][#6X3]1:[$([#7X3H+,#7X2H0+0]:[#6X3H]:[#7X3H]),$([#7X3H])]:[#6X3H]:[$([#7X3H+,#7X2H0+0]:[#6X3H]:[#7X3H]),$([#7X3H])]:[#6X3H]1),$([CHX4]([CH3X4])[CH2X4][CH3X4]),$([CH2X4][CHX4]([CH3X4])[CH3X4]),$([CH2X4][CH2X4][CH2X4][CH2X4][NX4+,NX3+0]),$([CH2X4][CH2X4][SX2][CH3X4]),$([CH2X4][cX3]1[cX3H][cX3H][cX3H][cX3H][cX3H]1),$([CH2X4][OX2H]),$([CHX4]([CH3X4])[OX2H]),$([CH2X4][cX3]1[cX3H][nX3H][cX3]2[cX3H][cX3H][cX3H][cX3H][cX3]12),$([CH2X4][cX3]1[cX3H][cX3H][cX3]([OHX2,OH0X1-])[cX3H][cX3H]1),$([CHX4]([CH3X4])[CH3X4])])[CX3](=[OX1])[OX2H,OX1-,N])]"),
+        ALL_STD_AMINOS("allstnd_aminos", "[$([$([NX3H,NX4H2+]),$([NX3](C)(C)(C))]1[CX4H]([CH2][CH2][CH2]1)[CX3](=[OX1])[OX2H,OX1-,N]),$([$([NX3H2,NX4H3+]),$([NX3H](C)(C))][CX4H2][CX3](=[OX1])[OX2H,OX1-,N]),$([$([NX3H2,NX4H3+]),$([NX3H](C)(C))][CX4H]([$([CH3X4]),$([CH2X4][CH2X4][CH2X4][NHX3][CH0X3](=[NH2X3+,NHX2+0])[NH2X3]),$([CH2X4][CX3](=[OX1])[NX3H2]),$([CH2X4][CX3](=[OX1])[OH0-,OH]),$([CH2X4][SX2H,SX1H0-]),$([CH2X4][CH2X4][CX3](=[OX1])[OH0-,OH]),$([CH2X4][#6X3]1:[$([#7X3H+,#7X2H0+0]:[#6X3H]:[#7X3H]),$([#7X3H])]:[#6X3H]:[$([#7X3H+,#7X2H0+0]:[#6X3H]:[#7X3H]),$([#7X3H])]:[#6X3H]1),$([CHX4]([CH3X4])[CH2X4][CH3X4]),$([CH2X4][CHX4]([CH3X4])[CH3X4]),$([CH2X4][CH2X4][CH2X4][CH2X4][NX4+,NX3+0]),$([CH2X4][CH2X4][SX2][CH3X4]),$([CH2X4][cX3]1[cX3H][cX3H][cX3H][cX3H][cX3H]1),$([CH2X4][OX2H]),$([CHX4]([CH3X4])[OX2H]),$([CH2X4][cX3]1[cX3H][nX3H][cX3]2[cX3H][cX3H][cX3H][cX3H][cX3]12),$([CH2X4][cX3]1[cX3H][cX3H][cX3]([OHX2,OH0X1-])[cX3H][cX3H]1),$([CHX4]([CH3X4])[CH3X4])])[CX3](=[OX1])[OX2H,OX1-,N])]"),
         NON_STD_AMINOS("nonstnd_aminos", "[$([NX3,NX4+][CX4H]([$([CH3X4]),$([CH2X4][CH2X4][CH2X4][NHX3][CH0X3](=[NH2X3+,NHX2+0])[NH2X3]),$([CH2X4][CX3](=[OX1])[NX3H2]),$([CH2X4][CX3](=[OX1])[OH0-,OH]),$([CH2X4][SX2H,SX1H0-]),$([CH2X4][CH2X4][CX3](=[OX1])[OH0-,OH]),$([CH2X4][#6X3]1:[$([#7X3H+,#7X2H0+0]:[#6X3H]:[#7X3H]),$([#7X3H])]:[#6X3H]:[$([#7X3H+,#7X2H0+0]:[#6X3H]:[#7X3H]),$([#7X3H])]:[#6X3H]1),$([CHX4]([CH3X4])[CH2X4][CH3X4]),$([CH2X4][CHX4]([CH3X4])[CH3X4]),$([CH2X4][CH2X4][CH2X4][CH2X4][NX4+,NX3+0]),$([CH2X4][CH2X4][SX2][CH3X4]),$([CH2X4][cX3]1[cX3H][cX3H][cX3H][cX3H][cX3H]1),$([CH2X4][OX2H]),$([CHX4]([CH3X4])[OX2H]),$([CH2X4][cX3]1[cX3H][nX3H][cX3]2[cX3H][cX3H][cX3H][cX3H][cX3]12),$([CH2X4][cX3]1[cX3H][cX3H][cX3]([OHX2,OH0X1-])[cX3H][cX3H]1),$([CHX4]([CH3X4])[CH3X4])])[CX3](=[OX1])[O,N]);!$([$([$([NX3H,NX4H2+]),$([NX3](C)(C)(C))]1[CX4H]([CH2][CH2][CH2]1)[CX3](=[OX1])[OX2H,OX1-,N]),$([$([NX3H2,NX4H3+]),$([NX3H](C)(C))][CX4H2][CX3](=[OX1])[OX2H,OX1-,N]),$([$([NX3H2,NX4H3+]),$([NX3H](C)(C))][CX4H]([$([CH3X4]),$([CH2X4][CH2X4][CH2X4][NHX3][CH0X3](=[NH2X3+,NHX2+0])[NH2X3]),$([CH2X4][CX3](=[OX1])[NX3H2]),$([CH2X4][CX3](=[OX1])[OH0-,OH]),$([CH2X4][SX2H,SX1H0-]),$([CH2X4][CH2X4][CX3](=[OX1])[OH0-,OH]),$([CH2X4][#6X3]1:[$([#7X3H+,#7X2H0+0]:[#6X3H]:[#7X3H]),$([#7X3H])]:[#6X3H]:[$([#7X3H+,#7X2H0+0]:[#6X3H]:[#7X3H]),$([#7X3H])]:[#6X3H]1),$([CHX4]([CH3X4])[CH2X4][CH3X4]),$([CH2X4][CHX4]([CH3X4])[CH3X4]),$([CH2X4][CH2X4][CH2X4][CH2X4][NX4+,NX3+0]),$([CH2X4][CH2X4][SX2][CH3X4]),$([CH2X4][cX3]1[cX3H][cX3H][cX3H][cX3H][cX3H]1),$([CH2X4][OX2H]),$([CHX4]([CH3X4])[OX2H]),$([CH2X4][cX3]1[cX3H][nX3H][cX3]2[cX3H][cX3H][cX3H][cX3H][cX3]12),$([CH2X4][cX3]1[cX3H][cX3H][cX3]([OHX2,OH0X1-])[cX3H][cX3H]1),$([CHX4]([CH3X4])[CH3X4])])[CX3](=[OX1])[OX2H,OX1-,N])])]"),
 
         S_OPENPYR_C6O6("s_openpyr_C6O6", "C(~[#8])~C(~[#8])~C(~[#8])~C(~[#8])~C(~[#8])~C(~[#8])"),
@@ -37,10 +43,10 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
         D_ETHYL("d_ethyl_2", "[#6]~[#6]"),
         D_METHYL("d_methyl_1", "[C;D1;h3]"),
 
-        PHOSPHATE("phosphate_2", "P~O]"),
+        PHOSPHATE("phosphate_2", "P~O"),
         SULFONATE("sulfonate_2", "S~O"),
 
-        HAL_F("hal_f", "[[#9]"),
+        HAL_F("hal_f", "[#9]"),
         HAL_CL("hal_cl", "[#17]"),
         HAL_BR("hal_br", "[#35]"),
         HAL_I("hal_i", "[#53]"),
@@ -60,12 +66,10 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
         R_C10("r_c10", "[#6]~1~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~1");
 
 
-
-
         public final String label;
         public final String smarts;
 
-        DefaultBiosynfoniKey(String label, String smarts){
+        DefaultBiosynfoniKey(String label, String smarts) {
             this.label = label;
             this.smarts = smarts;
         }
@@ -74,10 +78,11 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
 
     /**
      * This method identifies all occurrences of predefined SMARTS patterns within a given molecule and returns them grouped by pattern.
-     *
+     * <p>
      * The result is returned as a list of match lists:
      * - The outer list corresponds to the ordered set of SMARTS keys.
-     *  -Each inner list contains all matches (int[]) found for the respective SMARTS pattern
+     * -Each inner list contains all matches (int[]) found for the respective SMARTS pattern
+     *
      * @param aMolecule
      * @return
      */
@@ -90,16 +95,70 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
             SmartsPattern pattern = SmartsPattern.create(key.smarts);
 
 
-                int[][] uniqueMatches = pattern.matchAll(aMolecule)
-                        .uniqueAtoms()
-                        .toArray();
+            int[][] uniqueMatches = pattern.matchAll(getAromaticity(aMolecule))
+                    .uniqueAtoms()
+                    .toArray();
 
-                for (int[] match : uniqueMatches) {
-                    subMatches.add(match);
-                }
-           filteredMatches.add(subMatches);
+            for (int[] match : uniqueMatches) {
+                subMatches.add(match);
+            }
+
+            filteredMatches.add(subMatches);
         }
         return filteredMatches;
+    }
+/*
+* #To
+ */
+//    private List<List<int[]>> intrasubOverlap(List<int[]> subMatches) {
+//                List<List<int[]>> filteredMatches = new ArrayList<>(DefaultBiosynfoniKey.values().length);
+//
+//                subMatches.sort();
+//
+//                for(int[] aMatch : subMatches) {
+//
+//
+//                }
+//    }
+
+//    private boolean hasOverlap(List<int[]> subMatches) {
+//        for (int[] aMatch : subMatches) {
+//            for (int atom: aMatch) {
+//
+//            }
+//        }
+//    }
+
+
+    /**
+     * Detects and assigins aromaticity information for the given molecule
+     * <p>
+     * This method adds implicit hydrogens, resets aromaticity flags on bonds and atoms,
+     * Applies CDK aromaticity detection
+     *
+     * @param aMolecule the molcule whose aromaticity should be determined
+     * @return the same molecule with updated aromaticity
+     */
+    private IAtomContainer getAromaticity(IAtomContainer aMolecule) {
+        try {
+            AtomContainerManipulator.percieveAtomTypesAndConfigureAtoms(aMolecule);
+            CDKHydrogenAdder hydrogenAdder = CDKHydrogenAdder.getInstance(aMolecule.getBuilder());
+            hydrogenAdder.addImplicitHydrogens(aMolecule);
+            for (IAtom atom : aMolecule.atoms()) {
+                atom.setIsAromatic(false);
+            }
+            for (IBond bond : aMolecule.bonds()) {
+                bond.setIsAromatic(false);
+            }
+            Aromaticity aromaticity = new Aromaticity(
+                    ElectronDonation.cdk(),
+                    Cycles.cdkAromaticSet());
+
+            aromaticity.apply(aMolecule);
+            return aMolecule;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     /**
@@ -109,8 +168,8 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
     public IBitFingerprint getBitFingerprint(IAtomContainer container) throws CDKException {
         BitSet BIOSYNFingerprintBIT = new BitSet();
         List<List<int[]>> filteredMatches = getFilteredMatchesDefault(container);
-        for(int i=0; i <  filteredMatches.size();){
-            if (!filteredMatches.get(i).isEmpty()){
+        for (int i = 0; i < filteredMatches.size(); i++) {
+            if (!filteredMatches.get(i).isEmpty()) {
                 BIOSYNFingerprintBIT.set(i);
             }
 
@@ -125,8 +184,8 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
     public ICountFingerprint getCountFingerprint(IAtomContainer container) throws CDKException {
         List<List<int[]>> filteredMatches = getFilteredMatchesDefault(container);
         int[] BIOSYNFONIFingerprintCount = new int[DefaultBiosynfoniKey.values().length];
-        for (int i = 0; i < filteredMatches.size();){
-             BIOSYNFONIFingerprintCount[i] = filteredMatches.get(i).size();
+        for (int i = 0; i < filteredMatches.size(); i++) {
+            BIOSYNFONIFingerprintCount[i] = filteredMatches.get(i).size();
         }
         return new ICountFingerprint() {
             @Override
@@ -137,9 +196,9 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
             @Override
             public int numOfPopulatedbins() {
                 int Populatedbins = 0;
-                for(int i = 0; i < BIOSYNFONIFingerprintCount.length;){
-                    if(BIOSYNFONIFingerprintCount[i] > 0){
-                        Populatedbins +=1;
+                for (int i = 0; i < BIOSYNFONIFingerprintCount.length; i++) {
+                    if (BIOSYNFONIFingerprintCount[i] > 0) {
+                        Populatedbins += 1;
                     }
                 }
                 return Populatedbins;
@@ -173,9 +232,9 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
 
             @Override
             public boolean hasHash(int hash) {
-                if(hash > BIOSYNFONIFingerprintCount.length){
-                return false;
-                }else{
+                if (hash > BIOSYNFONIFingerprintCount.length) {
+                    return false;
+                } else {
                     return true;
                 }
             }
@@ -184,12 +243,12 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
             public int getCountForHash(int hash) {
                 return 0;
             }
-        }
+        };
     }
 
     @Override
     public Map<String, Integer> getRawFingerprint(IAtomContainer container) throws CDKException {
-        return Map.of();
+        throw new CDKException("Not yet implemented");
     }
 
     @Override
