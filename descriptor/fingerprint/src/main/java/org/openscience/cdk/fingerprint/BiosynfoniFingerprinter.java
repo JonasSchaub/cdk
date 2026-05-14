@@ -141,6 +141,8 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
      */
     private IAtomContainer getAromaticity(IAtomContainer aMolecule) {
         try {
+            aMolecule.setStereoElements(new ArrayList<>());
+
             AtomContainerManipulator.percieveAtomTypesAndConfigureAtoms(aMolecule);
             CDKHydrogenAdder hydrogenAdder = CDKHydrogenAdder.getInstance(aMolecule.getBuilder());
             hydrogenAdder.addImplicitHydrogens(aMolecule);
@@ -150,6 +152,8 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
             for (IBond bond : aMolecule.bonds()) {
                 bond.setIsAromatic(false);
             }
+
+
             Aromaticity aromaticity = new Aromaticity(
                     ElectronDonation.cdk(),
                     Cycles.cdkAromaticSet());
@@ -160,6 +164,8 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
             throw new RuntimeException(e);
         }
     }
+
+
 
     /**
      * {@inheritDoc}
@@ -183,30 +189,33 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
     @Override
     public ICountFingerprint getCountFingerprint(IAtomContainer container) throws CDKException {
         List<List<int[]>> filteredMatches = getFilteredMatchesDefault(container);
-        int[] BIOSYNFONIFingerprintCount = new int[DefaultBiosynfoniKey.values().length];
+        final Map <Integer, Integer> map = new TreeMap<>();
         for (int i = 0; i < filteredMatches.size(); i++) {
-            BIOSYNFONIFingerprintCount[i] = filteredMatches.get(i).size();
+            map.put(i, filteredMatches.get(i).size());
+        }
+
+        final int size = map.size();
+        final int[] hash = new int[size];
+        final int[] count = new int[size];
+        int n = 0;
+        for(int h: map.keySet()){
+            hash[n] =h;
+            count[n++]= map.get(h);
         }
         return new ICountFingerprint() {
             @Override
             public long size() {
-                return filteredMatches.size();
+                return DefaultBiosynfoniKey.values().length;
             }
 
             @Override
             public int numOfPopulatedbins() {
-                int Populatedbins = 0;
-                for (int i = 0; i < BIOSYNFONIFingerprintCount.length; i++) {
-                    if (BIOSYNFONIFingerprintCount[i] > 0) {
-                        Populatedbins += 1;
-                    }
-                }
-                return Populatedbins;
+                return size;
             }
 
             @Override
             public int getCount(int index) {
-                return BIOSYNFONIFingerprintCount[index];
+                return count[index];
             }
 
             /**
@@ -217,12 +226,12 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
              */
             @Override
             public int getHash(int index) {
-                return index;
+                return hash[index];
             }
 
             @Override
             public void merge(ICountFingerprint fp) {
-
+                throw new UnsupportedOperationException();
             }
 
             @Override
@@ -232,16 +241,12 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
 
             @Override
             public boolean hasHash(int hash) {
-                if (hash > BIOSYNFONIFingerprintCount.length) {
-                    return false;
-                } else {
-                    return true;
-                }
+                return map.containsKey(hash);
             }
 
             @Override
             public int getCountForHash(int hash) {
-                return 0;
+                return map.containsKey(hash)? map.get(hash) :0 ;
             }
         };
     }

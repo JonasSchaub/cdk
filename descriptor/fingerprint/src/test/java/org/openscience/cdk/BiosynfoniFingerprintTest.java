@@ -14,8 +14,12 @@ import org.openscience.cdk.smiles.SmilesParser;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
+import java.util.*;
 
 public class BiosynfoniFingerprintTest {
+
+    public String filePathCSVout = "src/test/resources/data/cdd.csv";
+    public int Limit = 20000;
     private final SilentChemObjectBuilder chemObjectBuilder = new SilentChemObjectBuilder();
 
     private final SmilesParser smilesParser = new SmilesParser(chemObjectBuilder);
@@ -24,29 +28,31 @@ public class BiosynfoniFingerprintTest {
 
     @Test
     void testBiosynfoniFingerprint() throws CDKException, IOException {
-        String filePath = "src/test/resources/data/cdd.csv";
 
-        File file = new File(filePath);
+
+        File file = new File(filePathCSVout);
 
         if (file.exists()) {
             file.delete();
         }
         Reader intput = new InputStreamReader(
-                new FileInputStream("src/test/resources/data/coconut_sdf_2d_lite-05-2026.sdf"),
+                new FileInputStream("src/test/resources/data/cdd/coconut_sdf_2d_lite-05-2026.sdf"),
                 StandardCharsets.UTF_8
         );
         IteratingSDFReader reader = new IteratingSDFReader(
                 intput, SilentChemObjectBuilder.getInstance());
         SmilesGenerator smilesGenerator = new SmilesGenerator().unique();
         int Index = 0;
-        int Limit = 100;
+
         while (reader.hasNext() && Index < Limit) {
             IAtomContainer aMolecule = reader.next();
             ICountFingerprint fp = fingerprint.getCountFingerprint(aMolecule);
             String smiles = smilesGenerator.create(aMolecule);
-            createCSV(fp, smiles, Index, filePath);
+            createCSV(fp, smiles, Index, filePathCSVout);
             Index += 1;
+
         }
+
         IAtomContainer aMolecule = smilesParser.parseSmiles("CC(=O)O");
 
         IBitFingerprint fp = fingerprint.getBitFingerprint(aMolecule);
@@ -77,7 +83,7 @@ public class BiosynfoniFingerprintTest {
      */
     public void createCSV(ICountFingerprint countFingerprint, String smiles, int index, String filePath) throws CDKException, IOException {
         if (filePath == null) {
-            filePath = "data/cdd";
+            filePath = filePathCSVout;
         }
         StringBuilder header = new StringBuilder("name");
         int countSize = Math.toIntExact(countFingerprint.size()); // z.B. 39
@@ -115,4 +121,71 @@ public class BiosynfoniFingerprintTest {
         }
 
     }
+
+    @Test
+    /**
+     * Tests the differnces between the orignial Biosynfoni fingerprint from python and the CDK based version
+     * Method does not create the CSV Data
+     */
+    public void compareCSV() throws IOException {
+
+        List<List<String>> thisFingerprint = loadCsv(filePathCSVout);
+        List<List<String>> original0Fingerprint = loadCsv("C:\\Users\\MarlonRaffelt\\Documents\\biosynfoni\\src\\dataPython.csv");
+        int error = 0;
+
+        for (int row = 0; row < Math.min(thisFingerprint.size(), Limit); row++) {
+
+            List<String> thisCounts = thisFingerprint.get(row);
+            List<String> originalCounts = original0Fingerprint.get(row);
+
+            String thisSmiles = thisCounts.get(0);
+            String originalSmiles = originalCounts.get(0);
+
+            for (int i = 1; i < thisCounts.size(); i++) {
+
+                if (!thisCounts.get(i).equals(originalCounts.get(i))) {
+                    System.out.println(
+                            "\nDifference at count: " + i +
+                                    "\noriginalCount: " + originalCounts.get(i) +
+                                    "\nthis Count: " + thisCounts.get(i) +
+                                    "\nOccured in Molecule:" + thisSmiles + "\n" + originalSmiles
+                    );
+                    error++;
+                }
+            }
+        }
+        System.out.println("\nErrorCount; " + error);
+    }
+
+    /**
+     * Loads a CSV into a List<List<String> format.
+     * The outer List contains the rows
+     * The inner List contains the content of a row
+     * @param s filePath of the CSV to Load
+     * @return List<List<String> containing each row of the CSV
+     * @throws IOException
+     */
+    public List<List<String>> loadCsv(String s) throws IOException {
+        List<List<String>> data = new ArrayList<>();
+
+        BufferedReader br = new BufferedReader(new FileReader(s));
+        String row;
+
+        while ((row = br.readLine()) != null) {
+
+            String[] pieces = row.split(",");
+
+            List<String> line = new ArrayList<>();
+
+            for (String piece : pieces) {
+                line.add(piece);
+            }
+            data.add(line);
+
+        }
+        br.close();
+
+        return data;
+    }
 }
+
