@@ -2,10 +2,15 @@ package org.openscience.cdk;
 
 import org.junit.jupiter.api.Test;
 import org.openscience.cdk.exception.CDKException;
+import org.openscience.cdk.exception.Intractable;
+import org.openscience.cdk.exception.InvalidSmilesException;
 import org.openscience.cdk.fingerprint.BiosynfoniFingerprinter;
 import org.openscience.cdk.fingerprint.IBitFingerprint;
 import org.openscience.cdk.fingerprint.ICountFingerprint;
+import org.openscience.cdk.graph.CycleFinder;
+import org.openscience.cdk.graph.Cycles;
 import org.openscience.cdk.interfaces.IAtomContainer;
+import org.openscience.cdk.interfaces.IRingSet;
 import org.openscience.cdk.io.iterator.IteratingSDFReader;
 import org.openscience.cdk.silent.SilentChemObjectBuilder;
 import org.openscience.cdk.smiles.SmilesGenerator;
@@ -19,7 +24,7 @@ import java.util.*;
 public class BiosynfoniFingerprintTest {
 
     public String filePathCSVout = "src/test/resources/data/cdd.csv";
-    public int Limit = 20000;
+    public int Limit = 50000;
     private final SilentChemObjectBuilder chemObjectBuilder = new SilentChemObjectBuilder();
 
     private final SmilesParser smilesParser = new SmilesParser(chemObjectBuilder);
@@ -36,7 +41,7 @@ public class BiosynfoniFingerprintTest {
             file.delete();
         }
         Reader intput = new InputStreamReader(
-                new FileInputStream("src/test/resources/data/cdd/coconut_sdf_2d_lite-05-2026.sdf"),
+                new FileInputStream("C:\\Users\\micro\\IdeaProjects\\cdk\\descriptor\\fingerprint\\src\\test\\resources\\data\\coconut_sdf_2d_lite-05-2026.sdf"),
                 StandardCharsets.UTF_8
         );
         IteratingSDFReader reader = new IteratingSDFReader(
@@ -130,7 +135,7 @@ public class BiosynfoniFingerprintTest {
     public void compareCSV() throws IOException {
 
         List<List<String>> thisFingerprint = loadCsv(filePathCSVout);
-        List<List<String>> original0Fingerprint = loadCsv("C:\\Users\\MarlonRaffelt\\Documents\\biosynfoni\\src\\dataPython.csv");
+        List<List<String>> original0Fingerprint = loadCsv("C:\\Users\\micro\\IdeaProjects\\biosynfoni\\src\\dataPython.csv");
         int error = 0;
 
         for (int row = 0; row < Math.min(thisFingerprint.size(), Limit); row++) {
@@ -186,6 +191,51 @@ public class BiosynfoniFingerprintTest {
         br.close();
 
         return data;
+    }
+    @Test
+    public void RingTest() throws InvalidSmilesException, Intractable {
+        String testMol1 = "C1CNC2=CC=CC=C21";
+        String testMol2 = "C(CC1)CCC1C12OC1CCCC2";
+
+
+        BiosynfoniFingerprinter  fp = new BiosynfoniFingerprinter();
+        SmilesParser smilesParser1 = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+
+        IAtomContainer mol1 = smilesParser1.parseSmiles(testMol1);
+        IAtomContainer mol2 = smilesParser1.parseSmiles(testMol2);
+
+
+        mol1 = fp.getAromaticity(mol1);
+        mol2 = fp.getAromaticity(mol2);
+
+
+        CycleFinder finder = Cycles.relevant();
+
+        IRingSet rings1 =
+                finder.find(mol1).toRingSet();
+
+        for (IAtomContainer ring : rings1.atomContainers()) {
+
+            System.out.println(
+                    "Ring mit " +
+                            ring.getAtomCount() +
+                            " Atomen" + ring.getID()
+            );
+
+        }
+        IRingSet rings2 =
+                finder.find(mol2).toRingSet();
+        System.out.println("\n New molecule      \n");
+        for (IAtomContainer ring : rings2.atomContainers()) {
+
+            System.out.println(
+                    "Ring mit " +
+                            ring.getAtomCount() +
+                            " Atomen"
+            );
+
+        }
+
     }
 }
 

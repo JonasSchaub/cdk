@@ -4,6 +4,7 @@ package org.openscience.cdk.fingerprint;
 import org.openscience.cdk.aromaticity.Aromaticity;
 import org.openscience.cdk.aromaticity.ElectronDonation;
 import org.openscience.cdk.exception.CDKException;
+import org.openscience.cdk.graph.CycleFinder;
 import org.openscience.cdk.graph.Cycles;
 import org.openscience.cdk.interfaces.*;
 import org.openscience.cdk.smarts.SmartsPattern;
@@ -12,6 +13,9 @@ import org.openscience.cdk.tools.manipulator.AtomContainerManipulator;
 
 import java.util.*;
 
+/**
+ * Because of the
+ */
 public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IFingerprinter {
     public enum DefaultBiosynfoniKey {
 
@@ -77,97 +81,6 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
 
 
     /**
-     * This method identifies all occurrences of predefined SMARTS patterns within a given molecule and returns them grouped by pattern.
-     * <p>
-     * The result is returned as a list of match lists:
-     * - The outer list corresponds to the ordered set of SMARTS keys.
-     * -Each inner list contains all matches (int[]) found for the respective SMARTS pattern
-     *
-     * @param aMolecule
-     * @return
-     */
-    private List<List<int[]>> getFilteredMatchesDefault(IAtomContainer aMolecule) {
-
-        List<List<int[]>> filteredMatches = new ArrayList<>(DefaultBiosynfoniKey.values().length);
-        Set<Integer> intersubBlockedAtoms = new HashSet<>();
-        for (DefaultBiosynfoniKey key : DefaultBiosynfoniKey.values()) {
-            List<int[]> subMatches = new ArrayList<>();
-            SmartsPattern pattern = SmartsPattern.create(key.smarts);
-
-
-            int[][] uniqueMatches = pattern.matchAll(getAromaticity(aMolecule))
-                    .uniqueAtoms()
-                    .toArray();
-
-            for (int[] match : uniqueMatches) {
-                subMatches.add(match);
-            }
-
-            filteredMatches.add(subMatches);
-        }
-        return filteredMatches;
-    }
-/*
-* #To
- */
-//    private List<List<int[]>> intrasubOverlap(List<int[]> subMatches) {
-//                List<List<int[]>> filteredMatches = new ArrayList<>(DefaultBiosynfoniKey.values().length);
-//
-//                subMatches.sort();
-//
-//                for(int[] aMatch : subMatches) {
-//
-//
-//                }
-//    }
-
-//    private boolean hasOverlap(List<int[]> subMatches) {
-//        for (int[] aMatch : subMatches) {
-//            for (int atom: aMatch) {
-//
-//            }
-//        }
-//    }
-
-
-    /**
-     * Detects and assigins aromaticity information for the given molecule
-     * <p>
-     * This method adds implicit hydrogens, resets aromaticity flags on bonds and atoms,
-     * Applies CDK aromaticity detection
-     *
-     * @param aMolecule the molcule whose aromaticity should be determined
-     * @return the same molecule with updated aromaticity
-     */
-    private IAtomContainer getAromaticity(IAtomContainer aMolecule) {
-        try {
-            aMolecule.setStereoElements(new ArrayList<>());
-
-            AtomContainerManipulator.percieveAtomTypesAndConfigureAtoms(aMolecule);
-            CDKHydrogenAdder hydrogenAdder = CDKHydrogenAdder.getInstance(aMolecule.getBuilder());
-            hydrogenAdder.addImplicitHydrogens(aMolecule);
-            for (IAtom atom : aMolecule.atoms()) {
-                atom.setIsAromatic(false);
-            }
-            for (IBond bond : aMolecule.bonds()) {
-                bond.setIsAromatic(false);
-            }
-
-
-            Aromaticity aromaticity = new Aromaticity(
-                    ElectronDonation.cdk(),
-                    Cycles.cdkAromaticSet());
-
-            aromaticity.apply(aMolecule);
-            return aMolecule;
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-
-
-    /**
      * {@inheritDoc}
      */
     @Override
@@ -189,7 +102,7 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
     @Override
     public ICountFingerprint getCountFingerprint(IAtomContainer container) throws CDKException {
         List<List<int[]>> filteredMatches = getFilteredMatchesDefault(container);
-        final Map <Integer, Integer> map = new TreeMap<>();
+        final Map<Integer, Integer> map = new TreeMap<>();
         for (int i = 0; i < filteredMatches.size(); i++) {
             map.put(i, filteredMatches.get(i).size());
         }
@@ -198,9 +111,9 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
         final int[] hash = new int[size];
         final int[] count = new int[size];
         int n = 0;
-        for(int h: map.keySet()){
-            hash[n] =h;
-            count[n++]= map.get(h);
+        for (int h : map.keySet()) {
+            hash[n] = h;
+            count[n++] = map.get(h);
         }
         return new ICountFingerprint() {
             @Override
@@ -246,7 +159,7 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
 
             @Override
             public int getCountForHash(int hash) {
-                return map.containsKey(hash)? map.get(hash) :0 ;
+                return map.containsKey(hash) ? map.get(hash) : 0;
             }
         };
     }
@@ -259,5 +172,124 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
     @Override
     public int getSize() {
         return 0;
+    }
+
+
+    /**
+     * This method identifies all occurrences of predefined SMARTS patterns within a given molecule and returns them grouped by pattern.
+     * <p>
+     * The result is returned as a list of match lists:
+     * - The outer list corresponds to the ordered set of SMARTS keys.
+     * -Each inner list contains all matches (int[]) found for the respective SMARTS pattern
+     *
+     * @param aMolecule
+     * @return
+     */
+    private List<List<int[]>> getFilteredMatchesDefault(IAtomContainer aMolecule) {
+
+        List<List<int[]>> filteredMatches = new ArrayList<>(DefaultBiosynfoniKey.values().length);
+        Set<Integer> intersubBlockedAtoms = new HashSet<>();
+        for (DefaultBiosynfoniKey key : DefaultBiosynfoniKey.values()) {
+            List<int[]> subMatches = new ArrayList<>();
+            SmartsPattern pattern = SmartsPattern.create(key.smarts);
+
+            int[][] uniqueMatches = pattern.matchAll(getAromaticity(aMolecule))
+                    .uniqueAtoms()
+                    .toArray();
+
+            for (int[] match : uniqueMatches) {
+                subMatches.add(match);
+            }
+
+            filteredMatches.add(subMatches);
+        }
+        return filteredMatches;
+    }
+    /*
+     * #To
+     */
+    private List<int[]> intrasubOverlap(List<int[]> subMatches) {
+        List<int[]> filteredMatches = new ArrayList<>(DefaultBiosynfoniKey.values().length);
+
+        subMatches.sort(Collections.reverseOrder());
+        Set<Integer> blockedAtoms = new HashSet<>();
+        for (int[]  aMatch : subMatches) {
+
+            if(!hasOverlap(aMatch,blockedAtoms)){
+                filteredMatches.add(aMatch);
+                addAllBlockedAtoms(aMatch, blockedAtoms);
+            }
+
+        }
+        return filteredMatches;
+    }
+
+    private List<int[]> filterIntraSmarter(List<int[]> subMatches){
+        List<int[]> filterdMatches = new ArrayList<>(DefaultBiosynfoniKey.values().length);
+
+        //subMatches.sort();
+        return filterdMatches;
+    }
+
+    private boolean hasOverlap(int[] aMatch, Set<Integer> blockedAtoms) {
+        for (int Atom : aMatch) {
+            if (blockedAtoms.contains(Atom)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void addAllBlockedAtoms(int[] match, Set<Integer> blockedAtoms) {
+        for (int Atom : match) {
+            blockedAtoms.add(Atom);
+        }
+    }
+
+
+    /**
+     * Detects and assigins aromaticity information for the given molecule
+     * <p>
+     * This method adds implicit hydrogens, resets aromaticity flags on bonds and atoms,
+     * Applies CDK aromaticity detection
+     *
+     * @param aMolecule the molcule whose aromaticity should be determined
+     * @return the same molecule with updated aromaticity
+     */
+    public IAtomContainer getAromaticity(IAtomContainer aMolecule) {
+        try {
+            AtomContainerManipulator.percieveAtomTypesAndConfigureAtoms(aMolecule);
+            CDKHydrogenAdder hydrogenAdder = CDKHydrogenAdder.getInstance(aMolecule.getBuilder());
+
+            hydrogenAdder.addImplicitHydrogens(aMolecule);
+
+            for (IAtom atom : aMolecule.atoms()) {
+                atom.setIsAromatic(false);
+                atom.setIsInRing(false);
+            }
+            for (IBond bond : aMolecule.bonds()) {
+                bond.setIsAromatic(false);
+                bond.setIsInRing(false);
+            }
+            IRingSet rings = Cycles.relevant().find(aMolecule).toRingSet();
+
+            for(IAtomContainer molecule : rings.atomContainers()) {
+                for(IAtom atom : molecule.atoms()) {
+                    atom.setIsInRing(true);
+
+                }
+                for(IBond bond : molecule.bonds()) {
+                    bond.setIsInRing(true);
+                }
+            }
+            Aromaticity aromaticity = new Aromaticity(
+                    ElectronDonation.cdk(),
+                    Cycles.cdkAromaticSet());
+
+            aromaticity.apply(aMolecule);
+            return aMolecule;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 }
