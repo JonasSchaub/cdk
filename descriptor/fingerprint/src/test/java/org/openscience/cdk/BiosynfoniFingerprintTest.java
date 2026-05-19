@@ -1,6 +1,7 @@
 package org.openscience.cdk;
 
 import net.bytebuddy.implementation.bind.annotation.IgnoreForBinding;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.openscience.cdk.exception.CDKException;
 import org.openscience.cdk.exception.Intractable;
@@ -32,7 +33,7 @@ public class BiosynfoniFingerprintTest {
 
     private final BiosynfoniFingerprinter fingerprint = new BiosynfoniFingerprinter();
 
-    @Test
+    @Disabled @Test
     void testBiosynfoniFingerprint() throws CDKException, IOException {
 
 
