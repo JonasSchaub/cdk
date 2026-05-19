@@ -14,7 +14,11 @@ import org.openscience.cdk.tools.manipulator.AtomContainerManipulator;
 import java.util.*;
 
 /**
- * Because of the
+ * Because of the Overlapfilter methods it uses not the Substructure Fingerprint, only orientates at the implementation
+ *
+ * Current Features are Fix SMARTS, Count and Bit Fingerprint
+ *
+ * untested Implementation of first Overlap filter is not yet activailable
  */
 public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IFingerprinter {
     public enum DefaultBiosynfoniKey {
@@ -186,7 +190,7 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
      * @return
      */
     private List<List<int[]>> getFilteredMatchesDefault(IAtomContainer aMolecule) {
-
+        //SmartsPattern.prepare(aMolecule);
         List<List<int[]>> filteredMatches = new ArrayList<>(DefaultBiosynfoniKey.values().length);
         Set<Integer> intersubBlockedAtoms = new HashSet<>();
         for (DefaultBiosynfoniKey key : DefaultBiosynfoniKey.values()) {
@@ -205,8 +209,15 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
         }
         return filteredMatches;
     }
-    /*
-     * #To
+
+    /**
+     * Filters overlapping Matches from the same Structure
+     * Matches are processed in sorted order. A match is accepted only if none of its
+     * atom indices have not already been assigned to a previously accepted match.
+     * Accepted matches block all of their atoms from being reused in later
+     * matches. This ensures that the returned matches are atom-disjoint.
+     * @param subMatches list of substructure matches represented as atom index arrays
+     * @return filtered list containing only non-overlapping matches
      */
     private List<int[]> intrasubOverlap(List<int[]> subMatches) {
         List<int[]> filteredMatches = new ArrayList<>(DefaultBiosynfoniKey.values().length);
@@ -224,6 +235,11 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
         return filteredMatches;
     }
 
+    /**
+     *
+     * @param subMatches
+     * @return
+     */
     private List<int[]> filterIntraSmarter(List<int[]> subMatches){
         List<int[]> filterdMatches = new ArrayList<>(DefaultBiosynfoniKey.values().length);
 
@@ -231,6 +247,14 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
         return filterdMatches;
     }
 
+    /**
+     * Checks if a Match overlaps with a blocked atom
+     *
+     * The method will retrun true when at least one atom index is inside the blockedAtoms
+     * @param aMatch aMatch atom indices of the current substructure match
+     * @param blockedAtoms blockedAtoms set of atom indices already assigned to accepted matches
+     * @return true if the match overlaps with blocked atoms, otherwise false
+     */
     private boolean hasOverlap(int[] aMatch, Set<Integer> blockedAtoms) {
         for (int Atom : aMatch) {
             if (blockedAtoms.contains(Atom)) {
@@ -240,6 +264,11 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
         return false;
     }
 
+    /**
+     *  adds matches to the set of BlockedAtoms
+     * @param match indicies of an accepted substructure
+     * @param blockedAtoms set containig atom indices already blocked
+     */
     private void addAllBlockedAtoms(int[] match, Set<Integer> blockedAtoms) {
         for (int Atom : match) {
             blockedAtoms.add(Atom);
@@ -271,7 +300,10 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
                 bond.setIsAromatic(false);
                 bond.setIsInRing(false);
             }
-            IRingSet rings = Cycles.relevant().find(aMolecule).toRingSet();
+//            Cycles cycles = Cycles.sssr(aMolecule);
+//            IRingSet rings = cycles.toRingSet();
+
+            IRingSet rings =Cycles.relevant().find(aMolecule).toRingSet();
 
             for(IAtomContainer molecule : rings.atomContainers()) {
                 for(IAtom atom : molecule.atoms()) {

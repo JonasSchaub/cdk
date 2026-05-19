@@ -1,5 +1,6 @@
 package org.openscience.cdk;
 
+import net.bytebuddy.implementation.bind.annotation.IgnoreForBinding;
 import org.junit.jupiter.api.Test;
 import org.openscience.cdk.exception.CDKException;
 import org.openscience.cdk.exception.Intractable;
@@ -193,7 +194,7 @@ public class BiosynfoniFingerprintTest {
         return data;
     }
     @Test
-    public void RingTest() throws InvalidSmilesException, Intractable {
+    public void RingTest() throws CDKException {
         String testMol1 = "C1CNC2=CC=CC=C21";
         String testMol2 = "C(CC1)CCC1C12OC1CCCC2";
 
@@ -208,20 +209,13 @@ public class BiosynfoniFingerprintTest {
         mol1 = fp.getAromaticity(mol1);
         mol2 = fp.getAromaticity(mol2);
 
+        ICountFingerprint count2 = fp.getCountFingerprint(mol2);
 
-        CycleFinder finder = Cycles.relevant();
 
-        IRingSet rings1 =
-                finder.find(mol1).toRingSet();
+        CycleFinder finder = Cycles.or(Cycles.relevant(), Cycles.vertexShort());
 
-        for (IAtomContainer ring : rings1.atomContainers()) {
-
-            System.out.println(
-                    "Ring mit " +
-                            ring.getAtomCount() +
-                            " Atomen" + ring.getID()
-            );
-
+        for (int i = 0; i<count2.size(); i++) {
+            System.out.println(count2.getCount(i)+","+i);
         }
         IRingSet rings2 =
                 finder.find(mol2).toRingSet();
