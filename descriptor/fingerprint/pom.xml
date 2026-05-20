@@ -115,6 +115,36 @@
             <version>${project.parent.version}</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.openscience.cdk</groupId>
+            <artifactId>cdk-silent</artifactId>
+            <version>2.13-SNAPSHOT</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.openscience.cdk</groupId>
+            <artifactId>cdk-silent</artifactId>
+            <version>2.13-SNAPSHOT</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.openscience.cdk</groupId>
+            <artifactId>cdk-data</artifactId>
+            <version>2.13-SNAPSHOT</version>
+            <scope>compile</scope>
+        </dependency>
     </dependencies>
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <source>15</source>
+                    <target>15</target>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 
 </project>

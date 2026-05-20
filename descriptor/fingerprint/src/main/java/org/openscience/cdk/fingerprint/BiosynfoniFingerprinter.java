@@ -4,7 +4,6 @@ package org.openscience.cdk.fingerprint;
 import org.openscience.cdk.aromaticity.Aromaticity;
 import org.openscience.cdk.aromaticity.ElectronDonation;
 import org.openscience.cdk.exception.CDKException;
-import org.openscience.cdk.graph.CycleFinder;
 import org.openscience.cdk.graph.Cycles;
 import org.openscience.cdk.interfaces.*;
 import org.openscience.cdk.smarts.SmartsPattern;
@@ -21,6 +20,9 @@ import java.util.*;
  * untested Implementation of first Overlap filter is not yet activailable
  */
 public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IFingerprinter {
+    public void get() {
+    }
+
     public enum DefaultBiosynfoniKey {
 
         CO_COA("co_coa", "SCCN~C(~O)CCN~C(~O)C(C(C)(C)COP(O)(~O)OP(~O)(O)OCC1C(C(C(O1)[#7]2~[#6]~[#7]~[#6]~3~[#6](~[#7]~[#6]~[#7]~[#6]~3~2)~[#7])O)OP(~O)(O)O)~O"),
@@ -83,6 +85,41 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
         }
     }
 
+    private boolean intraSubOverlapToggle = false;
+    private boolean interSubOverLapToggle = false;
+    private String[] smartsList = null;
+
+    /**
+     *  uses default SMARTS pattern.
+     *  Can toggle usage of overlap filter methods
+     * @param intraSubOverlapToggle
+     * @param interSubOverLapToggle
+     */
+    public BiosynfoniFingerprinter(boolean intraSubOverlapToggle, boolean interSubOverLapToggle){
+        this.intraSubOverlapToggle = intraSubOverlapToggle;
+        this.interSubOverLapToggle = interSubOverLapToggle;
+    }
+
+    /**
+     * uses default creation methods for the Fingerprints \n
+     * See {@link BiosynfoniFingerprinter} for more information
+     */
+    public BiosynfoniFingerprinter(){
+
+    }
+
+    /**
+     *
+     * @param intraSubOverlapToggle if this is true Fingerprinter will use {@code intraSubOverlap}
+     * @param interSubOverLapToggle not yet implemented
+     * @param smarts if this is Null the Fingerprints will be created with the given SMARTS
+     */
+    public BiosynfoniFingerprinter(boolean intraSubOverlapToggle,boolean interSubOverLapToggle, String[] smarts){
+        this.interSubOverLapToggle = interSubOverLapToggle;
+        this.intraSubOverlapToggle = intraSubOverlapToggle;
+        this.smartsList = smarts;
+    }
+
 
     /**
      * {@inheritDoc}
@@ -90,7 +127,7 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
     @Override
     public IBitFingerprint getBitFingerprint(IAtomContainer container) throws CDKException {
         BitSet BIOSYNFingerprintBIT = new BitSet();
-        List<List<int[]>> filteredMatches = getFilteredMatchesDefault(container);
+        List<List<int[]>> filteredMatches = getFilteredMatches(container);
         for (int i = 0; i < filteredMatches.size(); i++) {
             if (!filteredMatches.get(i).isEmpty()) {
                 BIOSYNFingerprintBIT.set(i);
@@ -105,7 +142,7 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
      */
     @Override
     public ICountFingerprint getCountFingerprint(IAtomContainer container) throws CDKException {
-        List<List<int[]>> filteredMatches = getFilteredMatchesDefault(container);
+        List<List<int[]>> filteredMatches = getFilteredMatches(container);
         final Map<Integer, Integer> map = new TreeMap<>();
         for (int i = 0; i < filteredMatches.size(); i++) {
             map.put(i, filteredMatches.get(i).size());
@@ -180,7 +217,10 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
 
 
     /**
-     * This method identifies all occurrences of predefined SMARTS patterns within a given molecule and returns them grouped by pattern.
+     * This method identifies all occurrences of SMARTS patterns within a given molecule and returns them grouped by pattern.
+     * it uses by default the SMARTS given by the enum.
+     *
+     * If Sting[] smarts is not empty it uses these SMARTS
      * <p>
      * The result is returned as a list of match lists:
      * - The outer list corresponds to the ordered set of SMARTS keys.
@@ -189,26 +229,49 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
      * @param aMolecule
      * @return
      */
-    private List<List<int[]>> getFilteredMatchesDefault(IAtomContainer aMolecule) {
+    private List<List<int[]>> getFilteredMatches(IAtomContainer aMolecule) {
         //SmartsPattern.prepare(aMolecule);
         List<List<int[]>> filteredMatches = new ArrayList<>(DefaultBiosynfoniKey.values().length);
         Set<Integer> intersubBlockedAtoms = new HashSet<>();
+        if(smartsList==null){
         for (DefaultBiosynfoniKey key : DefaultBiosynfoniKey.values()) {
-            List<int[]> subMatches = new ArrayList<>();
+
             SmartsPattern pattern = SmartsPattern.create(key.smarts);
-
-            int[][] uniqueMatches = pattern.matchAll(getAromaticity(aMolecule))
-                    .uniqueAtoms()
-                    .toArray();
-
-            for (int[] match : uniqueMatches) {
-                subMatches.add(match);
-            }
-
+            List<int[]> subMatches = getSubMatches(pattern,aMolecule);
             filteredMatches.add(subMatches);
+        }
+
+        }else {
+            for(String smarts : smartsList ){
+                SmartsPattern pattern = SmartsPattern.create(smarts);
+                List<int[]> subMatches = getSubMatches(pattern,aMolecule);
+                filteredMatches.add(subMatches);
+            }
         }
         return filteredMatches;
     }
+
+    /**
+     * This Method matches SmartsPattern with a Molecule
+     * @param pattern a Pattern for matching
+     * @param aMolecule one Molecule for Matching
+     * @return List<int[]> containing  all matches for one Patter with atom indices
+     */
+    private List<int[]> getSubMatches(SmartsPattern pattern,IAtomContainer aMolecule){
+        List<int[]> subMatches = new ArrayList<>();
+        int[][] uniqueMatches = pattern.matchAll(getAromaticity(aMolecule))
+                .uniqueAtoms()
+                .toArray();
+
+        for (int[] match : uniqueMatches) {
+            subMatches.add(match);
+        }
+        if (intraSubOverlapToggle){
+            subMatches = intraSubOverlap(subMatches);
+        }
+        return subMatches;
+    }
+
 
     /**
      * Filters overlapping Matches from the same Structure
@@ -219,7 +282,7 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
      * @param subMatches list of substructure matches represented as atom index arrays
      * @return filtered list containing only non-overlapping matches
      */
-    private List<int[]> intrasubOverlap(List<int[]> subMatches) {
+    private List<int[]> intraSubOverlap(List<int[]> subMatches) {
         List<int[]> filteredMatches = new ArrayList<>(DefaultBiosynfoniKey.values().length);
 
         subMatches.sort(Collections.reverseOrder());
