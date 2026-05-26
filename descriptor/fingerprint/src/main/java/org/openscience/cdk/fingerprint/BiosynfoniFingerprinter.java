@@ -14,9 +14,9 @@ import java.util.*;
 
 /**
  * Because of the Overlapfilter methods it uses not the Substructure Fingerprint, only orientates at the implementation
- *
+ * <p>
  * Current Features are Fix SMARTS, Count and Bit Fingerprint
- *
+ * <p>
  * untested Implementation of first Overlap filter is not yet activailable
  */
 public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IFingerprinter {
@@ -88,14 +88,16 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
     private boolean intraSubOverlapToggle = false;
     private boolean interSubOverLapToggle = false;
     private String[] smartsList = null;
+    private int smartsSize = DefaultBiosynfoniKey.values().length;
 
     /**
-     *  uses default SMARTS pattern.
-     *  Can toggle usage of overlap filter methods
+     * uses default SMARTS pattern.
+     * Can toggle usage of overlap filter methods
+     *
      * @param intraSubOverlapToggle
      * @param interSubOverLapToggle
      */
-    public BiosynfoniFingerprinter(boolean intraSubOverlapToggle, boolean interSubOverLapToggle){
+    public BiosynfoniFingerprinter(boolean intraSubOverlapToggle, boolean interSubOverLapToggle) {
         this.intraSubOverlapToggle = intraSubOverlapToggle;
         this.interSubOverLapToggle = interSubOverLapToggle;
     }
@@ -104,7 +106,7 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
      * uses default creation methods for the Fingerprints \n
      * See {@link BiosynfoniFingerprinter} for more information
      */
-    public BiosynfoniFingerprinter(){
+    public BiosynfoniFingerprinter() {
 
     }
 
@@ -112,12 +114,13 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
      *
      * @param intraSubOverlapToggle if this is true Fingerprinter will use {@code intraSubOverlap}
      * @param interSubOverLapToggle not yet implemented
-     * @param smarts if this is Null the Fingerprints will be created with the given SMARTS
+     * @param smarts                if this is Null the Fingerprints will be created with the given SMARTS
      */
-    public BiosynfoniFingerprinter(boolean intraSubOverlapToggle,boolean interSubOverLapToggle, String[] smarts){
+    public BiosynfoniFingerprinter(boolean intraSubOverlapToggle, boolean interSubOverLapToggle, String[] smarts) {
         this.interSubOverLapToggle = interSubOverLapToggle;
         this.intraSubOverlapToggle = intraSubOverlapToggle;
         this.smartsList = smarts;
+        this.smartsSize = smarts.length;
     }
 
 
@@ -159,7 +162,7 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
         return new ICountFingerprint() {
             @Override
             public long size() {
-                return DefaultBiosynfoniKey.values().length;
+                return count.length;
             }
 
             @Override
@@ -219,32 +222,31 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
     /**
      * This method identifies all occurrences of SMARTS patterns within a given molecule and returns them grouped by pattern.
      * it uses by default the SMARTS given by the enum.
-     *
+     * <p>
      * If Sting[] smarts is not empty it uses these SMARTS
      * <p>
      * The result is returned as a list of match lists:
      * - The outer list corresponds to the ordered set of SMARTS keys.
      * -Each inner list contains all matches (int[]) found for the respective SMARTS pattern
      *
-     * @param aMolecule
-     * @return
+     * @param aMolecule the molecule to analyze
+     * @return a list of match lists grouped by SMARTS pattern
      */
     private List<List<int[]>> getFilteredMatches(IAtomContainer aMolecule) {
         //SmartsPattern.prepare(aMolecule);
-        List<List<int[]>> filteredMatches = new ArrayList<>(DefaultBiosynfoniKey.values().length);
-        Set<Integer> intersubBlockedAtoms = new HashSet<>();
-        if(smartsList==null){
-        for (DefaultBiosynfoniKey key : DefaultBiosynfoniKey.values()) {
+        List<List<int[]>> filteredMatches = new ArrayList<>(smartsSize);
+        if (smartsList == null) {
+            for (DefaultBiosynfoniKey key : DefaultBiosynfoniKey.values()) {
 
-            SmartsPattern pattern = SmartsPattern.create(key.smarts);
-            List<int[]> subMatches = getSubMatches(pattern,aMolecule);
-            filteredMatches.add(subMatches);
-        }
+                SmartsPattern pattern = SmartsPattern.create(key.smarts);
+                List<int[]> subMatches = getSubMatches(pattern, aMolecule,filteredMatches);
+                filteredMatches.add(subMatches);
+            }
 
-        }else {
-            for(String smarts : smartsList ){
+        } else {
+            for (String smarts : smartsList) {
                 SmartsPattern pattern = SmartsPattern.create(smarts);
-                List<int[]> subMatches = getSubMatches(pattern,aMolecule);
+                List<int[]> subMatches = getSubMatches(pattern, aMolecule, filteredMatches);
                 filteredMatches.add(subMatches);
             }
         }
@@ -252,22 +254,26 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
     }
 
     /**
-     * This Method matches SmartsPattern with a Molecule
-     * @param pattern a Pattern for matching
+     *Extracts and filters substructure matches for a given SMARTS pattern within a molecule.
+     * This method identifies all unique atom matches for a SMARTS pattern and applies optional
+     * overlap filtering based on the configured toggle flags:
+     * @param pattern   a Pattern for matching
      * @param aMolecule one Molecule for Matching
+     * @param filteredMatches list of previously filtered matches for inter-overlap filtering
      * @return List<int[]> containing  all matches for one Patter with atom indices
      */
-    private List<int[]> getSubMatches(SmartsPattern pattern,IAtomContainer aMolecule){
+    private List<int[]> getSubMatches(SmartsPattern pattern, IAtomContainer aMolecule,List<List<int[]>> filteredMatches) {
         List<int[]> subMatches = new ArrayList<>();
         int[][] uniqueMatches = pattern.matchAll(getAromaticity(aMolecule))
                 .uniqueAtoms()
                 .toArray();
 
-        for (int[] match : uniqueMatches) {
-            subMatches.add(match);
-        }
-        if (intraSubOverlapToggle){
+        subMatches.addAll(Arrays.asList(uniqueMatches));
+        if (intraSubOverlapToggle) {
             subMatches = intraSubOverlap(subMatches);
+        }
+        if (interSubOverLapToggle){
+            subMatches = interSubOverlap(subMatches,filteredMatches);
         }
         return subMatches;
     }
@@ -279,19 +285,26 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
      * atom indices have not already been assigned to a previously accepted match.
      * Accepted matches block all of their atoms from being reused in later
      * matches. This ensures that the returned matches are atom-disjoint.
+     *
      * @param subMatches list of substructure matches represented as atom index arrays
      * @return filtered list containing only non-overlapping matches
      */
     private List<int[]> intraSubOverlap(List<int[]> subMatches) {
-        List<int[]> filteredMatches = new ArrayList<>(DefaultBiosynfoniKey.values().length);
+        List<int[]> filteredMatches = new ArrayList<>(smartsSize);
 
-        subMatches.sort(Collections.reverseOrder());
+        subMatches.sort(Comparator.comparingInt((int[] a) -> {
+            int min = Integer.MAX_VALUE;
+            for (int atom : a) {
+                if (atom < min) min = atom;
+            }
+            return min;
+        }).reversed());
         Set<Integer> blockedAtoms = new HashSet<>();
-        for (int[]  aMatch : subMatches) {
+        for (int[] aMatch : subMatches) {
 
-            if(!hasOverlap(aMatch,blockedAtoms)){
+            if (!hasOverlap(aMatch, blockedAtoms)) {
                 filteredMatches.add(aMatch);
-                addAllBlockedAtoms(aMatch, blockedAtoms);
+                addBlockedAtoms(aMatch, blockedAtoms);
             }
 
         }
@@ -300,21 +313,71 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
 
     /**
      *
-     * @param subMatches
-     * @return
+     * @param subMatches list of substructure matches to filter
+     * @return filtered list with intra-overlap applied
      */
-    private List<int[]> filterIntraSmarter(List<int[]> subMatches){
-        List<int[]> filterdMatches = new ArrayList<>(DefaultBiosynfoniKey.values().length);
+    private List<int[]> filterIntraSmarter(List<int[]> subMatches) {
+        List<int[]> filteredMatches = new ArrayList<>(smartsSize);
+        Set<Integer> allAtoms = new HashSet<>();
+        for (int[] match : subMatches) {
+            for (int atom : match) {
+                allAtoms.add(atom);
+            }
+        }
+        List<Integer> sortedAtoms = new ArrayList<>(allAtoms);
+        subMatches.sort(Comparator.comparingInt((int[] a) -> {
+            int min = Integer.MAX_VALUE;
+            for (int atom : a) {
+                if (atom < min) min = atom;
+            }
+            return min;
+        }));
 
+        for (int atom : sortedAtoms) {
+            for (int[] subMatch : subMatches) {
+                boolean containsAtom = false;
+                for (int matchAtom : subMatch) {
+                    if (matchAtom == atom) {
+                        containsAtom = true;
+                        break;
+                    }
+                }
+
+                if (containsAtom && !hasOverlap(subMatch, getBlockedAtoms(filteredMatches))) {
+                    filteredMatches.add(subMatch);
+                }
+            }
+        }
         //subMatches.sort();
-        return filterdMatches;
+        return filteredMatches;
+    }
+
+    private List<int[]> interSubOverlap(List<int[]> subMatches, List<List<int[]>> prevMatchches) {
+        List<int[]> filteredMatches = new ArrayList<>(smartsSize);
+        Set<Integer> blockedAtoms = new HashSet<>();
+
+        for (List<int[]> matches : prevMatchches) {
+            for (int[] aMatch : matches) {
+                addBlockedAtoms(aMatch, blockedAtoms);
+            }
+        }
+
+
+        for (int[] aMatch : subMatches) {
+            if (!hasOverlap(aMatch, blockedAtoms)) {
+                filteredMatches.add(aMatch);
+                addBlockedAtoms(aMatch, blockedAtoms);
+            }
+        }
+        return filteredMatches;
     }
 
     /**
      * Checks if a Match overlaps with a blocked atom
-     *
+     * <p>
      * The method will retrun true when at least one atom index is inside the blockedAtoms
-     * @param aMatch aMatch atom indices of the current substructure match
+     *
+     * @param aMatch       aMatch atom indices of the current substructure match
      * @param blockedAtoms blockedAtoms set of atom indices already assigned to accepted matches
      * @return true if the match overlaps with blocked atoms, otherwise false
      */
@@ -328,14 +391,25 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
     }
 
     /**
-     *  adds matches to the set of BlockedAtoms
-     * @param match indicies of an accepted substructure
+     * adds matches to the set of BlockedAtoms
+     *
+     * @param match        indicies of an accepted substructure
      * @param blockedAtoms set containig atom indices already blocked
      */
-    private void addAllBlockedAtoms(int[] match, Set<Integer> blockedAtoms) {
-        for (int Atom : match) {
-            blockedAtoms.add(Atom);
+    private void addBlockedAtoms(int[] match, Set<Integer> blockedAtoms) {
+        for (int atom : match) {
+            blockedAtoms.add(atom);
         }
+    }
+
+    private Set<Integer> getBlockedAtoms(List<int[]> matches) {
+        Set<Integer> blocked = new HashSet<>();
+        for (int[] match : matches) {
+            for (int atom : match) {
+                blocked.add(atom);
+            }
+        }
+        return blocked;
     }
 
 
@@ -363,17 +437,15 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
                 bond.setIsAromatic(false);
                 bond.setIsInRing(false);
             }
-//            Cycles cycles = Cycles.sssr(aMolecule);
-//            IRingSet rings = cycles.toRingSet();
+            Cycles cycles = Cycles.sssr(aMolecule);
+            IRingSet rings = cycles.toRingSet();
 
-            IRingSet rings =Cycles.relevant().find(aMolecule).toRingSet();
-
-            for(IAtomContainer molecule : rings.atomContainers()) {
-                for(IAtom atom : molecule.atoms()) {
+            for (IAtomContainer molecule : rings.atomContainers()) {
+                for (IAtom atom : molecule.atoms()) {
                     atom.setIsInRing(true);
 
                 }
-                for(IBond bond : molecule.bonds()) {
+                for (IBond bond : molecule.bonds()) {
                     bond.setIsInRing(true);
                 }
             }
@@ -388,3 +460,4 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
         }
     }
 }
+

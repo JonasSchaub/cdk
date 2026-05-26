@@ -1,16 +1,14 @@
 package org.openscience.cdk;
 
-import net.bytebuddy.implementation.bind.annotation.IgnoreForBinding;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.openscience.cdk.exception.CDKException;
-import org.openscience.cdk.exception.Intractable;
 import org.openscience.cdk.exception.InvalidSmilesException;
 import org.openscience.cdk.fingerprint.BiosynfoniFingerprinter;
 import org.openscience.cdk.fingerprint.IBitFingerprint;
 import org.openscience.cdk.fingerprint.ICountFingerprint;
-import org.openscience.cdk.graph.CycleFinder;
 import org.openscience.cdk.graph.Cycles;
+import org.openscience.cdk.interfaces.IAtom;
 import org.openscience.cdk.interfaces.IAtomContainer;
 import org.openscience.cdk.interfaces.IAtomContainerSet;
 import org.openscience.cdk.interfaces.IRingSet;
@@ -24,8 +22,9 @@ import org.openscience.cdk.smiles.SmilesParser;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.logging.Logger;
 
-import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class BiosynfoniFingerprintTest {
 
@@ -201,39 +200,61 @@ public class BiosynfoniFingerprintTest {
     }
     @Test
     public void RingTest() throws CDKException {
-        String testMol1 = "C1CNC2=CC=CC=C21";
-        String testMol2 = "C(CC1)CCC1C12OC1CCCC2";
+        String testMol1 = "C1CCC2C(C1)O2";
+        String testMol2 = "C1CCCCC1";
+        String testMol3 = "C1CCC(CC1)O";
 
 
-        BiosynfoniFingerprinter  fp = new BiosynfoniFingerprinter();
+        String[] smarts = {
+                "[#6]",
+                "[#6;!$([r6])]",
+                "[#6;$([r6])]"
+        };
+
+        BiosynfoniFingerprinter  fp = new BiosynfoniFingerprinter(false,false, smarts);
         SmilesParser smilesParser1 = new SmilesParser(DefaultChemObjectBuilder.getInstance());
 
         IAtomContainer mol1 = smilesParser1.parseSmiles(testMol1);
         IAtomContainer mol2 = smilesParser1.parseSmiles(testMol2);
+        IAtomContainer mol3 = smilesParser1.parseSmiles(testMol3);
 
-
-        mol1 = fp.getAromaticity(mol1);
-        mol2 = fp.getAromaticity(mol2);
 
         ICountFingerprint count2 = fp.getCountFingerprint(mol2);
+        ICountFingerprint count1 = fp.getCountFingerprint(mol1);
+        ICountFingerprint count3 = fp.getCountFingerprint(mol3);
 
-
-        CycleFinder finder = Cycles.or(Cycles.relevant(), Cycles.vertexShort());
 
         for (int i = 0; i<count2.size(); i++) {
-            System.out.println(count2.getCount(i)+","+i);
+            System.out.println(count2.getCount(i)+", "+count1.getCount(i)+", " + count3.getCount(i)+" "+ i);
+
         }
-        IRingSet rings2 =
-                finder.find(mol2).toRingSet();
-        System.out.println("\n New molecule      \n");
-        for (IAtomContainer ring : rings2.atomContainers()) {
+
+        Cycles cycles = Cycles.sssr(mol1);
+        IRingSet rings = cycles.toRingSet();
+
+        for (int atomIndex = 0; atomIndex < mol1.getAtomCount(); atomIndex++) {
+
+            IAtom atom = mol1.getAtom(atomIndex);
 
             System.out.println(
-                    "Ring mit " +
-                            ring.getAtomCount() +
-                            " Atomen"
+                    "\nAtom " + atomIndex +
+                            " (" + atom.getSymbol() + ")"
             );
 
+            int ringNumber = 1;
+
+            for (IAtomContainer ring : rings.atomContainers()) {
+
+                if (ring.contains(atom)) {
+
+                    System.out.println(
+                            " -> in Ring " + ringNumber +
+                                    " | Ringgröße: " + ring.getAtomCount()
+                    );
+                }
+
+                ringNumber++;
+            }
         }
 
     }
@@ -297,6 +318,26 @@ void substurctureDetection(){
     }
 
 }
+@Test
+void testNoChiralityDifference() {
+    try{for(IAtomContainer mol : createMolecules()) {
+        IAtomContainer noChrial = mol.clone();
+
+        noChrial.setStereoElements(new ArrayList<>());
+
+        BitSet noChiralFp = new BiosynfoniFingerprinter().getBitFingerprint(noChrial).asBitSet();
+        BitSet chiralFp = new BiosynfoniFingerprinter().getBitFingerprint(mol).asBitSet();
+
+
+        assertEquals(noChiralFp, chiralFp);}
+
+    }catch(CDKException cdkException){
+        fail("Error:"+  cdkException.getMessage());
+    }catch(CloneNotSupportedException cloneException){
+        fail("Error:"+  cloneException.getMessage());
+    }
+}
+
 
 
 private IAtomContainerSet createMolecules() throws InvalidSmilesException {
@@ -310,4 +351,3 @@ private IAtomContainerSet createMolecules() throws InvalidSmilesException {
 
 
 }
-
