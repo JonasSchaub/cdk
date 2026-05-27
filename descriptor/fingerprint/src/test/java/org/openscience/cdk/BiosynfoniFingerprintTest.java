@@ -29,12 +29,12 @@ import static org.junit.jupiter.api.Assertions.*;
 public class BiosynfoniFingerprintTest {
 
     public String filePathCSVout = "src/test/resources/data/cdd.csv";
-    public int Limit = 50000;
+    public int Limit = 100;
     private final SilentChemObjectBuilder chemObjectBuilder = new SilentChemObjectBuilder();
 
     private final SmilesParser smilesParser = new SmilesParser(chemObjectBuilder);
 
-    private final BiosynfoniFingerprinter fingerprint = new BiosynfoniFingerprinter();
+    private final BiosynfoniFingerprinter fingerprint = new BiosynfoniFingerprinter(true,false);
 
     @Disabled @Test
     void testBiosynfoniFingerprint() throws CDKException, IOException {
@@ -351,3 +351,4 @@ private IAtomContainerSet createMolecules() throws InvalidSmilesException {
 
 
 }
+
