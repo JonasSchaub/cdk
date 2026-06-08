@@ -453,6 +453,79 @@ class BiosynfoniTest {
         Assertions.assertTrue(fp.get(34));
         Assertions.assertFalse((fp.get(1)));
     }
+    @Test
+    void testFunctionalGroupsCount() throws Exception {
+        //Tests are modified Copies of the test included in substructureFingerprinter
+        BiosynfoniFingerprinter bfPrinter = new BiosynfoniFingerprinter();
+        SmilesParser sp = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+
+        IAtomContainer mol1 = sp.parseSmiles("c1ccccc1CCC");
+        ICountFingerprint fp = bfPrinter.getCountFingerprint(mol1);
+
+
+        Assertions.assertNotNull(fp);
+        Assertions.assertEquals(1, fp.getCount(13));
+        Assertions.assertEquals(1,fp.getCount(15));
+        Assertions.assertEquals(1,fp.getCount(34));
+        Assertions.assertEquals(0,fp.getCount(1));
+    }
+
+    @Test
+    void testRingsBinary() throws Exception {
+        BiosynfoniFingerprinter bfPrinter = new BiosynfoniFingerprinter();
+        SmilesParser sp = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+
+        IAtomContainer mol1 = sp.parseSmiles("C(C1C2CCC2)C1(C1)C2(CCCC2)CCC1C1CCCCCC1");
+        IBitFingerprint bs = bfPrinter.getBitFingerprint(mol1);
+        Assertions.assertNotNull(bs);
+        Assertions.assertTrue(bs.get(31));
+        Assertions.assertTrue(bs.get(32));
+        Assertions.assertTrue(bs.get(33));
+        Assertions.assertTrue(bs.get(34));
+        Assertions.assertTrue(bs.get(35));
+        Assertions.assertFalse(bs.get(36));
+        Assertions.assertFalse(bs.get(37));
+        Assertions.assertFalse(bs.get(38));
+
+    }
+
+    @Test
+    void testAromaticityBinary() throws Exception {
+        BiosynfoniFingerprinter bfPrinter = new BiosynfoniFingerprinter();
+        SmilesParser sp = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+
+        IAtomContainer mol1 = sp.parseSmiles("NCCc1c[nH]c2cc(-c3ccc(CCN)cc3)ccc12");
+        IBitFingerprint bs = bfPrinter.getBitFingerprint(mol1);
+
+        Assertions.assertNotNull(bs);
+        Assertions.assertTrue(bs.get(9));
+        Assertions.assertTrue(bs.get(10));
+        Assertions.assertFalse(bs.get(36));
+        Assertions.assertFalse(bs.get(37));
+        Assertions.assertFalse(bs.get(38));
+
+        IAtomContainer mol2 = sp.parseSmiles("C1=C(NC=N1)CC(C(=O)O)N");
+        IBitFingerprint bs2 = bfPrinter.getBitFingerprint(mol2);
+        Assertions.assertNotNull(bs2);
+        Assertions.assertFalse(bs2.get(4));
+        Assertions.assertTrue(bs2.get(3));
+    }
+
+    @Test @Disabled
+    void testNonStandardAminoacidsBinary() throws Exception {
+        BiosynfoniFingerprinter bfPrinter = new BiosynfoniFingerprinter();
+        SmilesParser sp = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+
+        IAtomContainer mol1 = sp.parseSmiles("C1=CC(=C(C=C1CC(C(=O)O)N)O)O");
+        IBitFingerprint bs = bfPrinter.getBitFingerprint(mol1);
+
+        Assertions.assertNotNull(bs);
+        Assertions.assertTrue(bs.get(3));
+        Assertions.assertFalse(bs.get(4));
+
+    }
+
+
 
     @Test
     void testRightBits() throws Exception {
