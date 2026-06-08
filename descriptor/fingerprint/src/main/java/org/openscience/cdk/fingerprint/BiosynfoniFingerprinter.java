@@ -215,7 +215,7 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
 
     @Override
     public int getSize() {
-        return 0;
+        return smartsSize;
     }
 
 

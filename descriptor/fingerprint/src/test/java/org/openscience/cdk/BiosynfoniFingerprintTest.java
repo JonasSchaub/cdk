@@ -1,5 +1,6 @@
 package org.openscience.cdk;
 
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.openscience.cdk.exception.CDKException;
@@ -31,9 +32,10 @@ public class BiosynfoniFingerprintTest {
 
     private final SmilesParser smilesParser = new SmilesParser(chemObjectBuilder);
 
-    private final BiosynfoniFingerprinter fingerprint = new BiosynfoniFingerprinter(false,true);
+    private final BiosynfoniFingerprinter fingerprint = new BiosynfoniFingerprinter(false, true);
 
-    @Disabled @Test
+    @Disabled
+    @Test
     void testBiosynfoniFingerprint() throws CDKException, IOException {
 
 
@@ -74,8 +76,9 @@ public class BiosynfoniFingerprintTest {
 
         }
     }
+
     @Test
-    void testCSVCreation() throws Exception{
+    void testCSVCreation() throws Exception {
         String[] smiles = {"O=C(O)C1OC(OC2C(O)CC3(C)C(CCC4(C)C3CC=C5C6CC(C)(C)CCC6(C(=O)OC7OC(CO)C(O)C(O)C7O)CCC54C)C2(C)C)C(O)C(OC8OC(CO)C(O)C(OC9OCC(O)C(O)C9O)C8O)C1O",
                 "O=C1OC2=CC(=C3C(OC=C3C)=C2C(=C1CC(=O)N4CCN(CCC=5C=CN=CC5)CC4)C)C",
                 "O=C1OC2CCC3(O)C1C(C2)C45C(OC)CCC6(C)CN(CC)C5C3C(O)C64",
@@ -96,12 +99,12 @@ public class BiosynfoniFingerprintTest {
                 "O=C1C=2C=CC=CC2N3C(=O)CCC3(C(=O)NC4=NC=CS4)N1CCCC",
                 "O=C(NC=1C=CC=C(OC)C1)C=2C(=O)N3C4=C(C=CC=C4CC3)C2O"};
 
-        for(String smile : smiles){
+        for (String smile : smiles) {
             IAtomContainer aMolecule = smilesParser.parseSmiles(smile);
 
             ICountFingerprint count = fingerprint.getCountFingerprint(aMolecule);
 
-            createCSV(count,smile,0,filePathCSVout2);
+            createCSV(count, smile, 0, filePathCSVout2);
 
         }
     }
@@ -113,7 +116,8 @@ public class BiosynfoniFingerprintTest {
      * -all count fingperprint values
      * The CSV file is appended to incrementally, making it suitable
      * for large dataset processing
-     *#TODO Search for smallest smile that has same error
+     * #TODO Search for smallest smile that has same error
+     *
      * @param countFingerprint the count fingerprint to export
      * @param smiles           the molecule identifier or SMILES string
      * @param index            of the processed molecule
@@ -140,8 +144,8 @@ public class BiosynfoniFingerprintTest {
 
         for (int i = 0; i < countArray.length; i++) {
 
-                builder.append(",").append(countArray[i]);
-                header.append(",count_").append(i);
+            builder.append(",").append(countArray[i]);
+            header.append(",count_").append(i);
 
         }
 
@@ -189,7 +193,7 @@ public class BiosynfoniFingerprintTest {
 
                 if (!thisCounts.get(i).equals(originalCounts.get(i))) {
                     System.out.println(
-                            "\nMolecule"+ row +"\n"+
+                            "\nMolecule" + row + "\n" +
                                     "\nDifference at count: " + i +
                                     "\noriginalCount: " + originalCounts.get(i) +
                                     "\nthis Count: " + thisCounts.get(i) +
@@ -206,6 +210,7 @@ public class BiosynfoniFingerprintTest {
      * Loads a CSV into a List<List<String> format.
      * The outer List contains the rows
      * The inner List contains the content of a row
+     *
      * @param s filePath of the CSV to Load
      * @return List<List<String> containing each row of the CSV
      * @throws IOException
@@ -232,6 +237,7 @@ public class BiosynfoniFingerprintTest {
 
         return data;
     }
+
     @Test
     public void RingTest() throws CDKException {
         //String testMol1 = "C1CCC2C(C1)O2";
@@ -245,7 +251,7 @@ public class BiosynfoniFingerprintTest {
                 "[#6;$([r6])]"
         };
 
-        BiosynfoniFingerprinter  fp = new BiosynfoniFingerprinter(false,true);
+        BiosynfoniFingerprinter fp = new BiosynfoniFingerprinter(false, true);
         SmilesParser smilesParser1 = new SmilesParser(DefaultChemObjectBuilder.getInstance());
 
         //IAtomContainer mol1 = smilesParser1.parseSmiles(testMol1);
@@ -311,111 +317,174 @@ class BiosynfoniTest {
             "[C@H]([C@@H](/C=C/CCCCCCCCCCCCC)O)(NC(=O)*)CO[C@@H]1O[C@H](CO)[C@H]([C@@H]([C@H]1O)O)O[C@@H]2O[C@H](CO[C@]3(O[C@]([C@@H]([C@H](C3)O)NC(C)=O)([C@@H]([C@@H](CO)O)O)[H])C(=O)O)[C@@H]([C@H](O)[C@H]2O)O"};
 
     SmilesParser smilesParser = new SmilesParser(SilentChemObjectBuilder.getInstance());
-@Test
-void allSmartsViable(){
-    BiosynfoniFingerprinter Bfp = new BiosynfoniFingerprinter(false,false);
 
-    for(BiosynfoniFingerprinter.DefaultBiosynfoniKey key  : BiosynfoniFingerprinter.DefaultBiosynfoniKey.values()){
-        try{
-            SmartsPattern.create(key.smarts,
-                    DefaultChemObjectBuilder.getInstance());
-        }catch(Exception e){
-            fail(" Invalid smiles detected" +
-                      "Key: " + key.name() +
-                      "Label: " + key.label +
-                      "SMARTS: " + key.smarts +
-                      "Error: " + e.getMessage());
+    @Test
+    void allSmartsViable() {
+        BiosynfoniFingerprinter Bfp = new BiosynfoniFingerprinter(false, false);
+
+        for (BiosynfoniFingerprinter.DefaultBiosynfoniKey key : BiosynfoniFingerprinter.DefaultBiosynfoniKey.values()) {
+            try {
+                SmartsPattern.create(key.smarts,
+                        DefaultChemObjectBuilder.getInstance());
+            } catch (Exception e) {
+                fail(" Invalid smiles detected" +
+                        "Key: " + key.name() +
+                        "Label: " + key.label +
+                        "SMARTS: " + key.smarts +
+                        "Error: " + e.getMessage());
+            }
         }
     }
-}
-@Test
-void substructureDetectionSimple(){
-    IAtomContainer smallMol = null;
 
-    try{ smallMol = smilesParser.parseSmiles("CC");
-} catch (InvalidSmilesException e) {
-        fail("Error: " + e.getMessage()+ "this should not happen");
-    }
-    BiosynfoniFingerprinter bfp = new BiosynfoniFingerprinter();
+    @Test
+    void substructureDetectionSimple() {
+        IAtomContainer smallMol = null;
 
-    try {
-        bfp.getBitFingerprint(smallMol);
-        bfp.getCountFingerprint(smallMol);
-    }catch (CDKException exception){
-        fail("failed creating fingerprint"+"\n Error: "+ exception.getMessage());
-    }
-
-}
-@Test
-void substurctureDetection(){
-    BiosynfoniFingerprinter bfp = new BiosynfoniFingerprinter();
-
-    try{
-        IAtomContainerSet aMoleculeSet = createMolecules();
-        for (IAtomContainer aMolecule : aMoleculeSet){
-            bfp.getCountFingerprint(aMolecule);
-            bfp.getBitFingerprint(aMolecule);
+        try {
+            smallMol = smilesParser.parseSmiles("CC");
+        } catch (InvalidSmilesException e) {
+            fail("Error: " + e.getMessage() + "this should not happen");
         }
-    } catch (CDKException e) {
-        fail("failed creating fingerprint" +"\n Error: " + e.getMessage());
+        BiosynfoniFingerprinter bfp = new BiosynfoniFingerprinter();
+
+        try {
+            bfp.getBitFingerprint(smallMol);
+            bfp.getCountFingerprint(smallMol);
+        } catch (CDKException exception) {
+            fail("failed creating fingerprint" + "\n Error: " + exception.getMessage());
+        }
+
     }
 
-}
-@Test
-void testNoChiralityDifference() {
-    try{for(IAtomContainer mol : createMolecules()) {
-        IAtomContainer noChrial = mol.clone();
+    @Test
+    void substurctureDetection() {
+        BiosynfoniFingerprinter bfp = new BiosynfoniFingerprinter();
 
-        noChrial.setStereoElements(new ArrayList<>());
+        try {
+            IAtomContainerSet aMoleculeSet = createMolecules();
+            for (IAtomContainer aMolecule : aMoleculeSet) {
+                bfp.getCountFingerprint(aMolecule);
+                bfp.getBitFingerprint(aMolecule);
+            }
+        } catch (CDKException e) {
+            fail("failed creating fingerprint" + "\n Error: " + e.getMessage());
+        }
 
-        BitSet noChiralFp = new BiosynfoniFingerprinter().getBitFingerprint(noChrial).asBitSet();
-        BitSet chiralFp = new BiosynfoniFingerprinter().getBitFingerprint(mol).asBitSet();
-
-
-        assertEquals(noChiralFp, chiralFp);}
-
-    }catch(CDKException cdkException){
-        fail("Error:"+  cdkException.getMessage());
-    }catch(CloneNotSupportedException cloneException){
-        fail("Error:"+  cloneException.getMessage());
     }
-}
+
+    @Test
+    void testNoChiralityDifference() {
+        try {
+            for (IAtomContainer mol : createMolecules()) {
+                IAtomContainer noChrial = mol.clone();
+
+                noChrial.setStereoElements(new ArrayList<>());
+
+                BitSet noChiralFp = new BiosynfoniFingerprinter().getBitFingerprint(noChrial).asBitSet();
+                BitSet chiralFp = new BiosynfoniFingerprinter().getBitFingerprint(mol).asBitSet();
 
 
+                assertEquals(noChiralFp, chiralFp);
+            }
 
-private IAtomContainerSet createMolecules() throws InvalidSmilesException {
-    IAtomContainerSet molecules = new AtomContainerSet();
-    for(String smile : testSmiles) {
-        IAtomContainer aMolecule = smilesParser.parseSmiles(smile);
-        molecules.addAtomContainer(aMolecule);
-    }
-    return molecules;
-}
-
-@Test
-void filterTest() throws Exception {
-    SmilesParser smilesParser = new SmilesParser(SilentChemObjectBuilder.getInstance());
-    IAtomContainer mol = smilesParser.parseSmiles("[H][C@]1(CC[C@@H](O)[C@@H](C1)OC)C[C@@H](C)[C@]1([H])CC(=O)[C@H](C)\\C=C(C)\\[C@@H](O)[C@@H](OC)C(=O)[C@H](C)C[C@H](C)\\C=C\\C=C\\C=C(C)\\[C@H](C[C@]2([H])CC[C@@H](C)[C@@](O)(O2)C(=O)C(=O)N2CCCC[C@@]2([H])C(=O)O1)OC");
-
-    BiosynfoniFingerprinter bfp = new BiosynfoniFingerprinter(false,false);
-    BiosynfoniFingerprinter bfp2 = new BiosynfoniFingerprinter(true,false);
-    BiosynfoniFingerprinter bfp3 = new BiosynfoniFingerprinter(false,true);
-    BiosynfoniFingerprinter bfp4 = new BiosynfoniFingerprinter(true,true);
-
-
-    ICountFingerprint countFp = bfp.getCountFingerprint(mol);
-    ICountFingerprint countFp2 = bfp2.getCountFingerprint(mol);
-    ICountFingerprint countFp3 = bfp3.getCountFingerprint(mol);
-    ICountFingerprint countFp4 = bfp4.getCountFingerprint(mol);
-    for(int i = 0; i < 39; i++) {
-        assertTrue(countFp.getCount(i) >= countFp2.getCount(i));
-        assertTrue(countFp.getCount(i) >= countFp3.getCount(i));
-        assertTrue(countFp.getCount(i) >= countFp4.getCount(i));
+        } catch (CDKException cdkException) {
+            fail("Error:" + cdkException.getMessage());
+        } catch (CloneNotSupportedException cloneException) {
+            fail("Error:" + cloneException.getMessage());
+        }
     }
 
 
+    private IAtomContainerSet createMolecules() throws InvalidSmilesException {
+        IAtomContainerSet molecules = new AtomContainerSet();
+        for (String smile : testSmiles) {
+            IAtomContainer aMolecule = smilesParser.parseSmiles(smile);
+            molecules.addAtomContainer(aMolecule);
+        }
+        return molecules;
+    }
+
+    @Test
+    void filterTest() throws Exception {
+        SmilesParser smilesParser = new SmilesParser(SilentChemObjectBuilder.getInstance());
+        IAtomContainer mol = smilesParser.parseSmiles("[H][C@]1(CC[C@@H](O)[C@@H](C1)OC)C[C@@H](C)[C@]1([H])CC(=O)[C@H](C)\\C=C(C)\\[C@@H](O)[C@@H](OC)C(=O)[C@H](C)C[C@H](C)\\C=C\\C=C\\C=C(C)\\[C@H](C[C@]2([H])CC[C@@H](C)[C@@](O)(O2)C(=O)C(=O)N2CCCC[C@@]2([H])C(=O)O1)OC");
+
+        BiosynfoniFingerprinter bfp = new BiosynfoniFingerprinter(false, false);
+        BiosynfoniFingerprinter bfp2 = new BiosynfoniFingerprinter(true, false);
+        BiosynfoniFingerprinter bfp3 = new BiosynfoniFingerprinter(false, true);
+        BiosynfoniFingerprinter bfp4 = new BiosynfoniFingerprinter(true, true);
+
+
+        ICountFingerprint countFp = bfp.getCountFingerprint(mol);
+        ICountFingerprint countFp2 = bfp2.getCountFingerprint(mol);
+        ICountFingerprint countFp3 = bfp3.getCountFingerprint(mol);
+        ICountFingerprint countFp4 = bfp4.getCountFingerprint(mol);
+        for (int i = 0; i < 39; i++) {
+            assertTrue(countFp.getCount(i) >= countFp2.getCount(i));
+            assertTrue(countFp.getCount(i) >= countFp3.getCount(i));
+            assertTrue(countFp.getCount(i) >= countFp4.getCount(i));
+        }
+
+
+    }
+
+    @Test
+    void testSize() throws Exception {
+
+        BiosynfoniFingerprinter bfp = new BiosynfoniFingerprinter();
+
+        assertEquals(39, bfp.getSize());
+
+    }
+
+
+    @Test
+    void testFunctionalGroupsBinary() throws Exception {
+        //Tests are modified Copies of the test included in substructureFingerprinter
+        BiosynfoniFingerprinter bfPrinter = new BiosynfoniFingerprinter();
+        SmilesParser sp = new SmilesParser(DefaultChemObjectBuilder.getInstance());
+
+        IAtomContainer mol1 = sp.parseSmiles("c1ccccc1CCC");
+        IBitFingerprint fp = bfPrinter.getBitFingerprint(mol1);
+
+        Assertions.assertNotNull(fp);
+        Assertions.assertTrue(fp.get(13));
+        Assertions.assertTrue(fp.get(15));
+        Assertions.assertTrue(fp.get(34));
+        Assertions.assertFalse((fp.get(1)));
+    }
+
+    @Test
+    void testRightBits() throws Exception {
+        BiosynfoniFingerprinter fingerprinter = new BiosynfoniFingerprinter();
+
+        IAtomContainer aMolecule = smilesParser.parseSmiles("C([S](O)(=O)=O)C1=C(C=CC=C1)CCCC[N+](=O)[O-]");
+
+        BitSet bs = fingerprinter.getBitFingerprint(aMolecule).asBitSet();
+
+        Assertions.assertTrue(bs.get(13));
+        Assertions.assertTrue(bs.get(16));
+        Assertions.assertTrue(bs.get(19));
+        Assertions.assertTrue(bs.get(22));
+        Assertions.assertTrue(bs.get(30));
+        Assertions.assertTrue(bs.get(34));
+        Assertions.assertFalse(bs.get(12));
+        Assertions.assertFalse(bs.get(35));
+    }
+
+    @Test
+    void testRightCounts() throws Exception {
+
+
+        BiosynfoniFingerprinter fingerprinter = new BiosynfoniFingerprinter();
+        IAtomContainer aMolecule = smilesParser.parseSmiles("C([S](O)(=O)=O)C1=C(C=CC=C1)CCCC[N+](=O)[O-]");
+        ICountFingerprint cfp = fingerprinter.getCountFingerprint(aMolecule);
+
+        Assertions.assertEquals(11, cfp.getCount(19));
+        Assertions.assertEquals(1, cfp.getCount(34));
+        Assertions.assertNotEquals(2, 26);
+    }
 }
 
 
-}
 
