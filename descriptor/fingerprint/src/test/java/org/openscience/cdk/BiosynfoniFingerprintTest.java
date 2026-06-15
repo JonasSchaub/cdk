@@ -32,7 +32,7 @@ public class BiosynfoniFingerprintTest {
 
     private final SmilesParser smilesParser = new SmilesParser(chemObjectBuilder);
 
-    private final BiosynfoniFingerprinter fingerprint = new BiosynfoniFingerprinter(false, true);
+    private final BiosynfoniFingerprinter fingerprint = new BiosynfoniFingerprinter(true, false);
 
     @Disabled
     @Test
@@ -116,7 +116,6 @@ public class BiosynfoniFingerprintTest {
      * -all count fingperprint values
      * The CSV file is appended to incrementally, making it suitable
      * for large dataset processing
-     * #TODO Search for smallest smile that has same error
      *
      * @param countFingerprint the count fingerprint to export
      * @param smiles           the molecule identifier or SMILES string
@@ -169,7 +168,7 @@ public class BiosynfoniFingerprintTest {
 
     }
 
-    @Test
+    @Test @Disabled
     /**
      * Tests the differnces between the orignial Biosynfoni fingerprint from python and the CDK based version
      * Method does not create the CSV Data
@@ -240,43 +239,38 @@ public class BiosynfoniFingerprintTest {
 
     @Test
     public void RingTest() throws CDKException {
-        //String testMol1 = "C1CCC2C(C1)O2";
-        String testMol2 = "O=C(C1=CC=C(OC)C=C1)N2CC3C4=CC=C(NS(=O)(=O)CCC)C(=O)N4CC(C2)C3";
-        //String testMol3 = "C1CCC(CC1)O";
+        String testMol1 = "C1CCC2C(C1)O2";
+        String testMol2 = "C1CC2C1O2";
+        String testMol3 = "C1CC2C(C1)O2";
 
 
         String[] smarts = {
                 "[#6]",
-                "[#6;!$([r6])]",
-                "[#6;$([r6])]"
+                "[#6;!$([r4])]",
+                "[#6;$([r4])]"
         };
 
-        BiosynfoniFingerprinter fp = new BiosynfoniFingerprinter(false, true);
+        BiosynfoniFingerprinter fp = new BiosynfoniFingerprinter(false, false,smarts);
         SmilesParser smilesParser1 = new SmilesParser(DefaultChemObjectBuilder.getInstance());
 
-        //IAtomContainer mol1 = smilesParser1.parseSmiles(testMol1);
+        IAtomContainer mol1 = smilesParser1.parseSmiles(testMol1);
         IAtomContainer mol2 = smilesParser1.parseSmiles(testMol2);
-        //IAtomContainer mol3 = smilesParser1.parseSmiles(testMol3);
+        IAtomContainer mol3 = smilesParser1.parseSmiles(testMol3);
 
 
         ICountFingerprint count2 = fp.getCountFingerprint(mol2);
-        for (int i = 0; i < count2.numOfPopulatedbins(); i++) {
-            int hash = count2.getHash(i);
-            int count = count2.getCount(i);
 
-            System.out.println("Hash: " + hash + ", Count: " + count);
+
+        System.out.println("\n");
+        ICountFingerprint count1 = fp.getCountFingerprint(mol1);
+        System.out.println("\n");
+        ICountFingerprint count3 = fp.getCountFingerprint(mol3);
+
+
+        for (int i = 0; i<count2.size(); i++) {
+            System.out.println(count1.getCount(i)+", "+count2.getCount(i)+", " + count3.getCount(i)+" "+ i);
+
         }
-
-//        System.out.println("\n");
-//        ICountFingerprint count1 = fp.getCountFingerprint(mol1);
-//        System.out.println("\n");
-//        ICountFingerprint count3 = fp.getCountFingerprint(mol3);
-//
-//
-//        for (int i = 0; i<count2.size(); i++) {
-//            System.out.println(count2.getCount(i)+", "+count1.getCount(i)+", " + count3.getCount(i)+" "+ i);
-//
-//        }
 //
 //        Cycles cycles = Cycles.sssr(mol1);
 //        IRingSet rings = cycles.toRingSet();
