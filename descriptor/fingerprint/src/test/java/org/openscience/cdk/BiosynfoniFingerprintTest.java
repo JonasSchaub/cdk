@@ -27,12 +27,12 @@ public class BiosynfoniFingerprintTest {
 
     public String filePathCSVout = "src/test/resources/data/cdd.csv";
     public String filePathCSVout2 = "src/test/resources/data/cdd2.csv";
-    public int Limit = 50000;
+    public int Limit = 500000;
     private final SilentChemObjectBuilder chemObjectBuilder = new SilentChemObjectBuilder();
 
     private final SmilesParser smilesParser = new SmilesParser(chemObjectBuilder);
 
-    private final BiosynfoniFingerprinter fingerprint = new BiosynfoniFingerprinter(true, false);
+    private final BiosynfoniFingerprinter fingerprint = new BiosynfoniFingerprinter(false, false);
 
     @Disabled
     @Test

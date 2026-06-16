@@ -5,6 +5,7 @@ import org.openscience.cdk.aromaticity.Aromaticity;
 import org.openscience.cdk.aromaticity.ElectronDonation;
 import org.openscience.cdk.exception.CDKException;
 import org.openscience.cdk.graph.Cycles;
+import org.openscience.cdk.graph.invariant.Canon;
 import org.openscience.cdk.interfaces.*;
 import org.openscience.cdk.smarts.SmartsPattern;
 import org.openscience.cdk.tools.CDKHydrogenAdder;
@@ -14,6 +15,10 @@ import java.util.*;
 
 /**
  * Because of the overlap filter methods it uses not the Substructure Fingerprint, only orientates at the implementation
+ * The Smart expression [#6;!$([r6])] changed to [#6!$(*1*****1)] do to differences in toolkit matching methods,
+ * using the changes also in the original implementation will fix all differences containing these SMARTS
+ * Loaded molecules containg [S+] in aromatic Rings will match as aliphatic
+ * The only diffrences detected so far are
  * <p>
  * Current Features are Fix SMARTS, Count and Bit Fingerprint
  * <p>
@@ -24,7 +29,7 @@ import java.util.*;
  * already accepted by earlier SMARTS (depends on SMARTS order).
  * <p>
  * Preparation and side effects:
- * - Before matching, {@link #getAromaticity(IAtomContainer)} is called:
+ * - Before matching, {@link #preprocessMolecule(IAtomContainer)} is called:
  * - Atom types are perceived and implicit hydrogens are added.
  * - Ring and aromaticity information are computed and set on the passed {@code IAtomContainer}.
  * The method mutates the supplied molecule.
@@ -72,8 +77,8 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
         D_C4N("d_c4n_5", "[#6]~1~[#6]~[#6]~[#6]~[#7]~1"),
 
 
-        D_PHENYL_C3("d_phenylC3_9_strict", "[#6;R1]~1~[#6;R1]~[#6;R1]~[#6;R1]~[#6;R1]~[#6;R1]~1~[#6]~[#6;!$([r6])]~[#6;!$([r6])]"),
-        D_PHENYL_C2("d_phenylC2_8_strict", "[#6;R1]~1~[#6;R1]~[#6;R1]~[#6;R1]~[#6;R1]~[#6;R1]~1~[#6]~[#6;!$([r6])]"),
+        D_PHENYL_C3("d_phenylC3_9_strict", "[#6;R1]~1~[#6;R1]~[#6;R1]~[#6;R1]~[#6;R1]~[#6;R1]~1~[#6]~[#6!$(*1*****1)]~[#6!$(*1*****1)]"),
+        D_PHENYL_C2("d_phenylC2_8_strict", "[#6;R1]~1~[#6;R1]~[#6;R1]~[#6;R1]~[#6;R1]~[#6;R1]~1~[#6]~[#6!$(*1*****1)]"),
         D_PHENYL_C1("d_phenylC1_7_strict", "[#6;R1]~1~[#6;R1]~[#6;R1]~[#6;R1]~[#6;R1]~[#6;R1]~1~[#6]"),
         D_ISOPRENE("d_isoprene_5", "[#6]~[#6](~[#6])~[#6]~[#6]"),
 
@@ -272,7 +277,7 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
      * Description
      * - Prepares the input molecule for SMARTS matching using
      * {@code SmartsPattern.prepare(aMolecule)} and applies aromaticity perception
-     * via {@link #getAromaticity(IAtomContainer)} once before matching.
+     * via {@link #preprocessMolecule(IAtomContainer)} once before matching.
      * - Initializes a {@code List<List<int[]>>} to store filtered atom-index matches
      * for each SMARTS pattern.
      * - When {@code smartsList == null}, iterates over
@@ -289,7 +294,7 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
         SmartsPattern.prepare(aMolecule);
         List<List<int[]>> filteredMatches = new ArrayList<>(smartsSize);
         // prepare aromaticity and hydrogen's once
-        IAtomContainer preparedMol = getAromaticity(aMolecule);
+        IAtomContainer preparedMol = preprocessMolecule(aMolecule);
         if (smartsList == null) {
             for (DefaultBiosynfoniKey key : DefaultBiosynfoniKey.values()) {
 
@@ -513,8 +518,11 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
      * @param aMolecule the molecule whose aromaticity should be determined
      * @return the same molecule with updated aromaticity
      */
-    public IAtomContainer getAromaticity(IAtomContainer aMolecule) {
+    private IAtomContainer preprocessMolecule(IAtomContainer aMolecule) {
         try {
+
+           
+
             AtomContainerManipulator.percieveAtomTypesAndConfigureAtoms(aMolecule);
             CDKHydrogenAdder hydrogenAdder = CDKHydrogenAdder.getInstance(aMolecule.getBuilder());
 
