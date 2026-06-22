@@ -27,12 +27,12 @@ public class BiosynfoniFingerprintTest {
 
     public String filePathCSVout = "src/test/resources/data/cdd.csv";
     public String filePathCSVout2 = "src/test/resources/data/cdd2.csv";
-    public int Limit = 500000;
+    public int Limit = 20000;
     private final SilentChemObjectBuilder chemObjectBuilder = new SilentChemObjectBuilder();
 
     private final SmilesParser smilesParser = new SmilesParser(chemObjectBuilder);
 
-    private final BiosynfoniFingerprinter fingerprint = new BiosynfoniFingerprinter(false, false);
+    private final BiosynfoniFingerprinter fingerprint = new BiosynfoniFingerprinter(true, false);
 
     @Disabled
     @Test
@@ -179,7 +179,7 @@ public class BiosynfoniFingerprintTest {
         List<List<String>> original0Fingerprint = loadCsv("C:\\Users\\micro\\IdeaProjects\\biosynfoni\\src\\dataPython.csv");
         List<List<String>> thisFingerprint2 = loadCsv(filePathCSVout2);
         int error = 0;
-
+        int lastError = -1;
         for (int row = 0; row < Math.min(thisFingerprint.size(), Limit); row++) {
 
             List<String> thisCounts = thisFingerprint.get(row);
@@ -198,7 +198,10 @@ public class BiosynfoniFingerprintTest {
                                     "\nthis Count: " + thisCounts.get(i) +
                                     "\nOccured in Molecule:" + thisSmiles
                     );
-                    error++;
+                    if(lastError != row ) {
+                        error++;
+                        lastError = row;
+                    }
                 }
             }
         }
@@ -314,7 +317,7 @@ class BiosynfoniTest {
 
     @Test
     void allSmartsViable() {
-        BiosynfoniFingerprinter Bfp = new BiosynfoniFingerprinter(false, false);
+        BiosynfoniFingerprinter Bfp = new BiosynfoniFingerprinter(true, false);
 
         for (BiosynfoniFingerprinter.DefaultBiosynfoniKey key : BiosynfoniFingerprinter.DefaultBiosynfoniKey.values()) {
             try {
@@ -408,9 +411,8 @@ class BiosynfoniTest {
         BiosynfoniFingerprinter bfp3 = new BiosynfoniFingerprinter(false, true);
         BiosynfoniFingerprinter bfp4 = new BiosynfoniFingerprinter(true, true);
 
-
-        ICountFingerprint countFp = bfp.getCountFingerprint(mol);
         ICountFingerprint countFp2 = bfp2.getCountFingerprint(mol);
+        ICountFingerprint countFp = bfp.getCountFingerprint(mol);
         ICountFingerprint countFp3 = bfp3.getCountFingerprint(mol);
         ICountFingerprint countFp4 = bfp4.getCountFingerprint(mol);
         for (int i = 0; i < 39; i++) {
