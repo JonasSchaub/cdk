@@ -586,7 +586,8 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
      * Computes a canonical atom ordering for the given molecule using
      * CDK's canonical labeling algorithm. Each atom receives a unique
      * canonical index, which is stored in the
-     * {@link CDKConstants#ATOM_ATOM_MAPPING} property and as the atom ID.
+     * #todo create better javadoc for this method
+     * property and as the atom ID.
      * This method prevents path dependecies in {@link #interSubOverlap(List, List)}}
      *
      * @param aMolecule the molecule whose atoms should be canonically indexed
