@@ -17,45 +17,55 @@ import org.openscience.cdk.interfaces.IAtomContainer;
 import java.util.*;
 
 /**
- * Fingerprinter
- * Because of the overlap filter methods it uses not the Substructure Fingerprint, only orientates at the implementation
- * The Smart expression [#6;!$([r6])] changed to [#6!$(*1*****1)] do to differences in toolkit matching methods,
- * using the changes also in the original implementation will fix all differences containing these SMARTS
- * Loaded molecules containing [S+] in aromatic Rings will match as aliphatic
- * The only differences detected so far are
- * <p>
- * Current Features are Fix SMARTS, Count and Bit Fingerprint
- * <p>
- * Overlap filtering:
- * - The {@code intraSubOverlapToggle} (constructor) activates filtering within the same SMARTS
- * so accepted matches are atom-disjoint (the first accepted match blocks its atoms).
- * - The {@code interSubOverLapToggle} (constructor) (experimental) prevents reuse of atoms
- * already accepted by earlier SMARTS (depends on SMARTS order).
- * <p>
- * Preparation and side effects:
- * - Before matching, {@link #preprocessMolecule(IAtomContainer)} is called:
- * - Atom types are perceived and implicit hydrogens are added.
- * - Ring and aromaticity information are computed and set on the passed {@code IAtomContainer}.
- * The method mutates the supplied molecule.
- * - Errors during aromaticity detection or hydrogen addition are wrapped as {@code RuntimeException}.
- * Other matching/fingerprint errors propagate as {@code CDKException} where applicable.
- * <p>
- * Public API (most important):
- * - {@link #BiosynfoniFingerprinter()}:
- * Default constructor (uses default SMARTS, overlap filters off).
- * - {@link #BiosynfoniFingerprinter(boolean, boolean)}:
- * Configure overlap filters.
- * - {@link #BiosynfoniFingerprinter(boolean, boolean, String[])}:
- * Provide a custom SMARTS list; {@link #getSize()} equals {@code smarts.length}.
- * - {@link #getBitFingerprint(IAtomContainer)}:
- * Returns a bit fingerprint; may throw {@code CDKException}.
- * - {@link #getCountFingerprint(IAtomContainer)}:
- * Returns a key-based count fingerprint; SMARTS position = hash position.
- * - {@link #getRawFingerprint(IAtomContainer)}:
- * Not implemented (throws {@code CDKException}).
- * - {@link #getSize()}:
- * Returns the number of SMARTS used.
+ * Fingerprinter implementation of the Biosynfoni molecular fingerprint.
  *
+ * <p>
+ * The fingerprint consists of a predefined set of SMARTS patterns describing
+ * biosynthetically relevant structural motifs. Each SMARTS pattern corresponds
+ * to one fingerprint position (feature key).
+ * </p>
+ *
+ * <p>
+ * Two fingerprint types are supported:
+ * </p>
+ * <ul>
+ *   <li><b>Bit fingerprint</b>: a bit is set if at least one match for the
+ *       corresponding SMARTS pattern exists.</li>
+ *   <li><b>Count fingerprint</b>: stores the number of accepted matches for
+ *       each SMARTS pattern.</li>
+ * </ul>
+ *
+ *
+ * <p>
+ * Like the original Biosynfoni implementation, this version can optionally
+ * apply overlap filtering:
+ * <ul>
+ *   <li><b>Intra-pattern filtering</b>: prevents multiple matches of the same
+ *       SMARTS pattern from reusing atoms.</li>
+ *   <li><b>Inter-pattern filtering</b>: prevents matches of later SMARTS
+ *       patterns from reusing atoms already assigned to earlier patterns.</li>
+ * </ul>
+ * </p>
+ *
+ * <p>
+ * Prior to matching, molecules are preprocessed by assigning atom types,
+ * adding implicit hydrogens, detecting ring membership and aromaticity.
+ * The supplied molecule may therefore be modified during fingerprint generation.
+ * </p>
+ *
+ * <p>
+ * Known differences to the reference implementation:
+ * <ul>
+ *   <li>The SMARTS expression {@code [#6;!$([r6])]} was replaced by
+ *       {@code [#6!$(*1*****1)]} due to toolkit matching differences.</li>
+ *   <li>Aromatic sulfur species such as {@code [S+]} may be interpreted as
+ *       aliphatic depending on the molecule representation.</li>
+ *   <li> Due to the introduction of canonical atom numbering to eliminate path dependency,
+ *       count fingerprints generated with {@link #interSubOverlap(List, List)} will differ from the reference  </li>
+ * </ul>
+ * </p>
+ *
+ * @author Marlon Raffelt
  */
 public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IFingerprinter {
     public void get() {
@@ -367,7 +377,7 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
     /**
      * Filters overlapping Matches from the same Structure
      * Matches are processed in sorted order. A match is accepted only if none of its
-     * atom indices have not already been assigned to a previously accepted match.
+     * atom indices have already been assigned to a previously accepted match.
      * Accepted matches block all of their atoms from being reused in later
      * matches. This ensures that the returned matches are atom-disjoint.
      * Description
@@ -412,8 +422,7 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
     }
 
     /**
-     * Filter matches to prevent overlaping of structures inside the same pattern
-     * Description
+     * Filters matches to prevent atom reuse across different SMARTS patterns.
      * - Collects atom indices from all previously accepted SMARTS matches into
      * a {@code blockedAtoms} set.
      * - Iterates over the current SMARTS matches and checks whether a match
@@ -496,6 +505,7 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
      * multiple matches. <p>
      * - Returns the set of unique atom indices contained in the provided
      * matches. <p>
+     * Currently not needed may be need in further implementation
      *
      * @param matches the atom-index matches from which atom indices should be
      *                collected
@@ -513,7 +523,9 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
 
 
     /**
-     * Detects and assigns aromaticity, ring membership information for the given molecule and adds implicit hydrogen for a molecule also adds unique numbering to molecule
+     * Prepares a molecule for SMARTS matching by assigning atom types,
+     * adding implicit hydrogens, detecting ring membership, and
+     * perceiving aromaticity.
      * The method uses the recommended Ring finding method for pattern matching({@code Cycles.sssr()})
      * {@code AtomContainerManipulator.perceiveAtomTypesAndConfigureAtoms(IAtomContainer)}
      * and adds implicit hydrogens via {@link CDKHydrogenAdder}.
@@ -527,7 +539,7 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
      * {@code Cycles.cdkAromaticSet()}.
      * - Applies aromaticity perception to the molecule and updates atom and
      * bond aromaticity flags in place. <p>
-     *  -Applies unique numbering from {@link #canonicalIndex(IAtomContainer)} if {@link #interSubOverlap(List, List)} shall be applied
+     * -Applies unique numbering from {@link #canonicalIndex(IAtomContainer)} if {@link #interSubOverlap(List, List)} shall be applied
      * - Returns the same molecule instance with updated atom typing,
      * hydrogen counts, ring membership, and aromaticity information. <p>
      *
@@ -538,12 +550,12 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
         IAtomContainer clonedMolecule;
         if (interSubOverLapToggle) {
             try {
-                 clonedMolecule = canonicalIndex(aMolecule);
+                clonedMolecule = canonicalIndex(aMolecule);
             } catch (Exception e) {
-                 clonedMolecule = aMolecule;
+                clonedMolecule = aMolecule;
             }
         } else {
-             clonedMolecule = aMolecule;
+            clonedMolecule = aMolecule;
         }
         try {
 
@@ -582,18 +594,37 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
     }
 
     /**
-     * creates unique numbering for the given molecules
-     * Computes a canonical atom ordering for the given molecule using
-     * CDK's canonical labeling algorithm. Each atom receives a unique
-     * canonical index, which is stored in the
-     * #todo create better javadoc for this method
-     * property and as the atom ID.
-     * This method prevents path dependecies in {@link #interSubOverlap(List, List)}}
+     * Creates a canonical atom ordering for the given molecule.
+     * <p>
+     * Uses CDK's canonical labeling algorithm ({@link Canon#label(IAtomContainer, int[][])})
+     * to generate a deterministic atom order that is independent of the original
+     * atom numbering in the input molecule.
+     * </p>
      *
-     * @param aMolecule the molecule whose atoms should be canonically indexed
-     * @return the input molecule with canonical indices assigned to all atoms
+     * <p>
+     * The method:
+     * <ul>
+     *   <li>Computes canonical labels for all atoms.</li>
+     *   <li>Sorts atoms according to their canonical labels.</li>
+     *   <li>Creates a new molecule containing cloned atoms in canonical order.</li>
+     *   <li>Reconstructs all bonds using the new atom indices.</li>
+     * </ul>
+     * </p>
+     *
+     * <p>
+     * This canonicalization is used to eliminate atom-order dependencies during
+     * overlap filtering, especially when
+     * {@link #interSubOverlap(List, List)} is enabled.
+     * Molecules that are structurally identical but differ only in atom numbering
+     * will therefore produce identical atom indices for matching operations.
+     * </p>
+     *
+     * @param aMolecule the molecule to canonicalize
+     * @return a new {@link IAtomContainer} with atoms arranged in canonical order
+     * @throws CloneNotSupportedException if an atom cannot be cloned
      */
     private IAtomContainer canonicalIndex(IAtomContainer aMolecule) throws CloneNotSupportedException {
+
         int[][] g = GraphUtil.toAdjList(aMolecule);
         long[] labels = Canon.label(aMolecule, g);
 
@@ -641,3 +672,4 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
 
 
 }
+
