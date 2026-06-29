@@ -1,23 +1,59 @@
+/*
+ * Copyright (c) 2026 #Todo
+ *
+ *
+ * Contact: cdk-devel@lists.sourceforge.net
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2.1 of the License, or (at
+ * your option) any later version. All we ask is that proper credit is given
+ * for our work, which includes - but is not limited to - adding the above
+ * copyright notice to the beginning of your source code files, and to any
+ * copyright notice that you may distribute with programs based on this work.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
+ * License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 U
+ */
 package org.openscience.cdk.fingerprint;
-
 
 import org.openscience.cdk.aromaticity.Aromaticity;
 import org.openscience.cdk.aromaticity.ElectronDonation;
 import org.openscience.cdk.exception.CDKException;
 import org.openscience.cdk.graph.Cycles;
 import org.openscience.cdk.graph.GraphUtil;
-import org.openscience.cdk.interfaces.*;
+import org.openscience.cdk.graph.invariant.Canon;
+import org.openscience.cdk.interfaces.IAtom;
+import org.openscience.cdk.interfaces.IBond;
+import org.openscience.cdk.interfaces.IRingSet;
 import org.openscience.cdk.smarts.SmartsPattern;
 import org.openscience.cdk.tools.CDKHydrogenAdder;
 import org.openscience.cdk.tools.manipulator.AtomContainerManipulator;
-import org.openscience.cdk.graph.invariant.*;
 import org.openscience.cdk.interfaces.IAtomContainer;
 
-
-import java.util.*;
+import java.util.BitSet;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Set;
+import java.util.HashSet;
 
 /**
  * Fingerprinter implementation of the Biosynfoni molecular fingerprint.
+ * <p>
+ * Reference:
+ * Nollen L-M, Meijer D, Sorokina M, van der Hooft J.
+ * Biosynfoni: A Biosynthesis-informed and Interpretable Lightweight Molecular Fingerprint.
+ * ChemRxiv. 2025; doi:10.26434/chemrxiv-2025-cwq74 This content is a preprint and has not been peer-reviewed.
+ * https://github.com/lucinamay/biosynfoni
  *
  * <p>
  * The fingerprint consists of a predefined set of SMARTS patterns describing
@@ -65,21 +101,26 @@ import java.util.*;
  * </ul>
  * </p>
  *
- * @author Marlon Raffelt
+ * @author
  */
 public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IFingerprinter {
-    public void get() {
-    }
 
+    /**
+     * Default Biosynfoni feature definitions.
+     * <p>
+     * Each enum constant defines a SMARTS pattern and its corresponding label.
+     * Together, these feature definitions form the default Biosynfoni fingerprint.
+     * </p>
+     */
     public enum DefaultBiosynfoniKey {
-
+        //Cofactors
         CO_COA("co_coa", "SCCN~C(~O)CCN~C(~O)C(C(C)(C)COP(O)(~O)OP(~O)(O)OCC1C(C(C(O1)[#7]2~[#6]~[#7]~[#6]~3~[#6](~[#7]~[#6]~[#7]~[#6]~3~2)~[#7])O)OP(~O)(O)O)~O"),
         CO_NADH("co_nadh", "[#6]~1~[#6]~[#6]~[#7](~[#6]~[#6]~1~[#6](~O)~[#7])~[#6]~2~[#6](~[#6](~[#6](~O~2)~[#6]~O~P(~O)(~O)~O~P(~O)(~O)~O~[#6]~[#6]~3~[#6](~[#6](~[#6](~O~3)~[#7]~4~[#6]~[#7]~[#6]~5~[#6](~[#7]~[#6]~[#7]~[#6]~5~4)~[#7])~O)~O)~O)~O"),// 1: co_nadh
         CO_NADPH("co_nadph", "[#6]~1~[#6]~[#6]~[#7](~[#6]~[#6]~1~[#6](~O)~[#7])~[#6]~2~[#6](~[#6](~[#6](~O~2)~[#6]~O~P(~O)(~O)~O~P(~O)(~O)~O~[#6]~[#6]~3~[#6](~[#6](~[#6](~O~3)~[#7]~4~[#6]~[#7]~[#6]~5~[#6](~[#7]~[#6]~[#7]~[#6]~5~4)~[#7])~O~P(~O)(~O)~O)~O)~O)~O"),
-
+        //Aminoacids
         ALL_STD_AMINOS("allstnd_aminos", "[$([$([NX3H,NX4H2+]),$([NX3](C)(C)(C))]1[CX4H]([CH2][CH2][CH2]1)[CX3](=[OX1])[OX2H,OX1-,N]),$([$([NX3H2,NX4H3+]),$([NX3H](C)(C))][CX4H2][CX3](=[OX1])[OX2H,OX1-,N]),$([$([NX3H2,NX4H3+]),$([NX3H](C)(C))][CX4H]([$([CH3X4]),$([CH2X4][CH2X4][CH2X4][NHX3][CH0X3](=[NH2X3+,NHX2+0])[NH2X3]),$([CH2X4][CX3](=[OX1])[NX3H2]),$([CH2X4][CX3](=[OX1])[OH0-,OH]),$([CH2X4][SX2H,SX1H0-]),$([CH2X4][CH2X4][CX3](=[OX1])[OH0-,OH]),$([CH2X4][#6X3]1:[$([#7X3H+,#7X2H0+0]:[#6X3H]:[#7X3H]),$([#7X3H])]:[#6X3H]:[$([#7X3H+,#7X2H0+0]:[#6X3H]:[#7X3H]),$([#7X3H])]:[#6X3H]1),$([CHX4]([CH3X4])[CH2X4][CH3X4]),$([CH2X4][CHX4]([CH3X4])[CH3X4]),$([CH2X4][CH2X4][CH2X4][CH2X4][NX4+,NX3+0]),$([CH2X4][CH2X4][SX2][CH3X4]),$([CH2X4][cX3]1[cX3H][cX3H][cX3H][cX3H][cX3H]1),$([CH2X4][OX2H]),$([CHX4]([CH3X4])[OX2H]),$([CH2X4][cX3]1[cX3H][nX3H][cX3]2[cX3H][cX3H][cX3H][cX3H][cX3]12),$([CH2X4][cX3]1[cX3H][cX3H][cX3]([OHX2,OH0X1-])[cX3H][cX3H]1),$([CHX4]([CH3X4])[CH3X4])])[CX3](=[OX1])[OX2H,OX1-,N])]"),
         NON_STD_AMINOS("nonstnd_aminos", "[$([NX3,NX4+][CX4H]([$([CH3X4]),$([CH2X4][CH2X4][CH2X4][NHX3][CH0X3](=[NH2X3+,NHX2+0])[NH2X3]),$([CH2X4][CX3](=[OX1])[NX3H2]),$([CH2X4][CX3](=[OX1])[OH0-,OH]),$([CH2X4][SX2H,SX1H0-]),$([CH2X4][CH2X4][CX3](=[OX1])[OH0-,OH]),$([CH2X4][#6X3]1:[$([#7X3H+,#7X2H0+0]:[#6X3H]:[#7X3H]),$([#7X3H])]:[#6X3H]:[$([#7X3H+,#7X2H0+0]:[#6X3H]:[#7X3H]),$([#7X3H])]:[#6X3H]1),$([CHX4]([CH3X4])[CH2X4][CH3X4]),$([CH2X4][CHX4]([CH3X4])[CH3X4]),$([CH2X4][CH2X4][CH2X4][CH2X4][NX4+,NX3+0]),$([CH2X4][CH2X4][SX2][CH3X4]),$([CH2X4][cX3]1[cX3H][cX3H][cX3H][cX3H][cX3H]1),$([CH2X4][OX2H]),$([CHX4]([CH3X4])[OX2H]),$([CH2X4][cX3]1[cX3H][nX3H][cX3]2[cX3H][cX3H][cX3H][cX3H][cX3]12),$([CH2X4][cX3]1[cX3H][cX3H][cX3]([OHX2,OH0X1-])[cX3H][cX3H]1),$([CHX4]([CH3X4])[CH3X4])])[CX3](=[OX1])[O,N]);!$([$([$([NX3H,NX4H2+]),$([NX3](C)(C)(C))]1[CX4H]([CH2][CH2][CH2]1)[CX3](=[OX1])[OX2H,OX1-,N]),$([$([NX3H2,NX4H3+]),$([NX3H](C)(C))][CX4H2][CX3](=[OX1])[OX2H,OX1-,N]),$([$([NX3H2,NX4H3+]),$([NX3H](C)(C))][CX4H]([$([CH3X4]),$([CH2X4][CH2X4][CH2X4][NHX3][CH0X3](=[NH2X3+,NHX2+0])[NH2X3]),$([CH2X4][CX3](=[OX1])[NX3H2]),$([CH2X4][CX3](=[OX1])[OH0-,OH]),$([CH2X4][SX2H,SX1H0-]),$([CH2X4][CH2X4][CX3](=[OX1])[OH0-,OH]),$([CH2X4][#6X3]1:[$([#7X3H+,#7X2H0+0]:[#6X3H]:[#7X3H]),$([#7X3H])]:[#6X3H]:[$([#7X3H+,#7X2H0+0]:[#6X3H]:[#7X3H]),$([#7X3H])]:[#6X3H]1),$([CHX4]([CH3X4])[CH2X4][CH3X4]),$([CH2X4][CHX4]([CH3X4])[CH3X4]),$([CH2X4][CH2X4][CH2X4][CH2X4][NX4+,NX3+0]),$([CH2X4][CH2X4][SX2][CH3X4]),$([CH2X4][cX3]1[cX3H][cX3H][cX3H][cX3H][cX3H]1),$([CH2X4][OX2H]),$([CHX4]([CH3X4])[OX2H]),$([CH2X4][cX3]1[cX3H][nX3H][cX3]2[cX3H][cX3H][cX3H][cX3H][cX3]12),$([CH2X4][cX3]1[cX3H][cX3H][cX3]([OHX2,OH0X1-])[cX3H][cX3H]1),$([CHX4]([CH3X4])[CH3X4])])[CX3](=[OX1])[OX2H,OX1-,N])])]"),
-
+        //Sugar derviates
         S_OPENPYR_C6O6("s_openpyr_C6O6", "C(~[#8])~C(~[#8])~C(~[#8])~C(~[#8])~C(~[#8])~C(~[#8])"),
         S_OPENFUR_C5O5("s_openfur_C5O5", "C(~[#8])~C(~[#8])~C(~[#8])~C(~[#8])~C(~[#8])"),
         S_PYRANOSE_C5O4("s_pyranose_C5O4", "C~1~[#8]~C~C(~[#8])~C(~[#8])~C(~[#8])~1"),
@@ -122,12 +163,20 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
         R_C9("r_c9", "[#6]~1~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~1"),
         R_C10("r_c10", "[#6]~1~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~1");
 
-        public final String label;
-        public final String smarts;
+        private final String label;
+        private final String smarts;
 
         DefaultBiosynfoniKey(String label, String smarts) {
             this.label = label;
             this.smarts = smarts;
+        }
+
+        public String getLabel() {
+            return this.label;
+        }
+
+        public String getSmarts() {
+            return this.smarts;
         }
     }
 
@@ -135,6 +184,15 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
     private boolean interSubOverLapToggle = false;
     private String[] smartsList = null;
     private int smartsSize = DefaultBiosynfoniKey.values().length;
+
+    /**
+     * uses default creation methods for the Fingerprints \n
+     * No overlapping Structures are filtered
+     * See {@link BiosynfoniFingerprinter} for more information
+     */
+    public BiosynfoniFingerprinter() {
+        this(false, false, null);
+    }
 
     /**
      * uses default SMARTS pattern.
@@ -148,18 +206,9 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
      *                              to earlier SMARTS patterns cannot be reused
      */
     public BiosynfoniFingerprinter(boolean intraSubOverlapToggle, boolean interSubOverLapToggle) {
-        this.intraSubOverlapToggle = intraSubOverlapToggle;
-        this.interSubOverLapToggle = interSubOverLapToggle;
+        this(intraSubOverlapToggle, interSubOverLapToggle, null);
     }
 
-    /**
-     * uses default creation methods for the Fingerprints \n
-     * No overlapping Structures are filtered
-     * See {@link BiosynfoniFingerprinter} for more information
-     */
-    public BiosynfoniFingerprinter() {
-
-    }
 
     /**
      * uses given SMARTS pattern.
@@ -183,8 +232,17 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
      */
     @Override
     public IBitFingerprint getBitFingerprint(IAtomContainer container) throws CDKException {
-        BitSet BIOSYNFingerprintBIT = new BitSet();
-        List<List<int[]>> filteredMatches = getFilteredMatches(container);
+
+        if (container == null) {
+            throw new NullPointerException("container must not be null");
+        }
+        BitSet BIOSYNFingerprintBIT = new BitSet(this.smartsSize);
+
+        if (container.isEmpty()) {
+            return new BitSetFingerprint(BIOSYNFingerprintBIT);
+        }
+
+        List<List<int[]>> filteredMatches = this.getFilteredMatches(container);
         for (int i = 0; i < filteredMatches.size(); i++) {
             if (!filteredMatches.get(i).isEmpty()) {
                 BIOSYNFingerprintBIT.set(i);
@@ -200,19 +258,12 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
     @Override
     public ICountFingerprint getCountFingerprint(IAtomContainer container) throws CDKException {
         List<List<int[]>> filteredMatches = getFilteredMatches(container);
-        final Map<Integer, Integer> map = new TreeMap<>();
+        final int[] count = new int[filteredMatches.size()];
+
         for (int i = 0; i < filteredMatches.size(); i++) {
-            map.put(i, filteredMatches.get(i).size());
+            count[i] = filteredMatches.get(i).size();
         }
 
-        final int size = map.size();
-        final int[] hash = new int[size];
-        final int[] count = new int[size];
-        int n = 0;
-        for (int h : map.keySet()) {
-            hash[n] = h;
-            count[n++] = map.get(h);
-        }
         return new ICountFingerprint() {
             @Override
             public long size() {
@@ -221,7 +272,7 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
 
             @Override
             public int numOfPopulatedbins() {
-                return size;
+                return count.length;
             }
 
             @Override
@@ -237,7 +288,7 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
              */
             @Override
             public int getHash(int index) {
-                return hash[index];
+                return index;
             }
 
             @Override
@@ -251,12 +302,12 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
 
             @Override
             public boolean hasHash(int hash) {
-                return map.containsKey(hash);
-            }
+                return hash >= 0 && hash < count.length;
+                }
 
             @Override
             public int getCountForHash(int hash) {
-                return map.getOrDefault(hash, 0);
+                return hasHash(hash) ? count[hash] : 0;
             }
         };
     }
@@ -312,7 +363,7 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
         if (smartsList == null) {
             for (DefaultBiosynfoniKey key : DefaultBiosynfoniKey.values()) {
 
-                SmartsPattern pattern = SmartsPattern.create(key.smarts);
+                SmartsPattern pattern = SmartsPattern.create(key.getSmarts());
                 List<int[]> subMatches = getSubMatches(pattern, preparedMol, filteredMatches);
                 filteredMatches.add(subMatches);
             }
