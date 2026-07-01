@@ -523,63 +523,6 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
         List<List<int[]>> filteredMatches = this.getFilteredMatches(container);
         return new CountFingerPrint(filteredMatches);
     }
-//        final int[] count = new int[filteredMatches.size()];
-//
-//        for (int i = 0; i < filteredMatches.size(); i++) {
-//            count[i] = filteredMatches.get(i).size();
-//        }
-//
-//        return new ICountFingerprint() {
-//            @Override
-//            public ICountFingerprint getCountFingerprint() throws CDKException {
-//                return this;
-//            }
-//            @Override
-//            public long size() {
-//                return count.length;
-//            }
-//
-//            @Override
-//            public int numOfPopulatedbins() {
-//                return count.length;
-//            }
-//
-//            @Override
-//            public int getCount(int index) {
-//                return count[index];
-//            }
-//
-//            /**
-//             * Note the Fingerprint is Key based.
-//             * The position of the Smart in the SmartsList equals the position of the hash
-//             * @param index the index of the bin to return the hash for.
-//             * @return hash from the given feature index
-//             */
-//            @Override
-//            public int getHash(int index) {
-//                return index;
-//            }
-//
-//            @Override
-//            public void merge(ICountFingerprint fp) {
-//                throw new UnsupportedOperationException();
-//            }
-//
-//            @Override
-//            public void setBehaveAsBitFingerprint(boolean behaveAsBitFingerprint) {
-//            }
-//
-//            @Override
-//            public boolean hasHash(int hash) {
-//                return hash >= 0 && hash < count.length;
-//            }
-//
-//            @Override
-//            public int getCountForHash(int hash) {
-//                return hasHash(hash) ? count[hash] : 0;
-//            }
-//        };
-//    }
 
     @Override
     public Map<String, Integer> getRawFingerprint(IAtomContainer container) throws CDKException {
