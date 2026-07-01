@@ -95,7 +95,8 @@ import java.util.HashSet;
  *       replacement excludes carbon atoms that are part of any six-membered
  *       ring. This change was introduced because the SMARTS matching behaviour
  *       in CDK did not reproduce the intended semantics of the original
- *       Biosynfoni implementation. The affected fingerprint keys are #todo
+ *       Biosynfoni implementation. The affected fingerprint keys represent phenyl-derived substructures
+ *       originating from the shikimate pathway (fingerprint keys 13, 14, and 15)
  *       See the <a href="https://github.com/cdk/cdk/issues/1292#issue-4641968710">  Git Issue </a>
  *       for more information
  *     </li>
@@ -174,7 +175,6 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
          * SMARTS matches a five-membered sugar ring containing one oxygen atom.
          */
         S_FURANOSE_C4O3("s_furanose_C4O3", "C~1~[#8]~C~C(~[#8])~C(~[#8])~1"),
-
         /**
          * Indole ring system.
          * SMARTS matches an indole scaffold with a two-carbon side chain terminating
@@ -199,7 +199,9 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
          * nitrogen atom, regardless of aromaticity.
          */
         D_C4N("d_c4n_5", "[#6]~1~[#6]~[#6]~[#6]~[#7]~1"),
+
         //Phenyls from Shikimate pathway
+
         /**
          * Phenylpropyl motif.
          * SMARTS matches a phenyl ring attached to a three-carbon side chain.
@@ -216,32 +218,164 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
          */
         D_PHENYL_C1("d_phenylC1_7_strict", "[#6;R1]~1~[#6;R1]~[#6;R1]~[#6;R1]~[#6;R1]~[#6;R1]~1~[#6]"),
 
+        //Carbon chains
+
+        /**
+         * Isoprene unit.
+         *
+         * <p>SMARTS matches a branched five-carbon motif corresponding to an isoprene
+         * building block. Since atomic numbers are used, both aromatic and
+         * aliphatic carbon atoms may be matched.</p>
+         */
         D_ISOPRENE("d_isoprene_5", "[#6]~[#6](~[#6])~[#6]~[#6]"),
+        /**
+         * Acetyl group.
+         *
+         * <p>SMARTS matches a two-carbon chain connected to an oxygen atom. Since
+         * atomic numbers are used, both aromatic and aliphatic carbon atoms
+         * may be matched.</p>
+         */
         D2_ACETYL("d2_acetyl_C2O1", "[#6]~[#6]~[#8]"),
+        /**
+         * Methylmalonyl motif.
+         *
+         * <p>SMARTS matches a three-carbon motif terminating in a methyl carbon
+         * (degree 1, three implicit hydrogens), corresponding to the
+         * methylmalonyl building block.</p>
+         */
         D2_METHYLMALONYL("d2_methylmalonyl_C3", "[#6]~[#6][C;D1;h3]"),
+        /**
+         * Ethyl group.
+         *
+         * <p>SMARTS matches two carbon atoms connected by a single bond. Since atomic
+         * numbers are used, both aromatic and aliphatic carbon atoms may be
+         * matched.</p>
+         */
         D_ETHYL("d_ethyl_2", "[#6]~[#6]"),
+        /**
+         * Methyl group.
+         *
+         * <p>SMARTS matches a terminal methyl carbon (degree 1) carrying three
+         * implicit hydrogen atoms.</p>
+         */
         D_METHYL("d_methyl_1", "[C;D1;h3]"),
 
+        //Phosphorus- and sulfur-containing functional groups
+
+        /**
+         * Phosphate group.
+         *
+         * <p>SMARTS matches a phosphorus atom connected to an oxygen atom by any bond.
+         * Since the atomic numbers ({@code P} and {@code O}) are used, both
+         * aromatic and aliphatic environments are matched. The pattern identifies
+         * the characteristic phosphorus-oxygen linkage found in phosphate groups,
+         * but is not restricted to a specific phosphate species.</p>
+         */
         PHOSPHATE("phosphate_2", "P~O"),
+        /**
+         * Sulfonate group.
+         *
+         * <p>SMARTS matches a sulfur atom connected to an oxygen atom by any bond.
+         * Since the atomic numbers ({@code S} and {@code O}) are used, both
+         * aromatic and aliphatic environments are matched. The pattern identifies
+         * the characteristic sulfur-oxygen linkage found in sulfonate and related
+         * sulfur-oxygen functional groups.</p>
+         */
         SULFONATE("sulfonate_2", "S~O"),
+
         //halogenoids
+
+        /**
+         * Fluorine atom.
+         * SAMRTS matches any fluorine atom.
+         */
         HAL_F("hal_f", "[#9]"),
+        /**
+         * Chlorine atom.
+         * SAMRTS matches any chlorine atom.
+         */
         HAL_CL("hal_cl", "[#17]"),
+        /**
+         * Bromine atom.
+         * SAMRTS matches any bromine atom.
+         */
         HAL_BR("hal_br", "[#35]"),
+        /**
+         * Iodine atom.
+         * SAMRTS matches any iodine atom.
+         */
         HAL_I("hal_i", "[#53]"),
 
+        //functional groups
+
+        /**
+         * Terminal nitrogen atom.
+         *
+         * <p>SAMRTS matches any nitrogen atom with exactly one bonded neighbour
+         * (SMARTS degree = 1), irrespective of whether it is aromatic or
+         * aliphatic. This pattern is not restricted to nitrate groups despite
+         * the constant name.</p>
+         */
         N_NITRATE("n_nitrate_1", "[N;D1]"),
+        /**
+         * Epoxide group.
+         * SAMRTS matches an oxygen atom that is part of a three-membered ring.
+         */
         O_EPOXY("o_epoxy_1", "[O;x2;r3]"),
+        /**
+         * Ether group.
+         * SAMRTS matches a non-cyclic ether oxygen connecting two atoms while
+         * excluding esters, phosphates and sulfates.
+         */
         O_ETHER("o_ether_1", "[O;D2;!h;!$(*C=O);X2;!R;!$(*P);!$(*S)]"),
+        /**
+         * Hydroxyl group.
+         * SAMRTS matches a hydroxyl (-OH) group attached to a carbon or nitrogen atom
+         * while excluding carboxylic acids, phosphates and sulfates.
+         */
         O_HYDROXYL("o_hydroxyl_1", "[#8;D1;h,!v2;$(*[#6,#7]);!$(*C~O);!$(P);!$(S)]"),
+
         //rings
+
+        /**
+         * Three-membered carbon ring.
+         * SAMRTS matches a ring consisting of three carbon atoms, regardless of aromaticity.
+         */
         R_C3("r_c3", "[#6]~1~[#6]~[#6]~1"),
+        /**
+         * Four-membered carbon ring.
+         * SAMRTS matches a ring consisting of three carbon atoms, regardless of aromaticity.
+         */
         R_C4("r_c4", "[#6]~1~[#6]~[#6]~[#6]~1"),
+        /**
+         * five-membered carbon ring.
+         * SAMRTS matches a ring consisting of three carbon atoms, regardless of aromaticity.
+         */
         R_C5("r_c5", "[#6]~1~[#6]~[#6]~[#6]~[#6]~1"),
+        /**
+         * Six-membered carbon ring.
+         * SAMRTS matches a ring consisting of three carbon atoms, regardless of aromaticity.
+         */
         R_C6("r_c6", "[#6]~1~[#6]~[#6]~[#6]~[#6]~[#6]~1"),
+        /**
+         * Seven-membered carbon ring.
+         * SAMRTS matches a ring consisting of three carbon atoms, regardless of aromaticity.
+         */
         R_C7("r_c7", "[#6]~1~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~1"),
+        /**
+         * Eight-membered carbon ring.
+         * SAMRTS matches a ring consisting of three carbon atoms, regardless of aromaticity.
+         */
         R_C8("r_c8", "[#6]~1~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~1"),
+        /**
+         * Nine-membered carbon ring.
+         * SAMRTS matches a ring consisting of three carbon atoms, regardless of aromaticity.
+         */
         R_C9("r_c9", "[#6]~1~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~1"),
+        /**
+         * Ten-membered carbon ring.
+         * SMARTS matches a ring consisting of three carbon atoms, regardless of aromaticity.
+         */
         R_C10("r_c10", "[#6]~1~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~1");
 
         /**
@@ -289,6 +423,7 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
             return this.smarts;
         }
     }
+
     /**
      * Enables filtering of overlapping matches within the same substructure.
      */

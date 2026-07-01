@@ -23,6 +23,9 @@ import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+/**
+ * playground for deep testing
+ */
 public class BiosynfoniFingerprintTest {
 
     public String filePathCSVout = "src/test/resources/data/cdd.csv";
