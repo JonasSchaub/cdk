@@ -321,13 +321,13 @@ class BiosynfoniTest {
 
         for (BiosynfoniFingerprinter.DefaultBiosynfoniKey key : BiosynfoniFingerprinter.DefaultBiosynfoniKey.values()) {
             try {
-                SmartsPattern.create(key.smarts,
+                SmartsPattern.create(key.getSmarts(),
                         DefaultChemObjectBuilder.getInstance());
             } catch (Exception e) {
                 fail(" Invalid smiles detected" +
                         "Key: " + key.name() +
-                        "Label: " + key.label +
-                        "SMARTS: " + key.smarts +
+                        "Label: " + key.getLabel() +
+                        "SMARTS: " + key.getSmarts() +
                         "Error: " + e.getMessage());
             }
         }

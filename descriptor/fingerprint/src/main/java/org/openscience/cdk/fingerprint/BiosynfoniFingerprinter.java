@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2026 #Todo
+ * Copyright (c) 2026 Marlon Raffelt (git@marlon.raffelt.email)
  *
  *
  * Contact: cdk-devel@lists.sourceforge.net
@@ -40,21 +40,18 @@ import org.openscience.cdk.interfaces.IAtomContainer;
 import java.util.BitSet;
 import java.util.List;
 import java.util.Map;
-import java.util.TreeMap;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Set;
 import java.util.HashSet;
 
 /**
- * Fingerprinter implementation of the Biosynfoni molecular fingerprint.
- * <p>
- * Reference:
- * Nollen L-M, Meijer D, Sorokina M, van der Hooft J.
- * Biosynfoni: A Biosynthesis-informed and Interpretable Lightweight Molecular Fingerprint.
- * ChemRxiv. 2025; doi:10.26434/chemrxiv-2025-cwq74 This content is a preprint and has not been peer-reviewed.
- * https://github.com/lucinamay/biosynfoni
- *
+ * Implementation of the Biosynfoni molecular fingerprint(<a href="https://chemrxiv.org/doi/10.26434/chemrxiv-2025-cwq74">
+ * Biosynfoni preprint (ChemRxiv, 2025)</a>), a lightweight,
+ * biosynthesis-informed, and interpretable fingerprint specifically designed
+ * for natural products and natural product-inspired molecules.
+ * Look at the <a href="https://github.com/lucinamay/biosynfoni">
+ * Original Python implementation</a> for more context
  * <p>
  * The fingerprint consists of a predefined set of SMARTS patterns describing
  * biosynthetically relevant structural motifs. Each SMARTS pattern corresponds
@@ -68,7 +65,7 @@ import java.util.HashSet;
  *   <li><b>Bit fingerprint</b>: a bit is set if at least one match for the
  *       corresponding SMARTS pattern exists.</li>
  *   <li><b>Count fingerprint</b>: stores the number of accepted matches for
- *       each SMARTS pattern.</li>
+ *       each SMARTS pattern. This the default fingerprint representation described in the reference publication. </li>
  * </ul>
  *
  *
@@ -89,19 +86,35 @@ import java.util.HashSet;
  * The supplied molecule may therefore be modified during fingerprint generation.
  * </p>
  *
- * <p>
- * Known differences to the reference implementation:
- * <ul>
- *   <li>The SMARTS expression {@code [#6;!$([r6])]} was replaced by
- *       {@code [#6!$(*1*****1)]} due to toolkit matching differences.</li>
- *   <li>Aromatic sulfur species such as {@code [S+]} may be interpreted as
- *       aliphatic depending on the molecule representation.</li>
- *   <li> Due to the introduction of canonical atom numbering to eliminate path dependency,
- *       count fingerprints generated with {@link #interSubOverlap(List, List)} will differ from the reference  </li>
+ *   <p><b>Known differences to the reference implementation:</b></p>
+ *   <ul>
+ *     <li>
+ *       The SMARTS pattern used to identify non-ring carbon atoms was replaced
+ *       from {@code [#6;!$([r6])]} to {@code [#6!$(*1*****1)]}. The original
+ *       pattern excludes only carbon atoms in six-membered rings, whereas the
+ *       replacement excludes carbon atoms that are part of any six-membered
+ *       ring. This change was introduced because the SMARTS matching behaviour
+ *       in CDK did not reproduce the intended semantics of the original
+ *       Biosynfoni implementation. The affected fingerprint keys are #todo
+ *       See the <a href="https://github.com/cdk/cdk/issues/1292#issue-4641968710">  Git Issue </a>
+ *       for more information
+ *     </li>
+ *     <li>
+ *       The aromaticity assignment of positively charged sulfur atoms may differ
+ *       between toolkits, resulting in different SMARTS matching behaviour
+ *     </li>
+ *   </ul>
+ *
+ *   <li> Count fingerprints generated using inter-substructure overlap filtering
+ *   differ from the reference implementation(<a href="https://github.com/lucinamay/biosynfoni">
+ *   Original Python implementation</a>) because this implementation
+ *   resolves overlapping matches using canonical atom numbering rather than
+ *   the input atom order. This removes path dependency and ensures
+ *   deterministic fingerprints regardless of atom indexing.  </li>
  * </ul>
  * </p>
  *
- * @author
+ * @author MaRa1778
  */
 public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IFingerprinter {
 
@@ -130,12 +143,12 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
         D_PHENYL_C2N("d_phenylC2N_9", "c1ccccc1[#6][#6][#7]"),
         D_C5N("d_c5n_6", "[#6]~1~[#6]~[#6]~[#6]~[#6]~[#7]~1"),
         D_C4N("d_c4n_5", "[#6]~1~[#6]~[#6]~[#6]~[#7]~1"),
-
+        //Phenyls from Shikimate pathway
         D_PHENYL_C3("d_phenylC3_9_strict", "[#6;R1]~1~[#6;R1]~[#6;R1]~[#6;R1]~[#6;R1]~[#6;R1]~1~[#6]~[#6!$(*1*****1)]~[#6!$(*1*****1)]"),
         D_PHENYL_C2("d_phenylC2_8_strict", "[#6;R1]~1~[#6;R1]~[#6;R1]~[#6;R1]~[#6;R1]~[#6;R1]~1~[#6]~[#6!$(*1*****1)]"),
         D_PHENYL_C1("d_phenylC1_7_strict", "[#6;R1]~1~[#6;R1]~[#6;R1]~[#6;R1]~[#6;R1]~[#6;R1]~1~[#6]"),
-        D_ISOPRENE("d_isoprene_5", "[#6]~[#6](~[#6])~[#6]~[#6]"),
 
+        D_ISOPRENE("d_isoprene_5", "[#6]~[#6](~[#6])~[#6]~[#6]"),
         D2_ACETYL("d2_acetyl_C2O1", "[#6]~[#6]~[#8]"),
         D2_METHYLMALONYL("d2_methylmalonyl_C3", "[#6]~[#6][C;D1;h3]"),
         D_ETHYL("d_ethyl_2", "[#6]~[#6]"),
@@ -143,7 +156,7 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
 
         PHOSPHATE("phosphate_2", "P~O"),
         SULFONATE("sulfonate_2", "S~O"),
-
+        //halogenoids
         HAL_F("hal_f", "[#9]"),
         HAL_CL("hal_cl", "[#17]"),
         HAL_BR("hal_br", "[#35]"),
@@ -153,7 +166,7 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
         O_EPOXY("o_epoxy_1", "[O;x2;r3]"),
         O_ETHER("o_ether_1", "[O;D2;!h;!$(*C=O);X2;!R;!$(*P);!$(*S)]"),
         O_HYDROXYL("o_hydroxyl_1", "[#8;D1;h,!v2;$(*[#6,#7]);!$(*C~O);!$(P);!$(S)]"),
-
+        //rings
         R_C3("r_c3", "[#6]~1~[#6]~[#6]~1"),
         R_C4("r_c4", "[#6]~1~[#6]~[#6]~[#6]~1"),
         R_C5("r_c5", "[#6]~1~[#6]~[#6]~[#6]~[#6]~1"),
@@ -163,47 +176,74 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
         R_C9("r_c9", "[#6]~1~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~1"),
         R_C10("r_c10", "[#6]~1~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~1");
 
+        /**
+         * Human-readable name of the fingerprint feature.
+         */
         private final String label;
+
+        /**
+         * SMARTS pattern used to identify the corresponding structural motif.
+         */
         private final String smarts;
 
+        /**
+         * Creates a Biosynfoni fingerprint key definition.
+         *
+         * <p>Each key consists of a human-readable label and a SMARTS pattern
+         * describing a biosynthetically relevant structural motif. During
+         * fingerprint generation, the SMARTS pattern is matched against the
+         * molecule to determine the presence or frequency of the corresponding
+         * feature.</p>
+         *
+         * @param label  descriptive name of the fingerprint feature
+         * @param smarts SMARTS pattern used to identify the structural motif
+         */
         DefaultBiosynfoniKey(String label, String smarts) {
             this.label = label;
             this.smarts = smarts;
         }
 
+        /**
+         * Returns the human-readable label of this fingerprint feature.
+         *
+         * @return the feature label
+         */
         public String getLabel() {
             return this.label;
         }
 
+        /**
+         * Returns the SMARTS pattern defining this fingerprint feature.
+         *
+         * @return the SMARTS pattern
+         */
         public String getSmarts() {
             return this.smarts;
         }
     }
 
-    private boolean intraSubOverlapToggle = false;
-    private boolean interSubOverLapToggle = false;
-    private String[] smartsList = null;
-    private int smartsSize = DefaultBiosynfoniKey.values().length;
+    private boolean intraSubOverlapToggle;
+    private boolean interSubOverLapToggle;
+    private String[] smartsList;
+    private int smartsSize;
 
     /**
-     * uses default creation methods for the Fingerprints \n
-     * No overlapping Structures are filtered
-     * See {@link BiosynfoniFingerprinter} for more information
+     * Creates a Biosynfoni fingerprinter using the default SMARTS patterns with
+     * both intra- and inter-substructure overlap filtering disabled. This
+     * constructor provides the default configuration of the fingerprinter.
      */
     public BiosynfoniFingerprinter() {
         this(false, false, null);
     }
 
     /**
-     * uses default SMARTS pattern.
-     * Can toggle usage of overlap filter methods
-     * on true the overlap filters can be activated
-     * See {@link BiosynfoniFingerprinter} for more information
+     * Creates a Biosynfoni fingerprinter using the default SMARTS patterns and
+     * the specified overlap filtering configuration.
      *
-     * @param intraSubOverlapToggle if {@code true}, applies intra-Smarts overlap filtering so that matches within
-     *                              the same SMARTS pattern cannot reuse atoms
-     * @param interSubOverLapToggle if {@code true}, applies inter-Smarts overlap filtering so that atoms assigned
-     *                              to earlier SMARTS patterns cannot be reused
+     * @param intraSubOverlapToggle whether intra-substructure overlap filtering is enabled
+     *                              (default: {@code false})
+     * @param interSubOverLapToggle whether inter-substructure overlap filtering is enabled
+     *                              (default: {@code false})
      */
     public BiosynfoniFingerprinter(boolean intraSubOverlapToggle, boolean interSubOverLapToggle) {
         this(intraSubOverlapToggle, interSubOverLapToggle, null);
@@ -211,20 +251,27 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
 
 
     /**
-     * uses given SMARTS pattern.
-     * Can toggle usage of overlap filter methods
-     * on true the overlap filters can be activated
-     * See {@link BiosynfoniFingerprinter} for more information
+     * Creates a Biosynfoni fingerprinter with the specified overlap filtering
+     * configuration and SMARTS patterns.
      *
-     * @param intraSubOverlapToggle if this is true Fingerprinter will use {@code intraSubOverlap}
-     * @param interSubOverLapToggle not yet implemented
-     * @param smarts                if this is Null the Fingerprints will be created with the given SMARTS
+     * <p>If {@code smarts} is {@code null}, the default Biosynfoni SMARTS
+     * patterns are used. Otherwise, the supplied SMARTS patterns define the
+     * fingerprint features used during fingerprint generation.</p>
+     *
+     * @param intraSubOverlapToggle whether intra-substructure overlap filtering is enabled
+     * @param interSubOverLapToggle whether inter-substructure overlap filtering is enabled
+     * @param smarts                SMARTS patterns defining the fingerprint. If {@code null}, the
+     *                              default Biosynfoni SMARTS patterns are used.
      */
     public BiosynfoniFingerprinter(boolean intraSubOverlapToggle, boolean interSubOverLapToggle, String[] smarts) {
         this.interSubOverLapToggle = interSubOverLapToggle;
         this.intraSubOverlapToggle = intraSubOverlapToggle;
         this.smartsList = smarts;
-        this.smartsSize = smarts.length;
+        if (smarts == null) {
+            this.smartsSize = DefaultBiosynfoniKey.values().length;
+        } else {
+            this.smartsSize = smarts.length;
+        }
     }
 
     /**
@@ -258,59 +305,65 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
     @Override
     public ICountFingerprint getCountFingerprint(IAtomContainer container) throws CDKException {
         List<List<int[]>> filteredMatches = getFilteredMatches(container);
-        final int[] count = new int[filteredMatches.size()];
-
-        for (int i = 0; i < filteredMatches.size(); i++) {
-            count[i] = filteredMatches.get(i).size();
-        }
-
-        return new ICountFingerprint() {
-            @Override
-            public long size() {
-                return count.length;
-            }
-
-            @Override
-            public int numOfPopulatedbins() {
-                return count.length;
-            }
-
-            @Override
-            public int getCount(int index) {
-                return count[index];
-            }
-
-            /**
-             * Note the Fingerprint is Key based.
-             * The position of the Smart in the SmartsList equals the position of the hash
-             * @param index the index of the bin to return the hash for.
-             * @return hash from the given feature index
-             */
-            @Override
-            public int getHash(int index) {
-                return index;
-            }
-
-            @Override
-            public void merge(ICountFingerprint fp) {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public void setBehaveAsBitFingerprint(boolean behaveAsBitFingerprint) {
-            }
-
-            @Override
-            public boolean hasHash(int hash) {
-                return hash >= 0 && hash < count.length;
-                }
-
-            @Override
-            public int getCountForHash(int hash) {
-                return hasHash(hash) ? count[hash] : 0;
-            }
-        };
+        return new CountFingerPrint(filteredMatches);
     }
+//        final int[] count = new int[filteredMatches.size()];
+//
+//        for (int i = 0; i < filteredMatches.size(); i++) {
+//            count[i] = filteredMatches.get(i).size();
+//        }
+//
+//        return new ICountFingerprint() {
+//            @Override
+//            public ICountFingerprint getCountFingerprint() throws CDKException {
+//                return this;
+//            }
+//            @Override
+//            public long size() {
+//                return count.length;
+//            }
+//
+//            @Override
+//            public int numOfPopulatedbins() {
+//                return count.length;
+//            }
+//
+//            @Override
+//            public int getCount(int index) {
+//                return count[index];
+//            }
+//
+//            /**
+//             * Note the Fingerprint is Key based.
+//             * The position of the Smart in the SmartsList equals the position of the hash
+//             * @param index the index of the bin to return the hash for.
+//             * @return hash from the given feature index
+//             */
+//            @Override
+//            public int getHash(int index) {
+//                return index;
+//            }
+//
+//            @Override
+//            public void merge(ICountFingerprint fp) {
+//                throw new UnsupportedOperationException();
+//            }
+//
+//            @Override
+//            public void setBehaveAsBitFingerprint(boolean behaveAsBitFingerprint) {
+//            }
+//
+//            @Override
+//            public boolean hasHash(int hash) {
+//                return hash >= 0 && hash < count.length;
+//            }
+//
+//            @Override
+//            public int getCountForHash(int hash) {
+//                return hasHash(hash) ? count[hash] : 0;
+//            }
+//        };
+//    }
 
     @Override
     public Map<String, Integer> getRawFingerprint(IAtomContainer container) throws CDKException {
@@ -410,9 +463,7 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
      */
     private List<int[]> getSubMatches(SmartsPattern pattern, IAtomContainer aMolecule, List<List<int[]>> filteredMatches) {
         List<int[]> subMatches = new ArrayList<>();
-        int[][] uniqueMatches = pattern.matchAll(aMolecule)
-                .uniqueAtoms()
-                .toArray();
+        int[][] uniqueMatches = pattern.matchAll(aMolecule).uniqueAtoms().toArray();
 
         subMatches.addAll(Arrays.asList(uniqueMatches));
         if (intraSubOverlapToggle) {
@@ -634,9 +685,7 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
                     bond.setIsInRing(true);
                 }
             }
-            Aromaticity aromaticity = new Aromaticity(
-                    ElectronDonation.cdk(),
-                    Cycles.cdkAromaticSet());
+            Aromaticity aromaticity = new Aromaticity(ElectronDonation.cdk(), Cycles.cdkAromaticSet());
             aromaticity.apply(clonedMolecule);
             return clonedMolecule;
         } catch (Exception e) {
@@ -707,13 +756,7 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
             IAtom newA = canonical.getAtom(oldToNew[oldA]);
             IAtom newB = canonical.getAtom(oldToNew[oldB]);
 
-            IBond newBond = aMolecule.getBuilder().newInstance(
-                    IBond.class,
-                    newA,
-                    newB,
-                    bond.getOrder(),
-                    bond.getStereo()
-            );
+            IBond newBond = aMolecule.getBuilder().newInstance(IBond.class, newA, newB, bond.getOrder(), bond.getStereo());
 
             canonical.addBond(newBond);
         }
@@ -724,3 +767,60 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
 
 }
 
+final class CountFingerPrint implements ICountFingerprint {
+    private final int[] counts;
+
+    public CountFingerPrint(List<List<int[]>> filteredMatches) {
+        this.counts = new int[filteredMatches.size()];
+
+        for (int i = 0; i < filteredMatches.size(); i++) {
+            counts[i] = filteredMatches.get(i).size();
+        }
+    }
+
+    @Override
+    public long size() {
+        return counts.length;
+    }
+
+    @Override
+    public int numOfPopulatedbins() {
+        int populated = 0;
+        for (int count : counts) {
+            if (count > 0) {
+                populated++;
+            }
+        }
+        return populated;
+    }
+
+    @Override
+    public int getCount(int index) {
+        return counts[index];
+    }
+
+    @Override
+    public int getHash(int index) {
+        return index;
+    }
+
+    @Override
+    public void merge(ICountFingerprint fp) {
+
+    }
+
+    @Override
+    public void setBehaveAsBitFingerprint(boolean behaveAsBitFingerprint) {
+
+    }
+
+    @Override
+    public boolean hasHash(int hash) {
+        return hash >= 0 && hash < counts.length;
+    }
+
+    @Override
+    public int getCountForHash(int hash) {
+        return hasHash(hash) ? counts[hash] : 0;
+    }
+}
