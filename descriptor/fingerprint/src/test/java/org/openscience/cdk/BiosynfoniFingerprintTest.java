@@ -554,7 +554,7 @@ class BiosynfoniTest {
 
         Assertions.assertEquals(11, cfp.getCount(19));
         Assertions.assertEquals(1, cfp.getCount(34));
-        Assertions.assertNotEquals(2, 26);
+        Assertions.assertNotEquals(2, cfp.getCount(26));
     }
 }
 

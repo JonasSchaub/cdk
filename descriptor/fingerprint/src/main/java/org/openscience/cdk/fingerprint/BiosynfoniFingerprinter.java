@@ -37,17 +37,11 @@ import org.openscience.cdk.tools.CDKHydrogenAdder;
 import org.openscience.cdk.tools.manipulator.AtomContainerManipulator;
 import org.openscience.cdk.interfaces.IAtomContainer;
 
-import java.util.BitSet;
-import java.util.List;
-import java.util.Map;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Set;
-import java.util.HashSet;
+import java.util.*;
 
 /**
- * Implementation of the Biosynfoni molecular fingerprint(<a href="https://chemrxiv.org/doi/10.26434/chemrxiv-2025-cwq74">
- * Biosynfoni preprint (ChemRxiv, 2025)</a>), a lightweight,
+ * Implementation of the Biosynfoni molecular fingerprint (<a href="https://doi.org/10.1186/s13321-025-01081-6">
+ * Biosynfoni paper (Journal for Chemoinformatics, 2025)</a>), a lightweight,
  * biosynthesis-informed, and interpretable fingerprint specifically designed
  * for natural products and natural product-inspired molecules.
  * Look at the <a href="https://github.com/lucinamay/biosynfoni">
@@ -55,7 +49,7 @@ import java.util.HashSet;
  * <p>
  * The fingerprint consists of a predefined set of SMARTS patterns describing
  * biosynthetically relevant structural motifs. Each SMARTS pattern corresponds
- * to one fingerprint position (feature key).
+ * to one fingerprint position (feature key). There are 39 SMARTS used.
  * </p>
  *
  * <p>
@@ -89,7 +83,7 @@ import java.util.HashSet;
  *   <p><b>Known differences to the reference implementation:</b></p>
  *   <ul>
  *     <li>
- *       The SMARTS pattern used to identify non-ring carbon atoms was replaced
+ *       The SMARTS pattern used to identify carbon atoms not inside a 6 ring  was replaced
  *       from {@code [#6;!$([r6])]} to {@code [#6!$(*1*****1)]}. The original
  *       pattern excludes only carbon atoms in six-membered rings, whereas the
  *       replacement excludes carbon atoms that are part of any six-membered
@@ -98,11 +92,12 @@ import java.util.HashSet;
  *       Biosynfoni implementation. The affected fingerprint keys represent phenyl-derived substructures
  *       originating from the shikimate pathway (fingerprint keys 13, 14, and 15)
  *       See the <a href="https://github.com/cdk/cdk/issues/1292#issue-4641968710">  Git Issue </a>
- *       for more information
+ *       for more information.
  *     </li>
  *     <li>
+ *       Matching can always differ due to the use of different toolkits and therefore the use of different aromaticity models for example:
  *       The aromaticity assignment of positively charged sulfur atoms may differ
- *       between toolkits, resulting in different SMARTS matching behaviour
+ *       between toolkits, resulting in different SMARTS matching behaviour.
  *     </li>
  *   </ul>
  *
@@ -115,7 +110,7 @@ import java.util.HashSet;
  * </ul>
  * </p>
  *
- * @author MaRa1778
+ * @author Marlon Raffelt (MaRa1778)
  */
 public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IFingerprinter {
 
@@ -153,7 +148,7 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
         ALL_STD_AMINOS("allstnd_aminos", "[$([$([NX3H,NX4H2+]),$([NX3](C)(C)(C))]1[CX4H]([CH2][CH2][CH2]1)[CX3](=[OX1])[OX2H,OX1-,N]),$([$([NX3H2,NX4H3+]),$([NX3H](C)(C))][CX4H2][CX3](=[OX1])[OX2H,OX1-,N]),$([$([NX3H2,NX4H3+]),$([NX3H](C)(C))][CX4H]([$([CH3X4]),$([CH2X4][CH2X4][CH2X4][NHX3][CH0X3](=[NH2X3+,NHX2+0])[NH2X3]),$([CH2X4][CX3](=[OX1])[NX3H2]),$([CH2X4][CX3](=[OX1])[OH0-,OH]),$([CH2X4][SX2H,SX1H0-]),$([CH2X4][CH2X4][CX3](=[OX1])[OH0-,OH]),$([CH2X4][#6X3]1:[$([#7X3H+,#7X2H0+0]:[#6X3H]:[#7X3H]),$([#7X3H])]:[#6X3H]:[$([#7X3H+,#7X2H0+0]:[#6X3H]:[#7X3H]),$([#7X3H])]:[#6X3H]1),$([CHX4]([CH3X4])[CH2X4][CH3X4]),$([CH2X4][CHX4]([CH3X4])[CH3X4]),$([CH2X4][CH2X4][CH2X4][CH2X4][NX4+,NX3+0]),$([CH2X4][CH2X4][SX2][CH3X4]),$([CH2X4][cX3]1[cX3H][cX3H][cX3H][cX3H][cX3H]1),$([CH2X4][OX2H]),$([CHX4]([CH3X4])[OX2H]),$([CH2X4][cX3]1[cX3H][nX3H][cX3]2[cX3H][cX3H][cX3H][cX3H][cX3]12),$([CH2X4][cX3]1[cX3H][cX3H][cX3]([OHX2,OH0X1-])[cX3H][cX3H]1),$([CHX4]([CH3X4])[CH3X4])])[CX3](=[OX1])[OX2H,OX1-,N])]"),
         //#todo
         NON_STD_AMINOS("nonstnd_aminos", "[$([NX3,NX4+][CX4H]([$([CH3X4]),$([CH2X4][CH2X4][CH2X4][NHX3][CH0X3](=[NH2X3+,NHX2+0])[NH2X3]),$([CH2X4][CX3](=[OX1])[NX3H2]),$([CH2X4][CX3](=[OX1])[OH0-,OH]),$([CH2X4][SX2H,SX1H0-]),$([CH2X4][CH2X4][CX3](=[OX1])[OH0-,OH]),$([CH2X4][#6X3]1:[$([#7X3H+,#7X2H0+0]:[#6X3H]:[#7X3H]),$([#7X3H])]:[#6X3H]:[$([#7X3H+,#7X2H0+0]:[#6X3H]:[#7X3H]),$([#7X3H])]:[#6X3H]1),$([CHX4]([CH3X4])[CH2X4][CH3X4]),$([CH2X4][CHX4]([CH3X4])[CH3X4]),$([CH2X4][CH2X4][CH2X4][CH2X4][NX4+,NX3+0]),$([CH2X4][CH2X4][SX2][CH3X4]),$([CH2X4][cX3]1[cX3H][cX3H][cX3H][cX3H][cX3H]1),$([CH2X4][OX2H]),$([CHX4]([CH3X4])[OX2H]),$([CH2X4][cX3]1[cX3H][nX3H][cX3]2[cX3H][cX3H][cX3H][cX3H][cX3]12),$([CH2X4][cX3]1[cX3H][cX3H][cX3]([OHX2,OH0X1-])[cX3H][cX3H]1),$([CHX4]([CH3X4])[CH3X4])])[CX3](=[OX1])[O,N]);!$([$([$([NX3H,NX4H2+]),$([NX3](C)(C)(C))]1[CX4H]([CH2][CH2][CH2]1)[CX3](=[OX1])[OX2H,OX1-,N]),$([$([NX3H2,NX4H3+]),$([NX3H](C)(C))][CX4H2][CX3](=[OX1])[OX2H,OX1-,N]),$([$([NX3H2,NX4H3+]),$([NX3H](C)(C))][CX4H]([$([CH3X4]),$([CH2X4][CH2X4][CH2X4][NHX3][CH0X3](=[NH2X3+,NHX2+0])[NH2X3]),$([CH2X4][CX3](=[OX1])[NX3H2]),$([CH2X4][CX3](=[OX1])[OH0-,OH]),$([CH2X4][SX2H,SX1H0-]),$([CH2X4][CH2X4][CX3](=[OX1])[OH0-,OH]),$([CH2X4][#6X3]1:[$([#7X3H+,#7X2H0+0]:[#6X3H]:[#7X3H]),$([#7X3H])]:[#6X3H]:[$([#7X3H+,#7X2H0+0]:[#6X3H]:[#7X3H]),$([#7X3H])]:[#6X3H]1),$([CHX4]([CH3X4])[CH2X4][CH3X4]),$([CH2X4][CHX4]([CH3X4])[CH3X4]),$([CH2X4][CH2X4][CH2X4][CH2X4][NX4+,NX3+0]),$([CH2X4][CH2X4][SX2][CH3X4]),$([CH2X4][cX3]1[cX3H][cX3H][cX3H][cX3H][cX3H]1),$([CH2X4][OX2H]),$([CHX4]([CH3X4])[OX2H]),$([CH2X4][cX3]1[cX3H][nX3H][cX3]2[cX3H][cX3H][cX3H][cX3H][cX3]12),$([CH2X4][cX3]1[cX3H][cX3H][cX3]([OHX2,OH0X1-])[cX3H][cX3H]1),$([CHX4]([CH3X4])[CH3X4])])[CX3](=[OX1])[OX2H,OX1-,N])])]"),
-        //Sugar derviates
+        //Sugar deviates
         /**
          * Open-chain hexose.
          * SMARTS matches a linear six-carbon sugar containing a hydroxyl group
@@ -287,22 +282,22 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
 
         /**
          * Fluorine atom.
-         * SAMRTS matches any fluorine atom.
+         * SMARTS matches any fluorine atom.
          */
         HAL_F("hal_f", "[#9]"),
         /**
          * Chlorine atom.
-         * SAMRTS matches any chlorine atom.
+         * SMARTS matches any chlorine atom.
          */
         HAL_CL("hal_cl", "[#17]"),
         /**
          * Bromine atom.
-         * SAMRTS matches any bromine atom.
+         * SMARTS matches any bromine atom.
          */
         HAL_BR("hal_br", "[#35]"),
         /**
          * Iodine atom.
-         * SAMRTS matches any iodine atom.
+         * SMARTS matches any iodine atom.
          */
         HAL_I("hal_i", "[#53]"),
 
@@ -311,7 +306,7 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
         /**
          * Terminal nitrogen atom.
          *
-         * <p>SAMRTS matches any nitrogen atom with exactly one bonded neighbour
+         * <p>SMARTS matches any nitrogen atom with exactly one bonded neighbour
          * (SMARTS degree = 1), irrespective of whether it is aromatic or
          * aliphatic. This pattern is not restricted to nitrate groups despite
          * the constant name.</p>
@@ -319,18 +314,18 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
         N_NITRATE("n_nitrate_1", "[N;D1]"),
         /**
          * Epoxide group.
-         * SAMRTS matches an oxygen atom that is part of a three-membered ring.
+         * SMARTS matches an oxygen atom that is part of a three-membered ring.
          */
         O_EPOXY("o_epoxy_1", "[O;x2;r3]"),
         /**
          * Ether group.
-         * SAMRTS matches a non-cyclic ether oxygen connecting two atoms while
+         * SMARTS matches a non-cyclic ether oxygen connecting two atoms while
          * excluding esters, phosphates and sulfates.
          */
         O_ETHER("o_ether_1", "[O;D2;!h;!$(*C=O);X2;!R;!$(*P);!$(*S)]"),
         /**
          * Hydroxyl group.
-         * SAMRTS matches a hydroxyl (-OH) group attached to a carbon or nitrogen atom
+         * SMARTS matches a hydroxyl (-OH) group attached to a carbon or nitrogen atom
          * while excluding carboxylic acids, phosphates and sulfates.
          */
         O_HYDROXYL("o_hydroxyl_1", "[#8;D1;h,!v2;$(*[#6,#7]);!$(*C~O);!$(P);!$(S)]"),
@@ -339,37 +334,37 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
 
         /**
          * Three-membered carbon ring.
-         * SAMRTS matches a ring consisting of three carbon atoms, regardless of aromaticity.
+         * SMARTS matches a ring consisting of three carbon atoms, regardless of aromaticity.
          */
         R_C3("r_c3", "[#6]~1~[#6]~[#6]~1"),
         /**
          * Four-membered carbon ring.
-         * SAMRTS matches a ring consisting of three carbon atoms, regardless of aromaticity.
+         * SMARTS matches a ring consisting of three carbon atoms, regardless of aromaticity.
          */
         R_C4("r_c4", "[#6]~1~[#6]~[#6]~[#6]~1"),
         /**
          * five-membered carbon ring.
-         * SAMRTS matches a ring consisting of three carbon atoms, regardless of aromaticity.
+         * SMARTS matches a ring consisting of three carbon atoms, regardless of aromaticity.
          */
         R_C5("r_c5", "[#6]~1~[#6]~[#6]~[#6]~[#6]~1"),
         /**
          * Six-membered carbon ring.
-         * SAMRTS matches a ring consisting of three carbon atoms, regardless of aromaticity.
+         * SMARTS matches a ring consisting of three carbon atoms, regardless of aromaticity.
          */
         R_C6("r_c6", "[#6]~1~[#6]~[#6]~[#6]~[#6]~[#6]~1"),
         /**
          * Seven-membered carbon ring.
-         * SAMRTS matches a ring consisting of three carbon atoms, regardless of aromaticity.
+         * SMARTS matches a ring consisting of three carbon atoms, regardless of aromaticity.
          */
         R_C7("r_c7", "[#6]~1~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~1"),
         /**
          * Eight-membered carbon ring.
-         * SAMRTS matches a ring consisting of three carbon atoms, regardless of aromaticity.
+         * SMARTS matches a ring consisting of three carbon atoms, regardless of aromaticity.
          */
         R_C8("r_c8", "[#6]~1~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~1"),
         /**
          * Nine-membered carbon ring.
-         * SAMRTS matches a ring consisting of three carbon atoms, regardless of aromaticity.
+         * SMARTS matches a ring consisting of three carbon atoms, regardless of aromaticity.
          */
         R_C9("r_c9", "[#6]~1~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~[#6]~1"),
         /**
@@ -427,12 +422,12 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
     /**
      * Enables filtering of overlapping matches within the same substructure.
      */
-    private boolean intraSubOverlapToggle;
+    private final boolean intraSubOverlapToggle;
 
     /**
      * Enables filtering of overlapping matches between different substructures.
      */
-    private boolean interSubOverLapToggle;
+    private final boolean interSubOverLapToggle;
 
     /**
      * SMARTS patterns used for fingerprint generation.
@@ -442,7 +437,7 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
     /**
      * Number of SMARTS patterns.
      */
-    private int smartsSize;
+    private int fingerprintSize;
 
     /**
      * Creates a Biosynfoni fingerprinter using the default SMARTS patterns with
@@ -484,9 +479,9 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
         this.intraSubOverlapToggle = intraSubOverlapToggle;
         this.smartsList = smarts;
         if (smarts == null) {
-            this.smartsSize = DefaultBiosynfoniKey.values().length;
+            this.fingerprintSize = DefaultBiosynfoniKey.values().length;
         } else {
-            this.smartsSize = smarts.length;
+            this.fingerprintSize = smarts.length;
         }
     }
 
@@ -499,7 +494,7 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
         if (container == null) {
             throw new NullPointerException("container must not be null");
         }
-        BitSet BIOSYNFingerprintBIT = new BitSet(this.smartsSize);
+        BitSet BIOSYNFingerprintBIT = new BitSet(this.fingerprintSize);
 
         if (container.isEmpty()) {
             return new BitSetFingerprint(BIOSYNFingerprintBIT);
@@ -520,18 +515,39 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
      */
     @Override
     public ICountFingerprint getCountFingerprint(IAtomContainer container) throws CDKException {
+
+        if (container == null) {
+            throw new NullPointerException("container must not be null");
+        }
+        if (container.isEmpty()) {
+            throw new CDKException("container must not be empty");
+        }
         List<List<int[]>> filteredMatches = this.getFilteredMatches(container);
-        return new CountFingerPrint(filteredMatches);
+
+        return new CountFingerprint(filteredMatches);
     }
 
     @Override
     public Map<String, Integer> getRawFingerprint(IAtomContainer container) throws CDKException {
-        throw new CDKException("Not yet implemented");
+        int[] counts = new int[this.fingerprintSize];
+
+        List<List<int[]>> filteredMatches = this.getFilteredMatches(container);
+        for (int i = 0; i < filteredMatches.size(); i++) {
+            counts[i] = filteredMatches.get(i).size();
+        }
+        Map<String, Integer> rawFingerprint = new HashMap<>();
+        int index = 0;
+        for (DefaultBiosynfoniKey key : DefaultBiosynfoniKey.values()){
+            rawFingerprint.put(key.getLabel(),counts[index]);
+            index++;
+        }
+
+        return rawFingerprint;
     }
 
     @Override
     public int getSize() {
-        return this.smartsSize;
+        return this.fingerprintSize;
     }
 
     /**
@@ -568,7 +584,7 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
      */
     private List<List<int[]>> getFilteredMatches(IAtomContainer aMolecule) {
         SmartsPattern.prepare(aMolecule);
-        List<List<int[]>> filteredMatches = new ArrayList<>(this.smartsSize);
+        List<List<int[]>> filteredMatches = new ArrayList<>(this.fingerprintSize);
         // prepare aromaticity and hydrogen's once
         IAtomContainer preparedMol = this.preprocessMolecule(aMolecule);
         if (this.smartsList == null) {
@@ -658,15 +674,17 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
      *
      */
     private List<int[]> intraSubOverlap(List<int[]> subMatches) {
-        List<int[]> filteredSubMatches = new ArrayList<>(this.smartsSize);
+        List<int[]> filteredSubMatches = new ArrayList<>(this.fingerprintSize);
 
-        subMatches.sort((a, b) -> {
+        try{subMatches.sort((a, b) -> {
 
             if (a[0] != b[0]) {
                 return Integer.compare(a[0], b[0]);
             }
             return Integer.compare(a[1], b[1]);
-        });
+        });}catch(ArrayIndexOutOfBoundsException arrayIndexOutOfBoundsException){
+            System.err.println("Failed to compare Indices. This should never happen");
+        } //#todo Fix the problem with an comparison
 
         Set<Integer> blockedAtoms = new HashSet<>();
         for (int[] aMatch : subMatches) {
@@ -699,7 +717,7 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
      * previous SMARTS patterns
      */
     private List<int[]> interSubOverlap(List<int[]> subMatches, List<List<int[]>> prevMatches) {
-        List<int[]> filteredSubMatches = new ArrayList<>(this.smartsSize);
+        List<int[]> filteredSubMatches = new ArrayList<>(this.fingerprintSize);
         Set<Integer> blockedAtoms = new HashSet<>();
 
         for (List<int[]> matches : prevMatches) {
@@ -900,10 +918,23 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
 
 }
 
-final class CountFingerPrint implements ICountFingerprint {
-    private final int[] counts;
+/**
+ * Immutable implementation of {@link ICountFingerprint} storing the occurrence
+ * count of each Biosynfoni substructure.
+ * <p>
+ * The fingerprint is created from the filtered SMARTS matches generated during
+ * fingerprint calculation. Each fingerprint position corresponds to one
+ * Biosynfoni substructure key, and the stored value represents the number of
+ * non-overlapping matches for that key.
+ * <p>
+ * This implementation provides read-only access to the fingerprint counts.
+ * Methods intended for mutable fingerprints are currently not supported.
+ */
+final class CountFingerprint implements ICountFingerprint {
+    private int[] counts;
+    private boolean behaveAsBitFingerprint;
 
-    public CountFingerPrint(List<List<int[]>> filteredMatches) {
+    public CountFingerprint(List<List<int[]>> filteredMatches) {
         this.counts = new int[filteredMatches.size()];
 
         for (int i = 0; i < filteredMatches.size(); i++) {
@@ -939,12 +970,19 @@ final class CountFingerPrint implements ICountFingerprint {
 
     @Override
     public void merge(ICountFingerprint fp) {
-
+        if(size() == fp.size()) {
+            for(int i =0; i < fp.size(); i++) {
+                counts[i] += fp.getCount(i);
+            }
+        }else {
+            throw new IllegalArgumentException("Fingerprints are not the same size");
+        }
     }
 
     @Override
     public void setBehaveAsBitFingerprint(boolean behaveAsBitFingerprint) {
-
+        this.behaveAsBitFingerprint = behaveAsBitFingerprint;
+        convertCountToBitFingerprint();
     }
 
     @Override
@@ -955,5 +993,8 @@ final class CountFingerPrint implements ICountFingerprint {
     @Override
     public int getCountForHash(int hash) {
         return hasHash(hash) ? counts[hash] : 0;
+    }
+    private void convertCountToBitFingerprint() {
+
     }
 }
