@@ -23,21 +23,16 @@
  */
 package org.openscience.cdk.fingerprint;
 
-import org.openscience.cdk.aromaticity.Aromaticity;
-import org.openscience.cdk.aromaticity.ElectronDonation;
 import org.openscience.cdk.exception.CDKException;
-import org.openscience.cdk.graph.Cycles;
 import org.openscience.cdk.graph.GraphUtil;
 import org.openscience.cdk.graph.invariant.Canon;
-import org.openscience.cdk.interfaces.IAtom;
-import org.openscience.cdk.interfaces.IBond;
-import org.openscience.cdk.interfaces.IRingSet;
 import org.openscience.cdk.smarts.SmartsPattern;
-import org.openscience.cdk.tools.CDKHydrogenAdder;
-import org.openscience.cdk.tools.manipulator.AtomContainerManipulator;
 import org.openscience.cdk.interfaces.IAtomContainer;
+import org.openscience.cdk.tools.ILoggingTool;
+import org.openscience.cdk.tools.LoggingToolFactory;
 
 import java.util.*;
+import java.util.stream.Stream;
 
 /**
  * Implementation of the Biosynfoni molecular fingerprint (<a href="https://doi.org/10.1186/s13321-025-01081-6">
@@ -121,7 +116,7 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
      * Together, these feature definitions form the default Biosynfoni fingerprint.
      * </p>
      */
-    public enum DefaultBiosynfoniKey {
+    private enum BiosynfoniKey {
         //Cofactors
         /**
          * Coenzyme A (CoA).
@@ -148,7 +143,7 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
         ALL_STD_AMINOS("allstnd_aminos", "[$([$([NX3H,NX4H2+]),$([NX3](C)(C)(C))]1[CX4H]([CH2][CH2][CH2]1)[CX3](=[OX1])[OX2H,OX1-,N]),$([$([NX3H2,NX4H3+]),$([NX3H](C)(C))][CX4H2][CX3](=[OX1])[OX2H,OX1-,N]),$([$([NX3H2,NX4H3+]),$([NX3H](C)(C))][CX4H]([$([CH3X4]),$([CH2X4][CH2X4][CH2X4][NHX3][CH0X3](=[NH2X3+,NHX2+0])[NH2X3]),$([CH2X4][CX3](=[OX1])[NX3H2]),$([CH2X4][CX3](=[OX1])[OH0-,OH]),$([CH2X4][SX2H,SX1H0-]),$([CH2X4][CH2X4][CX3](=[OX1])[OH0-,OH]),$([CH2X4][#6X3]1:[$([#7X3H+,#7X2H0+0]:[#6X3H]:[#7X3H]),$([#7X3H])]:[#6X3H]:[$([#7X3H+,#7X2H0+0]:[#6X3H]:[#7X3H]),$([#7X3H])]:[#6X3H]1),$([CHX4]([CH3X4])[CH2X4][CH3X4]),$([CH2X4][CHX4]([CH3X4])[CH3X4]),$([CH2X4][CH2X4][CH2X4][CH2X4][NX4+,NX3+0]),$([CH2X4][CH2X4][SX2][CH3X4]),$([CH2X4][cX3]1[cX3H][cX3H][cX3H][cX3H][cX3H]1),$([CH2X4][OX2H]),$([CHX4]([CH3X4])[OX2H]),$([CH2X4][cX3]1[cX3H][nX3H][cX3]2[cX3H][cX3H][cX3H][cX3H][cX3]12),$([CH2X4][cX3]1[cX3H][cX3H][cX3]([OHX2,OH0X1-])[cX3H][cX3H]1),$([CHX4]([CH3X4])[CH3X4])])[CX3](=[OX1])[OX2H,OX1-,N])]"),
         //#todo
         NON_STD_AMINOS("nonstnd_aminos", "[$([NX3,NX4+][CX4H]([$([CH3X4]),$([CH2X4][CH2X4][CH2X4][NHX3][CH0X3](=[NH2X3+,NHX2+0])[NH2X3]),$([CH2X4][CX3](=[OX1])[NX3H2]),$([CH2X4][CX3](=[OX1])[OH0-,OH]),$([CH2X4][SX2H,SX1H0-]),$([CH2X4][CH2X4][CX3](=[OX1])[OH0-,OH]),$([CH2X4][#6X3]1:[$([#7X3H+,#7X2H0+0]:[#6X3H]:[#7X3H]),$([#7X3H])]:[#6X3H]:[$([#7X3H+,#7X2H0+0]:[#6X3H]:[#7X3H]),$([#7X3H])]:[#6X3H]1),$([CHX4]([CH3X4])[CH2X4][CH3X4]),$([CH2X4][CHX4]([CH3X4])[CH3X4]),$([CH2X4][CH2X4][CH2X4][CH2X4][NX4+,NX3+0]),$([CH2X4][CH2X4][SX2][CH3X4]),$([CH2X4][cX3]1[cX3H][cX3H][cX3H][cX3H][cX3H]1),$([CH2X4][OX2H]),$([CHX4]([CH3X4])[OX2H]),$([CH2X4][cX3]1[cX3H][nX3H][cX3]2[cX3H][cX3H][cX3H][cX3H][cX3]12),$([CH2X4][cX3]1[cX3H][cX3H][cX3]([OHX2,OH0X1-])[cX3H][cX3H]1),$([CHX4]([CH3X4])[CH3X4])])[CX3](=[OX1])[O,N]);!$([$([$([NX3H,NX4H2+]),$([NX3](C)(C)(C))]1[CX4H]([CH2][CH2][CH2]1)[CX3](=[OX1])[OX2H,OX1-,N]),$([$([NX3H2,NX4H3+]),$([NX3H](C)(C))][CX4H2][CX3](=[OX1])[OX2H,OX1-,N]),$([$([NX3H2,NX4H3+]),$([NX3H](C)(C))][CX4H]([$([CH3X4]),$([CH2X4][CH2X4][CH2X4][NHX3][CH0X3](=[NH2X3+,NHX2+0])[NH2X3]),$([CH2X4][CX3](=[OX1])[NX3H2]),$([CH2X4][CX3](=[OX1])[OH0-,OH]),$([CH2X4][SX2H,SX1H0-]),$([CH2X4][CH2X4][CX3](=[OX1])[OH0-,OH]),$([CH2X4][#6X3]1:[$([#7X3H+,#7X2H0+0]:[#6X3H]:[#7X3H]),$([#7X3H])]:[#6X3H]:[$([#7X3H+,#7X2H0+0]:[#6X3H]:[#7X3H]),$([#7X3H])]:[#6X3H]1),$([CHX4]([CH3X4])[CH2X4][CH3X4]),$([CH2X4][CHX4]([CH3X4])[CH3X4]),$([CH2X4][CH2X4][CH2X4][CH2X4][NX4+,NX3+0]),$([CH2X4][CH2X4][SX2][CH3X4]),$([CH2X4][cX3]1[cX3H][cX3H][cX3H][cX3H][cX3H]1),$([CH2X4][OX2H]),$([CHX4]([CH3X4])[OX2H]),$([CH2X4][cX3]1[cX3H][nX3H][cX3]2[cX3H][cX3H][cX3H][cX3H][cX3]12),$([CH2X4][cX3]1[cX3H][cX3H][cX3]([OHX2,OH0X1-])[cX3H][cX3H]1),$([CHX4]([CH3X4])[CH3X4])])[CX3](=[OX1])[OX2H,OX1-,N])])]"),
-        //Sugar deviates
+        //Sugar derivatives
         /**
          * Open-chain hexose.
          * SMARTS matches a linear six-carbon sugar containing a hydroxyl group
@@ -395,7 +390,7 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
          * @param label  descriptive name of the fingerprint feature
          * @param smarts SMARTS pattern used to identify the structural motif
          */
-        DefaultBiosynfoniKey(String label, String smarts) {
+        BiosynfoniKey(String label, String smarts) {
             this.label = label;
             this.smarts = smarts;
         }
@@ -439,6 +434,8 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
      */
     private int fingerprintSize;
 
+    private static final ILoggingTool logger = LoggingToolFactory.createLoggingTool(BiosynfoniFingerprinter.class);
+
     /**
      * Creates a Biosynfoni fingerprinter using the default SMARTS patterns with
      * both intra- and inter-substructure overlap filtering disabled. This
@@ -479,7 +476,9 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
         this.intraSubOverlapToggle = intraSubOverlapToggle;
         this.smartsList = smarts;
         if (smarts == null) {
-            this.fingerprintSize = DefaultBiosynfoniKey.values().length;
+
+            this.fingerprintSize = BiosynfoniKey.values().length;
+
         } else {
             this.fingerprintSize = smarts.length;
         }
@@ -494,20 +493,20 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
         if (container == null) {
             throw new NullPointerException("container must not be null");
         }
-        BitSet BIOSYNFingerprintBIT = new BitSet(this.fingerprintSize);
+        BitSet BiosynfoiFingerprintBIT = new BitSet(this.fingerprintSize);
 
         if (container.isEmpty()) {
-            return new BitSetFingerprint(BIOSYNFingerprintBIT);
+            return new BitSetFingerprint(BiosynfoiFingerprintBIT);
         }
 
         List<List<int[]>> filteredMatches = this.getFilteredMatches(container);
         for (int i = 0; i < filteredMatches.size(); i++) {
             if (!filteredMatches.get(i).isEmpty()) {
-                BIOSYNFingerprintBIT.set(i);
+                BiosynfoiFingerprintBIT.set(i);
             }
 
         }
-        return new BitSetFingerprint(BIOSYNFingerprintBIT);
+        return new BitSetFingerprint(BiosynfoiFingerprintBIT);
     }
 
     /**
@@ -524,7 +523,7 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
         }
         List<List<int[]>> filteredMatches = this.getFilteredMatches(container);
 
-        return new CountFingerprint(filteredMatches);
+        return new BiosynfoniCountFingerprint(filteredMatches);
     }
 
     @Override
@@ -532,13 +531,11 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
         int[] counts = new int[this.fingerprintSize];
 
         List<List<int[]>> filteredMatches = this.getFilteredMatches(container);
-        for (int i = 0; i < filteredMatches.size(); i++) {
-            counts[i] = filteredMatches.get(i).size();
-        }
         Map<String, Integer> rawFingerprint = new HashMap<>();
         int index = 0;
-        for (DefaultBiosynfoniKey key : DefaultBiosynfoniKey.values()){
-            rawFingerprint.put(key.getLabel(),counts[index]);
+        for (BiosynfoniKey key : BiosynfoniKey.values()) {
+            counts[index] = filteredMatches.get(index).size();
+            rawFingerprint.put(key.getLabel(), counts[index]);
             index++;
         }
 
@@ -554,15 +551,14 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
      * Identify and return SMARTS matches for the molecule, grouped by SMARTS pattern.
      * <p>
      * Purpose:
-     * - For each SMARTS pattern (either the default set from {@link DefaultBiosynfoniKey}
+     * - For each SMARTS pattern (either the default set from {@link BiosynfoniKey}
      * or a custom {@code smartsList}), find all unique atom-index matches in the
      * supplied molecule and collect them into per-pattern lists.
      * <p>
      * Behavior / Algorithm:
      * - Ensures the molecule is prepared for SMARTS matching (calls
      * {@link SmartsPattern#prepare(IAtomContainer)}) and runs
-     * {@link #preprocessMolecule(IAtomContainer)} once to detect atom types,
-     * implicit hydrogens, rings and aromaticity.
+     * <p>
      * - For each SMARTS, constructs a {@link SmartsPattern} and delegates to
      * {@link #getSubMatches(SmartsPattern, IAtomContainer, List)} to obtain the
      * list of atom-index matches for that pattern. If overlap filters are
@@ -576,29 +572,28 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
      * <p>
      * Side effects:
      * - The supplied {@code IAtomContainer} is mutated by
-     * {@link #preprocessMolecule(IAtomContainer)} (atom typing, hydrogens,
+     * (atom typing, hydrogens,
      * aromaticity flags). This method does not copy the molecule.
      *
      * @param aMolecule the molecule to search for SMARTS matches (mutated)
      * @return grouped SMARTS matches (outer list = SMARTS order, inner lists = matches)
      */
     private List<List<int[]>> getFilteredMatches(IAtomContainer aMolecule) {
-        SmartsPattern.prepare(aMolecule);
+        SmartsPattern.prepare(aMolecule);//#todo
         List<List<int[]>> filteredMatches = new ArrayList<>(this.fingerprintSize);
-        // prepare aromaticity and hydrogen's once
-        IAtomContainer preparedMol = this.preprocessMolecule(aMolecule);
+
         if (this.smartsList == null) {
-            for (DefaultBiosynfoniKey key : DefaultBiosynfoniKey.values()) {
+            for (BiosynfoniKey key : BiosynfoniKey.values()) {
 
                 SmartsPattern pattern = SmartsPattern.create(key.getSmarts());
-                List<int[]> subMatches = this.getSubMatches(pattern, preparedMol, filteredMatches);
+                List<int[]> subMatches = this.getSubMatches(pattern, aMolecule, filteredMatches);
                 filteredMatches.add(subMatches);
             }
 
         } else {
             for (String smarts : this.smartsList) {
                 SmartsPattern pattern = SmartsPattern.create(smarts);
-                List<int[]> subMatches = this.getSubMatches(pattern, preparedMol, filteredMatches);
+                List<int[]> subMatches = this.getSubMatches(pattern, aMolecule, filteredMatches);
                 filteredMatches.add(subMatches);
             }
         }
@@ -638,19 +633,20 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
     private List<int[]> getSubMatches(SmartsPattern pattern, IAtomContainer aMolecule, List<List<int[]>> filteredMatches) {
         List<int[]> subMatches = new ArrayList<>();
         int[][] uniqueMatches = pattern.matchAll(aMolecule).uniqueAtoms().toArray();
+        int moleculeAtomCount = aMolecule.getAtomCount();
 
         subMatches.addAll(Arrays.asList(uniqueMatches));
         if (this.intraSubOverlapToggle) {
             subMatches = this.intraSubOverlap(subMatches);
         }
         if (this.interSubOverLapToggle) {
-            subMatches = this.interSubOverlap(subMatches, filteredMatches);
+            subMatches = this.interSubOverlap(subMatches, filteredMatches, moleculeAtomCount);
         }
         return subMatches;
     }
 
     /**
-     * Filters overlapping Matches from the same Structure
+     * Filters overlapping Matches from the same Structure.
      * Matches are processed in sorted order. A match is accepted only if none of its
      * atom indices have already been assigned to a previously accepted match.
      * Accepted matches block all of their atoms from being reused in later
@@ -676,20 +672,22 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
     private List<int[]> intraSubOverlap(List<int[]> subMatches) {
         List<int[]> filteredSubMatches = new ArrayList<>(this.fingerprintSize);
 
-        try{subMatches.sort((a, b) -> {
+        try {
+            subMatches.sort((a, b) -> {
 
-            if (a[0] != b[0]) {
-                return Integer.compare(a[0], b[0]);
-            }
-            return Integer.compare(a[1], b[1]);
-        });}catch(ArrayIndexOutOfBoundsException arrayIndexOutOfBoundsException){
-            System.err.println("Failed to compare Indices. This should never happen");
+                if (a[0] != b[0]) {
+                    return Integer.compare(a[0], b[0]);
+                }
+                return Integer.compare(a[1], b[1]);
+            });
+        } catch (ArrayIndexOutOfBoundsException arrayIndexOutOfBoundsException) {
+            logger.error("Failed to compare indices. This should never happen.", arrayIndexOutOfBoundsException);
         } //#todo Fix the problem with an comparison
 
         Set<Integer> blockedAtoms = new HashSet<>();
         for (int[] aMatch : subMatches) {
 
-            if (!this.hasOverlap(aMatch, blockedAtoms)) {
+            if (!hasOverlap(aMatch, blockedAtoms)) {
                 filteredSubMatches.add(aMatch);
                 this.addBlockedAtoms(aMatch, blockedAtoms);
             }
@@ -716,9 +714,9 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
      * @return a list of matches that do not overlap with atoms used by
      * previous SMARTS patterns
      */
-    private List<int[]> interSubOverlap(List<int[]> subMatches, List<List<int[]>> prevMatches) {
+    private List<int[]> interSubOverlap(List<int[]> subMatches, List<List<int[]>> prevMatches, int moleculeAtomCount) {
         List<int[]> filteredSubMatches = new ArrayList<>(this.fingerprintSize);
-        Set<Integer> blockedAtoms = new HashSet<>();
+        Set<Integer> blockedAtoms = new HashSet<>(moleculeAtomCount);
 
         for (List<int[]> matches : prevMatches) {
             for (int[] aMatch : matches) {
@@ -727,7 +725,7 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
         }
 
         for (int[] aMatch : subMatches) {
-            if (!this.hasOverlap(aMatch, blockedAtoms)) {
+            if (!hasOverlap(aMatch, blockedAtoms)) {
                 filteredSubMatches.add(aMatch);
 
             }
@@ -750,9 +748,9 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
      * otherwise {@code false}
      */
 
-    private boolean hasOverlap(int[] aMatch, Set<Integer> blockedAtoms) {
-        for (int atom : aMatch) {
-            if (blockedAtoms.contains(atom)) {
+    private static boolean hasOverlap(int[] aMatch, Set<Integer> blockedAtoms) {
+        for (int atomIndex : aMatch) {
+            if (blockedAtoms.contains(atomIndex)) {
                 return true;
             }
         }
@@ -770,79 +768,11 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
      * @param blockedAtoms the set of blocked atom indices to be updated
      */
     private void addBlockedAtoms(int[] match, Set<Integer> blockedAtoms) {
-        for (int atom : match) {
-            blockedAtoms.add(atom);
+        for (int atomIndex : match) {
+            blockedAtoms.add(atomIndex);
         }
     }
 
-    /**
-     * Prepares a molecule for SMARTS matching by assigning atom types,
-     * adding implicit hydrogens, detecting ring membership, and
-     * perceiving aromaticity.
-     * The method uses the recommended Ring finding method for pattern matching({@code Cycles.sssr()})
-     * {@code AtomContainerManipulator.perceiveAtomTypesAndConfigureAtoms(IAtomContainer)}
-     * and adds implicit hydrogens via {@link CDKHydrogenAdder}.
-     * - Resets all aromaticity and ring-membership flags on atoms and bonds
-     * before recomputing these properties. <p>
-     * - Detects ring membership using the recommended ring-finding method for
-     * SMARTS matching, {@code Cycles.sssr(IAtomContainer)}, and marks atoms
-     * and bonds belonging to rings.<p>
-     * - Creates an {@link Aromaticity} model using
-     * {@code ElectronDonation.cdk()} and
-     * {@code Cycles.cdkAromaticSet()}.
-     * - Applies aromaticity perception to the molecule and updates atom and
-     * bond aromaticity flags in place. <p>
-     * -Applies unique numbering from {@link #canonicalIndex(IAtomContainer)} if {@link #interSubOverlap(List, List)} shall be applied
-     * - Returns the same molecule instance with updated atom typing,
-     * hydrogen counts, ring membership, and aromaticity information. <p>
-     *
-     * @param aMolecule the molecule whose atom information should be improved for later usage
-     * @return the same molecule with updated aromaticity
-     */
-    private IAtomContainer preprocessMolecule(IAtomContainer aMolecule) {
-        IAtomContainer clonedMolecule;
-        if (this.interSubOverLapToggle) {
-            try {
-                clonedMolecule = this.canonicalIndex(aMolecule);
-            } catch (Exception e) {
-                clonedMolecule = aMolecule;
-            }
-        } else {
-            clonedMolecule = aMolecule;
-        }
-        try {
-
-            AtomContainerManipulator.percieveAtomTypesAndConfigureAtoms(clonedMolecule);
-            CDKHydrogenAdder hydrogenAdder = CDKHydrogenAdder.getInstance(clonedMolecule.getBuilder());
-
-            hydrogenAdder.addImplicitHydrogens(clonedMolecule);
-
-            for (IAtom atom : clonedMolecule.atoms()) {
-                atom.setIsAromatic(false);
-                atom.setIsInRing(false);
-            }
-            for (IBond bond : clonedMolecule.bonds()) {
-                bond.setIsAromatic(false);
-                bond.setIsInRing(false);
-            }
-            Cycles cycles = Cycles.sssr(clonedMolecule);
-            IRingSet rings = cycles.toRingSet();
-
-            for (IAtomContainer molecule : rings.atomContainers()) {
-                for (IAtom atom : molecule.atoms()) {
-                    atom.setIsInRing(true);
-                }
-                for (IBond bond : molecule.bonds()) {
-                    bond.setIsInRing(true);
-                }
-            }
-            Aromaticity aromaticity = new Aromaticity(ElectronDonation.cdk(), Cycles.cdkAromaticSet());
-            aromaticity.apply(clonedMolecule);
-            return clonedMolecule;
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
 
     /**
      * Creates a canonical atom ordering for the given molecule.
@@ -874,7 +804,7 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
      * @return a new {@link IAtomContainer} with atoms arranged in canonical order
      * @throws CloneNotSupportedException if an atom cannot be cloned
      */
-    private IAtomContainer canonicalIndex(IAtomContainer aMolecule) throws CloneNotSupportedException {
+    private Integer[] newIndex(IAtomContainer aMolecule) {
 
         int[][] g = GraphUtil.toAdjList(aMolecule);
         long[] labels = Canon.label(aMolecule, g);
@@ -889,112 +819,9 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
             return Integer.compare(i, j);
         });
 
-
-        int[] oldToNew = new int[aMolecule.getAtomCount()];
-        IAtomContainer canonical = aMolecule.getBuilder().newInstance(IAtomContainer.class);
-
-        for (int newIdx = 0; newIdx < indices.length; newIdx++) {
-            int oldIdx = indices[newIdx];
-            IAtom atom = (IAtom) aMolecule.getAtom(oldIdx).clone();
-            canonical.addAtom(atom);
-            oldToNew[oldIdx] = newIdx;
-        }
-
-        for (IBond bond : aMolecule.bonds()) {
-            int oldA = aMolecule.indexOf(bond.getBegin());
-            int oldB = aMolecule.indexOf(bond.getEnd());
-
-            IAtom newA = canonical.getAtom(oldToNew[oldA]);
-            IAtom newB = canonical.getAtom(oldToNew[oldB]);
-
-            IBond newBond = aMolecule.getBuilder().newInstance(IBond.class, newA, newB, bond.getOrder(), bond.getStereo());
-
-            canonical.addBond(newBond);
-        }
-
-        return canonical;
+        return indices;
     }
 
 
 }
 
-/**
- * Immutable implementation of {@link ICountFingerprint} storing the occurrence
- * count of each Biosynfoni substructure.
- * <p>
- * The fingerprint is created from the filtered SMARTS matches generated during
- * fingerprint calculation. Each fingerprint position corresponds to one
- * Biosynfoni substructure key, and the stored value represents the number of
- * non-overlapping matches for that key.
- * <p>
- * This implementation provides read-only access to the fingerprint counts.
- * Methods intended for mutable fingerprints are currently not supported.
- */
-final class CountFingerprint implements ICountFingerprint {
-    private int[] counts;
-    private boolean behaveAsBitFingerprint;
-
-    public CountFingerprint(List<List<int[]>> filteredMatches) {
-        this.counts = new int[filteredMatches.size()];
-
-        for (int i = 0; i < filteredMatches.size(); i++) {
-            counts[i] = filteredMatches.get(i).size();
-        }
-    }
-
-    @Override
-    public long size() {
-        return counts.length;
-    }
-
-    @Override
-    public int numOfPopulatedbins() {
-        int populated = 0;
-        for (int count : counts) {
-            if (count > 0) {
-                populated++;
-            }
-        }
-        return populated;
-    }
-
-    @Override
-    public int getCount(int index) {
-        return counts[index];
-    }
-
-    @Override
-    public int getHash(int index) {
-        return index;
-    }
-
-    @Override
-    public void merge(ICountFingerprint fp) {
-        if(size() == fp.size()) {
-            for(int i =0; i < fp.size(); i++) {
-                counts[i] += fp.getCount(i);
-            }
-        }else {
-            throw new IllegalArgumentException("Fingerprints are not the same size");
-        }
-    }
-
-    @Override
-    public void setBehaveAsBitFingerprint(boolean behaveAsBitFingerprint) {
-        this.behaveAsBitFingerprint = behaveAsBitFingerprint;
-        convertCountToBitFingerprint();
-    }
-
-    @Override
-    public boolean hasHash(int hash) {
-        return hash >= 0 && hash < counts.length;
-    }
-
-    @Override
-    public int getCountForHash(int hash) {
-        return hasHash(hash) ? counts[hash] : 0;
-    }
-    private void convertCountToBitFingerprint() {
-
-    }
-}
