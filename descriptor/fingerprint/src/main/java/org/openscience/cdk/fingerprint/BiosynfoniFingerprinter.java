@@ -23,20 +23,28 @@
  */
 package org.openscience.cdk.fingerprint;
 
+
 import org.openscience.cdk.exception.CDKException;
 import org.openscience.cdk.graph.GraphUtil;
 import org.openscience.cdk.graph.invariant.Canon;
-import org.openscience.cdk.smarts.SmartsPattern;
 import org.openscience.cdk.interfaces.IAtomContainer;
+import org.openscience.cdk.smarts.SmartsPattern;
 import org.openscience.cdk.tools.ILoggingTool;
 import org.openscience.cdk.tools.LoggingToolFactory;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.BitSet;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
-import java.util.*;
-import java.util.stream.Stream;
 
 /**
  * Implementation of the Biosynfoni molecular fingerprint (<a href="https://doi.org/10.1186/s13321-025-01081-6">
- * Biosynfoni paper (Journal for Chemoinformatics, 2025)</a>), a lightweight,
+ * Biosynfoni paper (Journal of Chemoinformatics, 2025)</a>), a lightweight,
  * biosynthesis-informed, and interpretable fingerprint specifically designed
  * for natural products and natural product-inspired molecules.
  * Look at the <a href="https://github.com/lucinamay/biosynfoni">
@@ -59,8 +67,8 @@ import java.util.stream.Stream;
  *
  *
  * <p>
- * Like the original Biosynfoni implementation, this version can optionally
- * apply overlap filtering:
+ * Optionally, overlap filtering can be applied, as in the reference
+ * implementation:
  * <ul>
  *   <li><b>Intra-pattern filtering</b>: prevents multiple matches of the same
  *       SMARTS pattern from reusing atoms.</li>
@@ -70,19 +78,17 @@ import java.util.stream.Stream;
  * </p>
  *
  * <p>
- * Prior to matching, molecules are preprocessed by assigning atom types,
+ * The molecules need to be preprocessed by assigning atom types,
  * adding implicit hydrogens, detecting ring membership and aromaticity.
- * The supplied molecule may therefore be modified during fingerprint generation.
- * </p>
+  * </p>
  *
  *   <p><b>Known differences to the reference implementation:</b></p>
  *   <ul>
  *     <li>
- *       The SMARTS pattern used to identify carbon atoms not inside a 6 ring  was replaced
- *       from {@code [#6;!$([r6])]} to {@code [#6!$(*1*****1)]}. The original
- *       pattern excludes only carbon atoms in six-membered rings, whereas the
- *       replacement excludes carbon atoms that are part of any six-membered
- *       ring. This change was introduced because the SMARTS matching behaviour
+ *       The original pattern does not exclude carbon atoms that are part of all six-membered rings because, in SMARTS,
+ *       the r{@literal <}x{@literal >} primitive refers to the size of the smallest ring containing an atom.
+ *       Consequently, carbon atoms that belong to both a six-membered ring and a smaller fused ring are not matched as
+ *       r{@literal <}6{@literal >} and are therefore not excluded.
  *       in CDK did not reproduce the intended semantics of the original
  *       Biosynfoni implementation. The affected fingerprint keys represent phenyl-derived substructures
  *       originating from the shikimate pathway (fingerprint keys 13, 14, and 15)
@@ -96,12 +102,17 @@ import java.util.stream.Stream;
  *     </li>
  *   </ul>
  *
- *   <li> Count fingerprints generated using inter-substructure overlap filtering
+ *   <li> Fingerprints generated using inter-substructure overlap filtering
  *   differ from the reference implementation(<a href="https://github.com/lucinamay/biosynfoni">
  *   Original Python implementation</a>) because this implementation
  *   resolves overlapping matches using canonical atom numbering rather than
  *   the input atom order. This removes path dependency and ensures
  *   deterministic fingerprints regardless of atom indexing.  </li>
+ *   <li>
+ *       Unlike the reference Python implementation, count fingerprints are returned as an {@link IntArrayCountFingerprint}.
+ *       Consequently, features with a count of zero are omitted from the underlying representation
+ *       instead of being stored explicitly. So this Fingerprint is viable with {@link org.openscience.cdk.similarity.Tanimoto}
+ *   </li>
  * </ul>
  * </p>
  *
@@ -141,7 +152,7 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
          * twenty canonical side chains.
          */
         ALL_STD_AMINOS("allstnd_aminos", "[$([$([NX3H,NX4H2+]),$([NX3](C)(C)(C))]1[CX4H]([CH2][CH2][CH2]1)[CX3](=[OX1])[OX2H,OX1-,N]),$([$([NX3H2,NX4H3+]),$([NX3H](C)(C))][CX4H2][CX3](=[OX1])[OX2H,OX1-,N]),$([$([NX3H2,NX4H3+]),$([NX3H](C)(C))][CX4H]([$([CH3X4]),$([CH2X4][CH2X4][CH2X4][NHX3][CH0X3](=[NH2X3+,NHX2+0])[NH2X3]),$([CH2X4][CX3](=[OX1])[NX3H2]),$([CH2X4][CX3](=[OX1])[OH0-,OH]),$([CH2X4][SX2H,SX1H0-]),$([CH2X4][CH2X4][CX3](=[OX1])[OH0-,OH]),$([CH2X4][#6X3]1:[$([#7X3H+,#7X2H0+0]:[#6X3H]:[#7X3H]),$([#7X3H])]:[#6X3H]:[$([#7X3H+,#7X2H0+0]:[#6X3H]:[#7X3H]),$([#7X3H])]:[#6X3H]1),$([CHX4]([CH3X4])[CH2X4][CH3X4]),$([CH2X4][CHX4]([CH3X4])[CH3X4]),$([CH2X4][CH2X4][CH2X4][CH2X4][NX4+,NX3+0]),$([CH2X4][CH2X4][SX2][CH3X4]),$([CH2X4][cX3]1[cX3H][cX3H][cX3H][cX3H][cX3H]1),$([CH2X4][OX2H]),$([CHX4]([CH3X4])[OX2H]),$([CH2X4][cX3]1[cX3H][nX3H][cX3]2[cX3H][cX3H][cX3H][cX3H][cX3]12),$([CH2X4][cX3]1[cX3H][cX3H][cX3]([OHX2,OH0X1-])[cX3H][cX3H]1),$([CHX4]([CH3X4])[CH3X4])])[CX3](=[OX1])[OX2H,OX1-,N])]"),
-        //#todo
+        //todo find out what is labeled as nonstnd-aminos
         NON_STD_AMINOS("nonstnd_aminos", "[$([NX3,NX4+][CX4H]([$([CH3X4]),$([CH2X4][CH2X4][CH2X4][NHX3][CH0X3](=[NH2X3+,NHX2+0])[NH2X3]),$([CH2X4][CX3](=[OX1])[NX3H2]),$([CH2X4][CX3](=[OX1])[OH0-,OH]),$([CH2X4][SX2H,SX1H0-]),$([CH2X4][CH2X4][CX3](=[OX1])[OH0-,OH]),$([CH2X4][#6X3]1:[$([#7X3H+,#7X2H0+0]:[#6X3H]:[#7X3H]),$([#7X3H])]:[#6X3H]:[$([#7X3H+,#7X2H0+0]:[#6X3H]:[#7X3H]),$([#7X3H])]:[#6X3H]1),$([CHX4]([CH3X4])[CH2X4][CH3X4]),$([CH2X4][CHX4]([CH3X4])[CH3X4]),$([CH2X4][CH2X4][CH2X4][CH2X4][NX4+,NX3+0]),$([CH2X4][CH2X4][SX2][CH3X4]),$([CH2X4][cX3]1[cX3H][cX3H][cX3H][cX3H][cX3H]1),$([CH2X4][OX2H]),$([CHX4]([CH3X4])[OX2H]),$([CH2X4][cX3]1[cX3H][nX3H][cX3]2[cX3H][cX3H][cX3H][cX3H][cX3]12),$([CH2X4][cX3]1[cX3H][cX3H][cX3]([OHX2,OH0X1-])[cX3H][cX3H]1),$([CHX4]([CH3X4])[CH3X4])])[CX3](=[OX1])[O,N]);!$([$([$([NX3H,NX4H2+]),$([NX3](C)(C)(C))]1[CX4H]([CH2][CH2][CH2]1)[CX3](=[OX1])[OX2H,OX1-,N]),$([$([NX3H2,NX4H3+]),$([NX3H](C)(C))][CX4H2][CX3](=[OX1])[OX2H,OX1-,N]),$([$([NX3H2,NX4H3+]),$([NX3H](C)(C))][CX4H]([$([CH3X4]),$([CH2X4][CH2X4][CH2X4][NHX3][CH0X3](=[NH2X3+,NHX2+0])[NH2X3]),$([CH2X4][CX3](=[OX1])[NX3H2]),$([CH2X4][CX3](=[OX1])[OH0-,OH]),$([CH2X4][SX2H,SX1H0-]),$([CH2X4][CH2X4][CX3](=[OX1])[OH0-,OH]),$([CH2X4][#6X3]1:[$([#7X3H+,#7X2H0+0]:[#6X3H]:[#7X3H]),$([#7X3H])]:[#6X3H]:[$([#7X3H+,#7X2H0+0]:[#6X3H]:[#7X3H]),$([#7X3H])]:[#6X3H]1),$([CHX4]([CH3X4])[CH2X4][CH3X4]),$([CH2X4][CHX4]([CH3X4])[CH3X4]),$([CH2X4][CH2X4][CH2X4][CH2X4][NX4+,NX3+0]),$([CH2X4][CH2X4][SX2][CH3X4]),$([CH2X4][cX3]1[cX3H][cX3H][cX3H][cX3H][cX3H]1),$([CH2X4][OX2H]),$([CHX4]([CH3X4])[OX2H]),$([CH2X4][cX3]1[cX3H][nX3H][cX3]2[cX3H][cX3H][cX3H][cX3H][cX3]12),$([CH2X4][cX3]1[cX3H][cX3H][cX3]([OHX2,OH0X1-])[cX3H][cX3H]1),$([CHX4]([CH3X4])[CH3X4])])[CX3](=[OX1])[OX2H,OX1-,N])])]"),
         //Sugar derivatives
         /**
@@ -254,22 +265,12 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
 
         /**
          * Phosphate group.
-         *
-         * <p>SMARTS matches a phosphorus atom connected to an oxygen atom by any bond.
-         * Since the atomic numbers ({@code P} and {@code O}) are used, both
-         * aromatic and aliphatic environments are matched. The pattern identifies
-         * the characteristic phosphorus-oxygen linkage found in phosphate groups,
-         * but is not restricted to a specific phosphate species.</p>
+         * SMARTS matches a phosphorus atom connected to an oxygen atom by any bond.
          */
         PHOSPHATE("phosphate_2", "P~O"),
         /**
          * Sulfonate group.
-         *
-         * <p>SMARTS matches a sulfur atom connected to an oxygen atom by any bond.
-         * Since the atomic numbers ({@code S} and {@code O}) are used, both
-         * aromatic and aliphatic environments are matched. The pattern identifies
-         * the characteristic sulfur-oxygen linkage found in sulfonate and related
-         * sulfur-oxygen functional groups.</p>
+         * SMARTS matches a sulfur atom connected to an oxygen atom by any bond.
          */
         SULFONATE("sulfonate_2", "S~O"),
 
@@ -310,8 +311,11 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
         /**
          * Epoxide group.
          * SMARTS matches an oxygen atom that is part of a three-membered ring.
+         * The x2 constraint ensures that the oxygen has exactly two ring bonds,
+         * restricting the match to oxygen atoms incorporated into the ring rather than exocyclic oxygen atoms.
          */
         O_EPOXY("o_epoxy_1", "[O;x2;r3]"),
+        //Todo Check if (*1****1 works generally better for finding rings)
         /**
          * Ether group.
          * SMARTS matches a non-cyclic ether oxygen connecting two atoms while
@@ -427,12 +431,12 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
     /**
      * SMARTS patterns used for fingerprint generation.
      */
-    private String[] smartsList;
+    private final String[] smartsList;
 
     /**
      * Number of SMARTS patterns.
      */
-    private int fingerprintSize;
+    private final int  fingerprintSize;
 
     private static final ILoggingTool logger = LoggingToolFactory.createLoggingTool(BiosynfoniFingerprinter.class);
 
@@ -493,20 +497,20 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
         if (container == null) {
             throw new NullPointerException("container must not be null");
         }
-        BitSet BiosynfoiFingerprintBIT = new BitSet(this.fingerprintSize);
+        BitSet BiosynfoiBitSet = new BitSet(this.fingerprintSize);
 
         if (container.isEmpty()) {
-            return new BitSetFingerprint(BiosynfoiFingerprintBIT);
+            return new BitSetFingerprint(BiosynfoiBitSet);
         }
 
         List<List<int[]>> filteredMatches = this.getFilteredMatches(container);
         for (int i = 0; i < filteredMatches.size(); i++) {
             if (!filteredMatches.get(i).isEmpty()) {
-                BiosynfoiFingerprintBIT.set(i);
+                BiosynfoiBitSet.set(i);
             }
 
         }
-        return new BitSetFingerprint(BiosynfoiFingerprintBIT);
+        return new BitSetFingerprint(BiosynfoiBitSet);
     }
 
     /**
@@ -528,6 +532,14 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
 
     @Override
     public Map<String, Integer> getRawFingerprint(IAtomContainer container) throws CDKException {
+
+        if (container == null) {
+            throw new NullPointerException("container must not be null");
+        }
+        if (container.isEmpty()) {
+            throw new CDKException("container must not be empty");
+        }
+
         int[] counts = new int[this.fingerprintSize];
 
         List<List<int[]>> filteredMatches = this.getFilteredMatches(container);
@@ -579,7 +591,7 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
      * @return grouped SMARTS matches (outer list = SMARTS order, inner lists = matches)
      */
     private List<List<int[]>> getFilteredMatches(IAtomContainer aMolecule) {
-        SmartsPattern.prepare(aMolecule);//#todo
+        SmartsPattern.prepare(aMolecule);
         List<List<int[]>> filteredMatches = new ArrayList<>(this.fingerprintSize);
 
         if (this.smartsList == null) {
@@ -614,10 +626,10 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
      * one match. These are converted into a {@code List<int[]>} for easier
      * processing.
      * - If {@link #intraSubOverlapToggle} is {@code true}, calls
-     * {@link #intraSubOverlap(List)} to make matches atom-disjoint within the
+     * {@link #intraSubOverlap(List, Integer[])} to make matches atom-disjoint within the
      * same SMARTS pattern.
      * - If {@link #interSubOverLapToggle} is {@code true}, calls
-     * {@link #interSubOverlap(List, List)} to prevent reuse of atoms already
+     * {@link #interSubOverlap(List, List, int)} to prevent reuse of atoms already
      * accepted by previously processed SMARTS patterns (order-dependent).
      * <p>
      * Edge cases:
@@ -637,7 +649,7 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
 
         subMatches.addAll(Arrays.asList(uniqueMatches));
         if (this.intraSubOverlapToggle) {
-            subMatches = this.intraSubOverlap(subMatches);
+            subMatches = this.intraSubOverlap(subMatches,getCanonicalIndex(aMolecule));
         }
         if (this.interSubOverLapToggle) {
             subMatches = this.interSubOverlap(subMatches, filteredMatches, moleculeAtomCount);
@@ -646,31 +658,30 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
     }
 
     /**
-     * Filters overlapping Matches from the same Structure.
-     * Matches are processed in sorted order. A match is accepted only if none of its
-     * atom indices have already been assigned to a previously accepted match.
-     * Accepted matches block all of their atoms from being reused in later
-     * matches. This ensures that the returned matches are atom-disjoint.
-     * Description
-     * - Sorts the provided atom-index matches by their first atom index and,
-     * when equal, by their second atom index to ensure deterministic
-     * processing order. <p>
-     * - Iterates through the sorted matches while maintaining a set of
-     * already accepted atom indices ({@code blockedAtoms}). <p>
-     * - Uses {@link #hasOverlap(int[], Set)} to determine whether a match
-     * shares atoms with previously accepted matches. <p>
-     * - Accepts only atom-disjoint matches and records their atom indices via
-     * {@link #addBlockedAtoms(int[], Set)}. <p>
-     * - Returns a filtered list in which no two matches reuse the same atoms
-     * within a single SMARTS pattern.<p>
+     * Filters overlapping matches within a single SMARTS pattern.
      *
-     * @param subMatches the atom-index matches ({@code int[]}) obtained for a
-     *                   single SMARTS pattern
-     * @return a list of atom-disjoint matches for the SMARTS pattern
+     * <p>Matches are first ordered according to their canonical atom indices to eliminate dependence on the input atom order.
+     * The ordered matches are then processed sequentially. A match is accepted
+     * only if none of its atoms have already been assigned to a previously
+     * accepted match of the same SMARTS pattern.</p>
      *
+     * <p>Accepted matches block all of their atoms from being reused by later
+     * matches, resulting in a set of atom-disjoint matches for the SMARTS
+     * pattern.</p>
+     *
+     * @param subMatches the matches of a single SMARTS pattern
+     * @param newIndex mapping from the original atom indices to their canonical
+     *                 ordering
+     * @return the filtered list of non-overlapping matches
      */
-    private List<int[]> intraSubOverlap(List<int[]> subMatches) {
+    private List<int[]> intraSubOverlap(List<int[]> subMatches,Integer[] newIndex) {
         List<int[]> filteredSubMatches = new ArrayList<>(this.fingerprintSize);
+        for (int[] subMatch : subMatches) {
+            for (int i = 0; i < subMatch.length; i++) {
+                subMatch[i] = newIndex[subMatch[i]];
+            }
+        }
+
 
         try {
             subMatches.sort((a, b) -> {
@@ -682,14 +693,16 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
             });
         } catch (ArrayIndexOutOfBoundsException arrayIndexOutOfBoundsException) {
             logger.error("Failed to compare indices. This should never happen.", arrayIndexOutOfBoundsException);
-        } //#todo Fix the problem with an comparison
+        }
 
         Set<Integer> blockedAtoms = new HashSet<>();
         for (int[] aMatch : subMatches) {
 
             if (!hasOverlap(aMatch, blockedAtoms)) {
                 filteredSubMatches.add(aMatch);
-                this.addBlockedAtoms(aMatch, blockedAtoms);
+                for (int atomIndex : aMatch) {
+                    blockedAtoms.add(atomIndex);
+                }
             }
 
         }
@@ -720,7 +733,9 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
 
         for (List<int[]> matches : prevMatches) {
             for (int[] aMatch : matches) {
-                this.addBlockedAtoms(aMatch, blockedAtoms);
+                for (int atomIndex : aMatch) {
+                    blockedAtoms.add(atomIndex);
+                }
             }
         }
 
@@ -734,20 +749,19 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
     }
 
     /**
-     * Checks whether a match overlaps with blocked atoms.
-     * - Iterates over the atom indices of the provided match. <p>
-     * - Checks whether any atom index is contained in the
-     * {@code blockedAtoms} set. <p>
-     * - Returns {@code true} as soon as an overlapping atom is found;
-     * otherwise returns {@code false}. <p>
+     * Checks whether a SMARTS match reuses atoms that have already been assigned
+     * to previously accepted matches.
      *
-     * @param aMatch       the atom-index match ({@code int[]}) to be checked
-     * @param blockedAtoms the set of atom indices already assigned to
+     * <p>The method iterates over all atom indices in the supplied match and
+     * returns {@code true} as soon as one of them is contained in the
+     * {@code blockedAtoms} set. Otherwise, {@code false} is returned.</p>
+     *
+     * @param aMatch the atom indices of the SMARTS match to check
+     * @param blockedAtoms the set of atom indices already assigned to previously
      *                     accepted matches
-     * @return {@code true} if the match overlaps with blocked atoms,
-     * otherwise {@code false}
+     * @return {@code true} if the match shares at least one atom with
+     *         {@code blockedAtoms}; otherwise {@code false}
      */
-
     private static boolean hasOverlap(int[] aMatch, Set<Integer> blockedAtoms) {
         for (int atomIndex : aMatch) {
             if (blockedAtoms.contains(atomIndex)) {
@@ -758,53 +772,27 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
     }
 
     /**
-     * - Iterates over the atom indices contained in the provided match. <p>
-     * - Adds each atom index to the supplied {@code blockedAtoms} set. <p>
-     * - Updates the set in place, ensuring that duplicate atom indices are
-     * stored only once. <p>
+     * Computes a canonical ordering of the atoms in a molecule.
      *
-     * @param match        the atom-index match ({@code int[]}) whose atoms should be
-     *                     added to the blocked set
-     * @param blockedAtoms the set of blocked atom indices to be updated
+     * <p>
+     * The method uses CDK's canonical labeling algorithm
+     * ({@link Canon#label(IAtomContainer, int[][])}) to assign a unique
+     * canonical label to every atom. These labels are then sorted to obtain a
+     * deterministic atom order that is independent of the input atom numbering.
+     * </p>
+     *
+     * <p>
+     * The returned array contains the original atom indices sorted by their
+     * canonical labels. This mapping is used during overlap filtering to ensure
+     * deterministic processing of SMARTS matches regardless of the atom order in
+     * the input molecule.
+     * </p>
+     *
+     * @param aMolecule molecule for which the canonical atom ordering is computed
+     * @return an array of original atom indices sorted according to their
+     *         canonical labels
      */
-    private void addBlockedAtoms(int[] match, Set<Integer> blockedAtoms) {
-        for (int atomIndex : match) {
-            blockedAtoms.add(atomIndex);
-        }
-    }
-
-
-    /**
-     * Creates a canonical atom ordering for the given molecule.
-     * <p>
-     * Uses CDK's canonical labeling algorithm ({@link Canon#label(IAtomContainer, int[][])})
-     * to generate a deterministic atom order that is independent of the original
-     * atom numbering in the input molecule.
-     * </p>
-     *
-     * <p>
-     * The method:
-     * <ul>
-     *   <li>Computes canonical labels for all atoms.</li>
-     *   <li>Sorts atoms according to their canonical labels.</li>
-     *   <li>Creates a new molecule containing cloned atoms in canonical order.</li>
-     *   <li>Reconstructs all bonds using the new atom indices.</li>
-     * </ul>
-     * </p>
-     *
-     * <p>
-     * This canonicalization is used to eliminate atom-order dependencies during
-     * overlap filtering, especially when
-     * {@link #interSubOverlap(List, List)} is enabled.
-     * Molecules that are structurally identical but differ only in atom numbering
-     * will therefore produce identical atom indices for matching operations.
-     * </p>
-     *
-     * @param aMolecule the molecule to canonicalize
-     * @return a new {@link IAtomContainer} with atoms arranged in canonical order
-     * @throws CloneNotSupportedException if an atom cannot be cloned
-     */
-    private Integer[] newIndex(IAtomContainer aMolecule) {
+    private Integer[] getCanonicalIndex (IAtomContainer aMolecule) {
 
         int[][] g = GraphUtil.toAdjList(aMolecule);
         long[] labels = Canon.label(aMolecule, g);
@@ -813,11 +801,7 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter implements IF
         for (int i = 0; i < labels.length; i++) {
             indices[i] = i;
         }
-        Arrays.sort(indices, (i, j) -> {
-            int cmp = Long.compare(labels[i], labels[j]);
-            if (cmp != 0) return cmp;
-            return Integer.compare(i, j);
-        });
+        Arrays.sort(indices, Comparator.comparingLong((Integer i) -> labels[i]).thenComparingInt(i -> i));
 
         return indices;
     }
