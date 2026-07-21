@@ -39,7 +39,12 @@ import java.util.ArrayList;
 import java.util.BitSet;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
-
+/**
+ * Test Class for {@link BiosynfoniFingerprinter}
+ * Uses modified Copies from <a href="https://github.com/lucinamay/biosynfoni/blob/main/tests/main_test.py">
+ * Original Python implementation Tests</a> and {@link SubstructureFingerprinterTest}, and own additions.
+ * @author Marlon Raffelt (MaRa1778)
+ */
 class BiosynfoniFingerprinterTest {
 
     //following Tests are modified Copies of the test included in python implementation
@@ -128,7 +133,6 @@ class BiosynfoniFingerprinterTest {
             BitSet noChiralFp = new BiosynfoniFingerprinter().getBitFingerprint(noChiral).asBitSet();
             BitSet chiralFp = new BiosynfoniFingerprinter().getBitFingerprint(mol).asBitSet();
 
-
             Assertions.assertEquals(noChiralFp, chiralFp);
         }
     }
@@ -149,7 +153,6 @@ class BiosynfoniFingerprinterTest {
         }
         return molecules;
     }
-
 
     /**
      * Verifies that the {@link BiosynfoniFingerprinter} fingerprint has the right size.
@@ -280,7 +283,6 @@ class BiosynfoniFingerprinterTest {
         Assertions.assertNotNull(bitfp);
         Assertions.assertTrue(bitfp.get(3));
         Assertions.assertFalse(bitfp.get(4));
-
     }
 
     /**
@@ -326,9 +328,10 @@ class BiosynfoniFingerprinterTest {
         Assertions.assertEquals(11, cfp.getCountForHash(19));
         Assertions.assertEquals(1, cfp.getCountForHash(13));
         Assertions.assertNotEquals(2, cfp.getCountForHash(16));
-
     }
+
 //own test additions
+
     /**
      * Verifies that {@link BiosynfoniFingerprinter} fingerprints can be used
      * with the CDK {@link Tanimoto} similarity calculation.
@@ -433,5 +436,4 @@ class BiosynfoniFingerprinterTest {
         Assertions.assertEquals(cfp2.getCountForHash(11), cfp.getCountForHash(11));
         Assertions.assertEquals(cfp2.getCountForHash(12), cfp.getCountForHash(12));
     }
-
 }
