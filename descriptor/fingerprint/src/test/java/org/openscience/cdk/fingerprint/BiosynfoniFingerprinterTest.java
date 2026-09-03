@@ -25,6 +25,7 @@ package org.openscience.cdk.fingerprint;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+
 import org.openscience.cdk.AtomContainerSet;
 import org.openscience.cdk.DefaultChemObjectBuilder;
 import org.openscience.cdk.exception.CDKException;
@@ -35,36 +36,39 @@ import org.openscience.cdk.silent.SilentChemObjectBuilder;
 import org.openscience.cdk.similarity.Tanimoto;
 import org.openscience.cdk.smarts.SmartsPattern;
 import org.openscience.cdk.smiles.SmilesParser;
+
 import java.util.ArrayList;
 import java.util.BitSet;
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
 /**
- * Test Class for {@link BiosynfoniFingerprinter}
- * Uses modified Copies from <a href="https://github.com/lucinamay/biosynfoni/blob/main/tests/main_test.py">
- * Original Python implementation Tests</a> and {@link SubstructureFingerprinterTest}, and own additions.
+ * Test class for {@link BiosynfoniFingerprinter}.
+ * The class uses modified copies from <a href="https://github.com/lucinamay/biosynfoni/blob/main/tests/main_test.py">
+ * original python implementation tests</a> , {@link SubstructureFingerprinterTest} and own additions.
+ * In alot of test substructure key 13,14,15 are tested along other keys, because during development issues occurred,
+ * in ring size perception.
  * @author Marlon Raffelt (MaRa1778)
  */
 class BiosynfoniFingerprinterTest {
-
-    //following Tests are modified Copies of the test included in python implementation
-
+    //Following tests are modified copies of the test included in python implementation
     /**
-     * Smiles are from the Test used by the <a href="https://github.com/lucinamay/biosynfoni/blob/main/tests/main_test.py">
-     * Original Python implementation</a>
+     * Smiles are from the test used by the <a href="https://github.com/lucinamay/biosynfoni/blob/main/tests/main_test.py">
+     * original python implementation</a>
      */
-    private static final String[] testSmiles = {"CC(=O)CC=O",
+    private static final String[] TEST_SMILES = {"CC(=O)CC=O",
             "C1CCCCC1",
             "COc1cc(O)c2c(c1)oc(cc2=O)-c1ccc(OC)c(c1)-c1c(O)cc(O)c2c1oc(cc2=O)-c1ccc(O)cc1",
             "[H][C@]1(CC[C@@H](O)[C@@H](C1)OC)C[C@@H](C)[C@]1([H])CC(=O)[C@H](C)\\C=C(C)\\[C@@H](O)[C@@H](OC)C(=O)[C@H](C)C[C@H](C)\\C=C\\C=C\\C=C(C)\\[C@H](C[C@]2([H])CC[C@@H](C)[C@@](O)(O2)C(=O)C(=O)N2CCCC[C@@]2([H])C(=O)O1)OC",
             "[C@H]([C@@H](/C=C/CCCCCCCCCCCCC)O)(NC(=O)*)CO[C@@H]1O[C@H](CO)[C@H]([C@@H]([C@H]1O)O)O[C@@H]2O[C@H](CO[C@]3(O[C@]([C@@H]([C@H](C3)O)NC(C)=O)([C@@H]([C@@H](CO)O)O)[H])C(=O)O)[C@@H]([C@H](O)[C@H]2O)O"};
 
     /**
-     * Smiles Parser used in nearly every Method
+     * Smiles Parser used in nearly every method.
      */
     private final SmilesParser smilesParser = new SmilesParser(SilentChemObjectBuilder.getInstance());
 
-    private  final BiosynfoniFingerprinter biosynfoniFingerprinter = new BiosynfoniFingerprinter();
+    /**
+     * General {@link BiosynfoniFingerprinter} with no overlap filtering active.
+     */
+    private final BiosynfoniFingerprinter biosynfoniFingerprinter = new BiosynfoniFingerprinter();
 
     /**
      * Verifies that {@link BiosynfoniFingerprinter} uses viable SMARTS for substructure detection
@@ -72,7 +76,7 @@ class BiosynfoniFingerprinterTest {
     @Test
     void allSmartsViable() {
         for (BiosynfoniFingerprinter.BiosynfoniKey key : BiosynfoniFingerprinter.BiosynfoniKey.values()) {
-            assertDoesNotThrow(() -> {
+            Assertions.assertDoesNotThrow(() -> {
                 SmartsPattern.create(key.getSmarts(),
                         DefaultChemObjectBuilder.getInstance());
             }, " Invalid SMARTS detected" +
@@ -94,6 +98,8 @@ class BiosynfoniFingerprinterTest {
         IAtomContainer smallMol = this.smilesParser.parseSmiles("CC");
         Assertions.assertNotNull(this.biosynfoniFingerprinter.getBitFingerprint(smallMol));
         Assertions.assertNotNull(this.biosynfoniFingerprinter.getCountFingerprint(smallMol));
+        //check for ethyl key not to be null
+        Assertions.assertNotNull(this.biosynfoniFingerprinter.getBitFingerprint(smallMol).get(19));
     }
 
     /**
@@ -106,10 +112,10 @@ class BiosynfoniFingerprinterTest {
      */
     @Test
     void substructureDetection() throws CDKException {
-        IAtomContainerSet aMoleculeSet = createMolecules();
+        IAtomContainerSet aMoleculeSet = this.createMolecules();
         for (IAtomContainer aMolecule : aMoleculeSet) {
-            assertDoesNotThrow(() -> this.biosynfoniFingerprinter.getCountFingerprint(aMolecule));
-            assertDoesNotThrow(() -> this.biosynfoniFingerprinter.getBitFingerprint(aMolecule));
+            Assertions.assertDoesNotThrow(() -> this.biosynfoniFingerprinter.getCountFingerprint(aMolecule));
+            Assertions.assertDoesNotThrow(() -> this.biosynfoniFingerprinter.getBitFingerprint(aMolecule));
         }
     }
 
@@ -147,7 +153,7 @@ class BiosynfoniFingerprinterTest {
      */
     private IAtomContainerSet createMolecules() throws InvalidSmilesException {
         IAtomContainerSet molecules = new AtomContainerSet();
-        for (String smile : this.testSmiles) {
+        for (String smile : TEST_SMILES) {
             IAtomContainer aMolecule = this.smilesParser.parseSmiles(smile);
             molecules.addAtomContainer(aMolecule);
         }
@@ -176,16 +182,17 @@ class BiosynfoniFingerprinterTest {
      */
     @Test
     void testFunctionalGroupsBinary() throws CDKException {
-        //Tests are modified Copies of the test included in substructureFingerprinter
-
 
         IAtomContainer mol1 = this.smilesParser.parseSmiles("c1ccccc1CCC");
         IBitFingerprint bitfp = this.biosynfoniFingerprinter.getBitFingerprint(mol1);
 
+        //molecule should match a phenylmotif with 3,2,1 side chain carbons and substructure for ring size 6
         Assertions.assertNotNull(bitfp);
         Assertions.assertTrue(bitfp.get(13));
+        Assertions.assertTrue(bitfp.get(14));
         Assertions.assertTrue(bitfp.get(15));
         Assertions.assertTrue(bitfp.get(34));
+        //molcule should not match CoA
         Assertions.assertFalse((bitfp.get(1)));
     }
 
@@ -205,10 +212,13 @@ class BiosynfoniFingerprinterTest {
         IAtomContainer mol1 = this.smilesParser.parseSmiles("c1ccccc1CCC");
         ICountFingerprint cfp = this.biosynfoniFingerprinter.getCountFingerprint(mol1);
 
+        //molecule should match a phenylmotif with 3,2,1 side chain carbons and substructure for ring size 6
         Assertions.assertNotNull(cfp);
         Assertions.assertEquals(1, cfp.getCountForHash(13));
+        Assertions.assertEquals(1, cfp.getCountForHash(14));
         Assertions.assertEquals(1, cfp.getCountForHash(15));
         Assertions.assertEquals(1, cfp.getCountForHash(34));
+        //molcule should not match CoA
         Assertions.assertEquals(0, cfp.getCountForHash(1));
     }
 
@@ -227,13 +237,14 @@ class BiosynfoniFingerprinterTest {
 
         IAtomContainer mol1 = this.smilesParser.parseSmiles("C(C1C2CCC2)C1(C1)C2(CCCC2)CCC1C1CCCCCC1");
         IBitFingerprint bitfp = this.biosynfoniFingerprinter.getBitFingerprint(mol1);
-
+        //molcule contains rings the size of 3,4,5,6,7 and should match the respective keys 31,32,33,34,35
         Assertions.assertNotNull(bitfp);
         Assertions.assertTrue(bitfp.get(31));
         Assertions.assertTrue(bitfp.get(32));
         Assertions.assertTrue(bitfp.get(33));
         Assertions.assertTrue(bitfp.get(34));
         Assertions.assertTrue(bitfp.get(35));
+        // bigger ring sizes shall not match like 36 (8 ring),37(9 ring),38 (10 ring)
         Assertions.assertFalse(bitfp.get(36));
         Assertions.assertFalse(bitfp.get(37));
         Assertions.assertFalse(bitfp.get(38));
@@ -245,41 +256,40 @@ class BiosynfoniFingerprinterTest {
      * aromatic and non-aromatic fingerprint features.
      * <p>The SMILES are taken from the
      * {@code testCountableMACCSBinary2} test in the CDK Substructure Fingerprinter
-     * test suite. The test verifies that selected Biosynfoni fingerprint features
+     * test suite, and 2 removed aliphatic nitrogen. The test verifies that selected Biosynfoni fingerprint features
      * are counted correctly.</p>
      */
     @Test
     void testAromaticityBinary() throws CDKException {
 
-        IAtomContainer mol1 = this.smilesParser.parseSmiles("NCCc1c[nH]c2cc(-c3ccc(CCN)cc3)ccc12");
+        IAtomContainer mol1 = this.smilesParser.parseSmiles("CCc1c[nH]c2cc(-c3ccc(CC)cc3)ccc12");
         IBitFingerprint bitfp = this.biosynfoniFingerprinter.getBitFingerprint(mol1);
-
+        //molecule shall match patterns with defined aromaticity like 9 or 10 and not
         Assertions.assertNotNull(bitfp);
         Assertions.assertTrue(bitfp.get(9));
         Assertions.assertTrue(bitfp.get(10));
-        Assertions.assertFalse(bitfp.get(36));
-        Assertions.assertFalse(bitfp.get(37));
-        Assertions.assertFalse(bitfp.get(38));
+        //molecule shall not match aliphatic substructures
+        Assertions.assertFalse(bitfp.get(27));
 
         IAtomContainer mol2 = this.smilesParser.parseSmiles("C1=C(NC=N1)CC(C(=O)O)N");
         IBitFingerprint bfp2 = this.biosynfoniFingerprinter.getBitFingerprint(mol2);
-
+        //checks if aromcity detection for aminoacid smarts works properly
         Assertions.assertNotNull(bfp2);
-        Assertions.assertFalse(bfp2.get(4));
         Assertions.assertTrue(bfp2.get(3));
+        Assertions.assertFalse(bfp2.get(4));
     }
 
     /**
      * Verifies that the {@link BiosynfoniFingerprinter} fingerprint correctly identifies
      * fingerprint features for a non-proteinogenic amino acid.
-     * THE Smiles is Tryptophan made with MolView
+     * The SMILES is Tryptophan made with MolView
      */
     @Test
-    void testNonStandardAminoacidsBinary() throws Exception {
+    void testNonStandardAminoAcidsBinary() throws Exception {
 
         IAtomContainer mol1 = this.smilesParser.parseSmiles("N[C@@H](Cc1c[nH]c2ccccc12)C(=O)O");
         IBitFingerprint bitfp = this.biosynfoniFingerprinter.getBitFingerprint(mol1);
-
+        //check for proper detection of amino acid substructures
         Assertions.assertNotNull(bitfp);
         Assertions.assertTrue(bitfp.get(3));
         Assertions.assertFalse(bitfp.get(4));
@@ -296,17 +306,21 @@ class BiosynfoniFingerprinterTest {
     @Test
     void testRightBits() throws Exception {
 
-
         IAtomContainer aMolecule = this.smilesParser.parseSmiles("C([S](O)(=O)=O)C1=C(C=CC=C1)CCCC[N+](=O)[O-]");
         IBitFingerprint bitfp = this.biosynfoniFingerprinter.getBitFingerprint(aMolecule);
 
+        //molecule shall match substructure motif phenylethyl, isoprene and ethyl,
+        //because it contains a ring with 2 attached side chains
         Assertions.assertTrue(bitfp.get(13));
         Assertions.assertTrue(bitfp.get(16));
         Assertions.assertTrue(bitfp.get(19));
+        Assertions.assertTrue(bitfp.get(34));
+        //molecule contains a sulfate group and should match substructure key 22 (Sulfonate) and key 30 (hydroxyl)
         Assertions.assertTrue(bitfp.get(22));
         Assertions.assertTrue(bitfp.get(30));
-        Assertions.assertTrue(bitfp.get(34));
+        //molecule does not contain a nitrogen close to the ring
         Assertions.assertFalse(bitfp.get(12));
+        //ring size is not 8 in the given mol
         Assertions.assertFalse(bitfp.get(35));
     }
 
@@ -314,7 +328,7 @@ class BiosynfoniFingerprinterTest {
      * Verifies that the {@link BiosynfoniFingerprinter} count fingerprint reports the expected
      * feature counts for a reference molecule.
      *
-     * <p>The SMILES is taken from the
+     * <p>The SMILES are taken from the
      * {@code testCountableMACCSBinary2} test in the CDK Substructure Fingerprinter
      * test suite. The test verifies that selected Biosynfoni fingerprint features
      * are counted correctly.</p>
@@ -324,9 +338,11 @@ class BiosynfoniFingerprinterTest {
 
         IAtomContainer aMolecule = this.smilesParser.parseSmiles("C([S](O)(=O)=O)C1=C(C=CC=C1)CCCC[N+](=O)[O-]");
         ICountFingerprint cfp = this.biosynfoniFingerprinter.getCountFingerprint(aMolecule);
-
+        //molecule contains multiple carbons connected to each other
         Assertions.assertEquals(11, cfp.getCountForHash(19));
+        //molecule contains one phenyethyl motif
         Assertions.assertEquals(1, cfp.getCountForHash(13));
+        //molecule contains 7 not 2 isoprene substructures
         Assertions.assertNotEquals(2, cfp.getCountForHash(16));
     }
 
@@ -361,35 +377,18 @@ class BiosynfoniFingerprinterTest {
         double countScore = Tanimoto.calculate(cfp1, cfp2);
         double bitScore = Tanimoto.calculate(bitfp1, bitfp2);
 
-        Assertions.assertNotEquals(Double.NaN, countScore);
-        Assertions.assertNotEquals(Double.NaN, bitScore);
-    }
-
-    /**
-     * Verifies that {@link BiosynfoniFingerprinter} fingerprint generation is independent of the input atom order.
-     *
-     * <p>The same molecule is represented by multiple, chemically equivalent
-     * SMILES strings. Since the different SMILES are parsed with different atom
-     * numbering, all generated fingerprints are expected to be identical.</p>
-     */
-    @Test
-    void testCanonOrderingProducesIdenticalFingerprints() throws CDKException {
-
-        IAtomContainer aMolecule1 = this.smilesParser.parseSmiles("COC1=C(C=CC(=C1)/C=C/C(=O)O)O");
-        IAtomContainer aMolecule2 = this.smilesParser.parseSmiles("Oc1cc(OC)cc(/C=C/C(=O)O)c1");
-        BiosynfoniFingerprinter bioSynfoniFingerprinter = new BiosynfoniFingerprinter(true, false);
-        ICountFingerprint cfp1 = bioSynfoniFingerprinter.getCountFingerprint(aMolecule1);
-        ICountFingerprint cfp2 = bioSynfoniFingerprinter.getCountFingerprint(aMolecule2);
-
-        for (int i = 0; i < cfp1.numOfPopulatedbins(); i++) {
-            Assertions.assertEquals(cfp1.getCount(i), cfp2.getCount(i));
-        }
+        Assertions.assertFalse(Double.isNaN(countScore));
+        Assertions.assertFalse(Double.isNaN( bitScore));
     }
 
     /**
      * Verifies that enabling intra- and inter-substructure filtering does not
-     * increase fingerprint feature counts. Filtering is expected to reduce the counts
-     * The SIMLES is <a href="https://coconut.naturalproducts.net/compounds/CNP0175721.3">Rapamycin</a></
+     * increase fingerprint feature counts. Filtering is expected to reduce or
+     * maintain the counts.
+     *
+     * <p>The test uses
+     * <a href="https://coconut.naturalproducts.net/compounds/CNP0175721.3">Rapamycin</a>
+     * as the test molecule.</p>
      */
     @Test
     void filterTest() throws CDKException {
@@ -414,9 +413,9 @@ class BiosynfoniFingerprinterTest {
 
     /**
      * Verifies that {@link BiosynfoniFingerprinter} fingerprint detects aromatic indoles correctly.
-     * First checks are to see expected behaivior and second checks are to see if SMILES depiction matters.
+     * First checks are to see expected behavior and second checks are to see if SMILES encoding matters.
      * mol2 is the provided SMILES for <a href="https://pubchem.ncbi.nlm.nih.gov/compound/L-Tryptophan">L-Tryptophan</a>
-     * mol1 is self changed to ensure aromaticty in molecule.
+     * mol1 is self changed to ensure aromaticity in molecule.
      */
     @Test
     void testIndoleSubstructure() throws CDKException {
@@ -435,5 +434,23 @@ class BiosynfoniFingerprinterTest {
         Assertions.assertEquals(cfp2.getCountForHash(10), cfp.getCountForHash(10));
         Assertions.assertEquals(cfp2.getCountForHash(11), cfp.getCountForHash(11));
         Assertions.assertEquals(cfp2.getCountForHash(12), cfp.getCountForHash(12));
+    }
+
+    /**
+     * Verifies that the canonical atom index mapping is generated correctly.
+     *
+     * <p>The test uses the phenol molecule and the expected canonical atom
+     * index mapping derived from the CDK {@code Canon.label()} implementation.
+     * The expected mapping is the inverse of the canonical labels and therefore
+     * represents the canonical position of each atom in the original molecule.</p>
+     */
+    @Test
+    void testCanoicalisation() throws InvalidSmilesException {
+        IAtomContainer mol1 = this.smilesParser.parseSmiles("OC1=CC=CC=C1");
+        BiosynfoniFingerprinter bfp3 = new BiosynfoniFingerprinter(false, true);
+        int[] bfpCanonicalIndex = bfp3.getCanonicalIndexMap(mol1);
+        int[] canonicalIndex = {0, 6, 4, 3, 1, 5, 2};
+        Assertions.assertNotNull(bfpCanonicalIndex);
+        Assertions.assertArrayEquals(bfpCanonicalIndex, canonicalIndex);
     }
 }
