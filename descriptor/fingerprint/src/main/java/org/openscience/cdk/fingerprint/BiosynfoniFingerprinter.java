@@ -602,9 +602,11 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter {
      */
     private List<List<int[]>> getFilteredMatches(IAtomContainer container) {
         SmartsPattern.prepare(container);
+        int[] canonicalIndex = new int[container.getAtomCount()];
         List<List<int[]>> filteredMatches = new ArrayList<>(BiosynfoniFingerprinter.FINGERPRINT_SIZE);
-
-        int[] canonicalIndex = getCanonicalIndexMap(container);
+        if (intraSubOverlapToggle){
+            canonicalIndex = getCanonicalIndexMap(container);
+        }
         for (SmartsPattern pattern : this.smartsPatterns) {
             List<int[]> subMatches = this.getSubMatches(pattern, container, filteredMatches, canonicalIndex);
             filteredMatches.add(subMatches);
@@ -657,16 +659,23 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter {
      * @return the filtered list of non-overlapping matches
      */
     private List<int[]> intraSubOverlap(List<int[]> subMatches, int[] canonicalIndex) {
-        List<int[]> filteredSubMatches = new ArrayList<>(BiosynfoniFingerprinter.FINGERPRINT_SIZE);
+        List<int[]> filteredSubMatches = new ArrayList<>(
+                BiosynfoniFingerprinter.FINGERPRINT_SIZE
+        );
+        List<int[]> canonMatches = new ArrayList<>(subMatches.size());
+
         for (int[] subMatch : subMatches) {
+            int[] canonMatch = new int[subMatch.length];
+
             for (int i = 0; i < subMatch.length; i++) {
-                subMatch[i] = canonicalIndex[subMatch[i]]; //ToDo new Collection for interation make structre clear
-                //ToDo public in enum and canon to pp
-                Arrays.sort(subMatch);
+                canonMatch[i] = canonicalIndex[subMatch[i]];
             }
+
+            Arrays.sort(canonMatch);
+            canonMatches.add(canonMatch);
         }
         //ToDo check biosynfoni sorting
-        subMatches.sort((a, b) -> {
+        canonMatches.sort((a, b) -> {
             int length = Math.min(a.length, b.length);
             for (int i = 0; i < length; i++) {
                 int comparison = Integer.compare(a[i], b[i]);
@@ -677,10 +686,10 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter {
             return Integer.compare(a.length, b.length);
         });
         Set<Integer> blockedAtoms = new HashSet<>();
-        for (int[] aMatch : subMatches) {
-            if (!BiosynfoniFingerprinter.hasOverlap(aMatch, blockedAtoms)) {
-                filteredSubMatches.add(aMatch);
-                for (int atomIndex : aMatch) {
+        for (int[] canonMatch : canonMatches) {
+            if (!BiosynfoniFingerprinter.hasOverlap(canonMatch, blockedAtoms)) {
+                filteredSubMatches.add(canonMatch);
+                for (int atomIndex : canonMatch) {
                     blockedAtoms.add(atomIndex);
                 }
             }
