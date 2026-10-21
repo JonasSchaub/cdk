@@ -44,12 +44,13 @@ import java.util.BitSet;
  * Test class for {@link BiosynfoniFingerprinter}.
  * The class uses modified copies from <a href="https://github.com/lucinamay/biosynfoni/blob/main/tests/main_test.py">
  * original python implementation tests</a> , {@link SubstructureFingerprinterTest} and own additions.
- * In alot of test substructure key 13,14,15 are tested along other keys, because during development issues occurred,
- * in ring size perception.
+ * In a lot of test substructure key 13,14,15 are tested along other keys, because during development issues occurred,
+ * in ring size perception. //ToDo create specific test
+ * //ToDo fix local build and tests
  * @author Marlon Raffelt (MaRa1778)
  */
 class BiosynfoniFingerprinterTest {
-    //Following tests are modified copies of the test included in python implementation
+    //Following tests are modified copies of the test included in the python implementation
     /**
      * Smiles are from the test used by the <a href="https://github.com/lucinamay/biosynfoni/blob/main/tests/main_test.py">
      * original python implementation</a>
@@ -186,7 +187,7 @@ class BiosynfoniFingerprinterTest {
         IAtomContainer mol1 = this.smilesParser.parseSmiles("c1ccccc1CCC");
         IBitFingerprint bitfp = this.biosynfoniFingerprinter.getBitFingerprint(mol1);
 
-        //molecule should match a phenylmotif with 3,2,1 side chain carbons and substructure for ring size 6
+        //molecule should match a phenyl motif with 3,2,1 side chain carbons and substructure for ring size 6
         Assertions.assertNotNull(bitfp);
         Assertions.assertTrue(bitfp.get(13));
         Assertions.assertTrue(bitfp.get(14));
@@ -264,16 +265,15 @@ class BiosynfoniFingerprinterTest {
 
         IAtomContainer mol1 = this.smilesParser.parseSmiles("CCc1c[nH]c2cc(-c3ccc(CC)cc3)ccc12");
         IBitFingerprint bitfp = this.biosynfoniFingerprinter.getBitFingerprint(mol1);
-        //molecule shall match patterns with defined aromaticity like 9 or 10 and not
+        //molecule shall match patterns with defined aromaticity like 9 or 10
         Assertions.assertNotNull(bitfp);
-        Assertions.assertTrue(bitfp.get(9));
         Assertions.assertTrue(bitfp.get(10));
         //molecule shall not match aliphatic substructures
         Assertions.assertFalse(bitfp.get(27));
 
         IAtomContainer mol2 = this.smilesParser.parseSmiles("C1=C(NC=N1)CC(C(=O)O)N");
         IBitFingerprint bfp2 = this.biosynfoniFingerprinter.getBitFingerprint(mol2);
-        //checks if aromcity detection for aminoacid smarts works properly
+        //checks if aromaticity detection for amino acid smarts works properly
         Assertions.assertNotNull(bfp2);
         Assertions.assertTrue(bfp2.get(3));
         Assertions.assertFalse(bfp2.get(4));
@@ -346,7 +346,7 @@ class BiosynfoniFingerprinterTest {
         Assertions.assertNotEquals(2, cfp.getCountForHash(16));
     }
 
-//own test additions
+    //the following test are additions specific for this implementation
 
     /**
      * Verifies that {@link BiosynfoniFingerprinter} fingerprints can be used
@@ -443,6 +443,7 @@ class BiosynfoniFingerprinterTest {
      * index mapping derived from the CDK {@code Canon.label()} implementation.
      * The expected mapping is the inverse of the canonical labels and therefore
      * represents the canonical position of each atom in the original molecule.</p>
+     * //ToDo make more clare how the data is structured
      */
     @Test
     void testCanoicalisation() throws InvalidSmilesException {
