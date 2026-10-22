@@ -602,7 +602,7 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter {
      */
     private List<List<int[]>> getFilteredMatches(IAtomContainer container) {
         SmartsPattern.prepare(container);
-        int[] canonicalIndex = new int[container.getAtomCount()];
+        int[] canonicalIndex = null;
         List<List<int[]>> filteredMatches = new ArrayList<>(BiosynfoniFingerprinter.FINGERPRINT_SIZE);
         if (intraSubOverlapToggle){
             canonicalIndex = getCanonicalIndexMap(container);
@@ -781,7 +781,6 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter {
      * @return an array mapping original atom indices to canonical atom indices
      */
     public int[] getCanonicalIndexMap(IAtomContainer aMolecule) {
-        if (this.interSubOverlapToggle) return null; //ToDo move to submatches
 
         int[][] g = GraphUtil.toAdjList(aMolecule);
         long[] labels = Canon.label(aMolecule, g);

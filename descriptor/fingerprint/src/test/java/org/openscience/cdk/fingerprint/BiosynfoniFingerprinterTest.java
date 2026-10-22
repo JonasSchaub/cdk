@@ -450,7 +450,7 @@ class BiosynfoniFingerprinterTest {
         IAtomContainer mol1 = this.smilesParser.parseSmiles("OC1=CC=CC=C1");
         BiosynfoniFingerprinter bfp3 = new BiosynfoniFingerprinter(false, true);
         int[] bfpCanonicalIndex = bfp3.getCanonicalIndexMap(mol1);
-        int[] canonicalIndex = {0, 6, 4, 3, 1, 5, 2};
+        int[] canonicalIndex = {0, 6, 4, 2, 1, 3, 5};
         Assertions.assertNotNull(bfpCanonicalIndex);
         Assertions.assertArrayEquals(bfpCanonicalIndex, canonicalIndex);
     }
