@@ -95,14 +95,20 @@ import java.util.Set;
  *      for more information.
  *     </li>
  *   <li>
- *      Fingerprints generated using inter-substructure overlap filtering
+ *      Fingerprints generated using intra-substructure overlap filtering
  *      differ from the reference implementation( <a href="https://github.com/lucinamay/biosynfoni">
  *      Original Python implementation</a>) because this implementation
  *      resolves overlapping matches using canonical atom numbering rather than
- *      the input atom order. This removes path dependency and ensures
- *      deterministic fingerprints regardless of atom indexing. The fingerprints generated using intra-substructure overlap
- *      are not generated with appliance of Canonical Numbering, since this filter is reproducible without the Canonical Numbering.
- *      Adding the Canonical Numbering will increase computing costs,
+ *      the input atom order. The reference implementation sorts the matches of a SMARTS pattern by their
+ *      length before selecting non-overlapping matches. Since all matches of one SMARTS pattern have the same
+ *      length, this sorting has no effect and the selection depends on the order in which the matches are
+ *      found, i.e. on the input atom order. This implementation instead translates the atom indices of each
+ *      match to canonical atom indices, sorts them in ascending order and sorts the matches lexicographically.
+ *      This removes path dependency and ensures
+ *      deterministic fingerprints regardless of atom indexing. The inter-substructure overlap filter
+ *      does not use the canonical numbering, since its result only depends on the fixed order of the
+ *      SMARTS patterns and is therefore reproducible without it. Adding the canonical numbering would only
+ *      increase computing costs.
  *   </li>
  *   <li>
  *       Unlike the reference Python implementation, count fingerprints are returned as an {@link IntArrayCountFingerprint}.
@@ -126,7 +132,18 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter {
      * <p>
      * Each enum constant defines a SMARTS pattern and its corresponding label.
      * Together, these feature definitions form the default Biosynfoni fingerprint.
-     * //ToDo add Biosynfonif version and our changes to it
+     * </p>
+     * <p>
+     * The keys and their order correspond to the substructure set {@code full_1103}, the default version of the
+     * <a href="https://github.com/lucinamay/biosynfoni">original Python implementation</a> (biosynfoni 1.0.0).
+     * The order is relevant for inter-substructure overlap filtering, because matches of earlier keys
+     * block atoms for all later keys.
+     * </p>
+     * <p>
+     * Changes compared to the reference implementation: in {@link #D_PHENYL_C3} and {@link #D_PHENYL_C2}
+     * the side chain primitive {@code [#6;!$([r6])]} was replaced by {@code [#6!$(*1*****1)]}, so that carbon
+     * atoms in any six-membered ring are excluded, not only those whose smallest ring has six members.
+     * See the <a href="https://github.com/cdk/cdk/issues/1292#issue-4641968710">Git Issue</a> for more information.
      * </p>
      */
     public enum BiosynfoniKey {
@@ -481,6 +498,21 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter {
     private static final int FINGERPRINT_SIZE = BiosynfoniKey.values().length;
 
     /**
+     * Orders matches given as ascending sorted canonical atom indices lexicographically.
+     * If one match is a prefix of the other, the shorter match is ordered first.
+     */
+    private static final Comparator<int[]> CANONICAL_MATCH_ORDER = (a, b) -> {
+        int length = Math.min(a.length, b.length);
+        for (int i = 0; i < length; i++) {
+            int comparison = Integer.compare(a[i], b[i]);
+            if (comparison != 0) {
+                return comparison;
+            }
+        }
+        return Integer.compare(a.length, b.length);
+    };
+
+    /**
      * Creates a Biosynfoni fingerprinter using the default SMARTS patterns with
      * both intra- and inter-substructure overlap filtering disabled. This
      * constructor provides the default configuration of the fingerprinter.
@@ -592,10 +624,12 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter {
      * defined for this fingerprint.
      *
      * <p>Before matching, the molecule is prepared for SMARTS pattern
-     * matching. A canonical atom index mapping is generated to ensure
-     * consistent atom indexing during the filtering process. Each SMARTS
-     * pattern is then matched against the molecule, and the resulting
-     * matches are filtered before being added to the result list.</p>
+     * matching. If intra-substructure overlap filtering is enabled, a canonical
+     * atom index mapping is generated to make the filtering independent of the
+     * input atom order. In this case the returned matches contain canonical atom
+     * indices instead of the original ones. Each SMARTS pattern is then matched
+     * against the molecule, and the resulting matches are filtered before being
+     * added to the result list.</p>
      *
      * @param container the molecule to search for SMARTS pattern matches
      * @return a list containing the filtered matches for each SMARTS pattern
@@ -645,7 +679,17 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter {
      * Filters overlapping matches within a single SMARTS pattern.
      *
      * <p>Matches are first ordered according to their canonical atom indices to eliminate dependence on the input atom order.
-     * The ordered matches are then processed sequentially. A match is accepted
+     * For this, the atom indices of each match are translated to canonical atom indices and sorted in ascending
+     * order. The matches are then sorted lexicographically using {@link #CANONICAL_MATCH_ORDER}, e.g.
+     * {@code {0,1}} before {@code {1,2}} before {@code {2,3}}.</p>
+     *
+     * <p>The reference implementation sorts the matches by their length instead. Since all matches of one
+     * SMARTS pattern have the same length, this sorting has no effect there, and the selected matches depend
+     * on the order in which the toolkit finds them, i.e. on the input atom order. The same molecule with a
+     * different atom order could therefore result in different counts. Sorting by canonical atom indices
+     * ensures that the result is identical for every atom order of the molecule.</p>
+     *
+     * <p>The ordered matches are then processed sequentially. A match is accepted
      * only if none of its atoms have already been assigned to a previously
      * accepted match of the same SMARTS pattern.</p>
      *
@@ -674,17 +718,18 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter {
             Arrays.sort(canonMatch);
             canonMatches.add(canonMatch);
         }
-        //ToDo check biosynfoni sorting
-        canonMatches.sort((a, b) -> {
-            int length = Math.min(a.length, b.length);
-            for (int i = 0; i < length; i++) {
-                int comparison = Integer.compare(a[i], b[i]);
-                if (comparison != 0) {
-                    return comparison;
-                }
-            }
-            return Integer.compare(a.length, b.length);
-        });
+        
+        canonMatches.sort(BiosynfoniFingerprinter.CANONICAL_MATCH_ORDER);
+//        canonMatches.sort((a, b) -> {
+//            int length = Math.min(a.length, b.length);
+//            for (int i = 0; i < length; i++) {
+//                int comparison = Integer.compare(a[i], b[i]);
+//                if (comparison != 0) {
+//                    return comparison;
+//                }
+//            }
+//            return Integer.compare(a.length, b.length);
+//        });
         Set<Integer> blockedAtoms = new HashSet<>();
         for (int[] canonMatch : canonMatches) {
             if (!BiosynfoniFingerprinter.hasOverlap(canonMatch, blockedAtoms)) {
