@@ -100,7 +100,7 @@ public class MDLV3000Reader extends DefaultChemObjectReader {
     private int lineNumber;
 
     public MDLV3000Reader(Reader in) {
-        this(in, Mode.RELAXED);
+        this(in, Mode.DEFAULT);
     }
 
     public MDLV3000Reader(Reader in, Mode mode) {
@@ -111,7 +111,7 @@ public class MDLV3000Reader extends DefaultChemObjectReader {
     }
 
     public MDLV3000Reader(InputStream input) {
-        this(input, Mode.RELAXED);
+        this(input, Mode.DEFAULT);
     }
 
     public MDLV3000Reader(InputStream input, Mode mode) {
@@ -1235,13 +1235,13 @@ public class MDLV3000Reader extends DefaultChemObjectReader {
 
     private void initIOSettings() {
         optForce3d = addSetting(new BooleanIOSetting("ForceReadAs3DCoordinates", IOSetting.Importance.LOW,
-                "Should coordinates always be read as 3D?", "false"));
+                "Should coordinates always be read as 3D?", false));
         optHydIso = addSetting(new BooleanIOSetting("InterpretHydrogenIsotopes",
-                IOSetting.Importance.LOW, "Should D and T be interpreted as hydrogen isotopes?", "true"));
+                IOSetting.Importance.LOW, "Should D and T be interpreted as hydrogen isotopes?", true));
         optStereoPerc = addSetting(new BooleanIOSetting("AddStereoElements", IOSetting.Importance.LOW,
-                "Detect and create IStereoElements for the input.", "true"));
+                "Detect and create IStereoElements for the input.", true));
         optStereo0d = addSetting(new BooleanIOSetting("AddStereo0d", IOSetting.Importance.LOW,
-                "Allow stereo created from parity value when no coordinates", "true"));
+                "Allow stereo created from parity value when no coordinates", true));
 
     }
 

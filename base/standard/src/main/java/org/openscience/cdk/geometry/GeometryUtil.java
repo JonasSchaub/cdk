@@ -246,13 +246,14 @@ public final class GeometryUtil {
      * @param angle   The angle by which to rotate the molecule, in radians
      */
     public static void rotate(IAtomContainer atomCon, Point2d center, double angle) {
-        Point2d point;
+       rotate(atomCon.atoms(), center, angle);
+    }
+
+    public static void rotate(Iterable<IAtom> atoms, Point2d center, double angle) {
         double costheta = Math.cos(angle);
         double sintheta = Math.sin(angle);
-        IAtom atom;
-        for (int i = 0; i < atomCon.getAtomCount(); i++) {
-            atom = atomCon.getAtom(i);
-            point = atom.getPoint2d();
+        for (IAtom atom : atoms) {
+            Point2d point = atom.getPoint2d();
             double relativex = point.x - center.x;
             double relativey = point.y - center.y;
             point.x = relativex * costheta - relativey * sintheta + center.x;
@@ -648,19 +649,13 @@ public final class GeometryUtil {
         double zsum = 0.0;
 
         double totalmass = 0.0;
-        Isotopes isotopes;
-        try {
-            isotopes = Isotopes.getInstance();
-        } catch (IOException e) {
-            throw new RuntimeException("Could not initialize Isotopes");
-        }
 
         for (IAtom a : ac.atoms()) {
             Double mass = a.getExactMass();
             // some sanity checking
             if (a.getPoint3d() == null) return null;
             if (mass == null)
-                mass = isotopes.getNaturalMass(a);
+                mass = Isotopes.average(a.getAtomicNumber());
 
             totalmass += mass;
             xsum += mass * a.getPoint3d().x;
@@ -2094,5 +2089,43 @@ public final class GeometryUtil {
             }
         }
         return crossing;
+    }
+
+    // 3 by 3 determinant helper for a constant third column
+    private static double det(double xa, double ya, double xb, double yb, double xc, double yc) {
+        return (xa - xc) * (yb - yc) - (ya - yc) * (xb - xc);
+    }
+
+    /*
+     * Compute the signed determinate for three points (a triangle).
+     */
+    public static double det(Point2d a, Point2d b, Point2d c) {
+        if (a == null || b == null || c == null) return Double.NaN;
+        return det(a.x, a.y, b.x, b.y, c.x, c.y);
+    }
+
+    /**
+     * Check if 3 points are co-linear (in a line) a-b-c - given some margin
+     * of error.
+     */
+    public static boolean areColinear(Point2d a, Point2d b, Point2d c) {
+        // we could also do this by computing the angle/dot product
+        final double THRESHOLD = 0.02;
+        return Math.abs(det(a, b, c)) < THRESHOLD;
+    }
+
+    /**
+     * Check if an atom is co-linear, that is it has exactly two neighbours,
+     * and they are effectively in a straight line (with some margin of error).
+     *
+     * @param atom the atom
+     * @param neighbors the neighbours
+     * @return the atom and it's neighbours are colinear
+     */
+    public static boolean isColinear(IAtom atom, List<IAtom> neighbors) {
+        return neighbors.size() == 2 &&
+               areColinear(neighbors.get(0).getPoint2d(),
+                           atom.getPoint2d(),
+                           neighbors.get(1).getPoint2d());
     }
 }

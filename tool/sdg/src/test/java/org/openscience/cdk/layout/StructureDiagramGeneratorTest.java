@@ -47,6 +47,7 @@ import org.openscience.cdk.io.ISimpleChemObjectReader;
 import org.openscience.cdk.io.MDLReader;
 import org.openscience.cdk.io.MDLV2000Reader;
 import org.openscience.cdk.io.Mol2Reader;
+import org.openscience.cdk.isomorphism.Pattern;
 import org.openscience.cdk.sgroup.Sgroup;
 import org.openscience.cdk.sgroup.SgroupBracket;
 import org.openscience.cdk.sgroup.SgroupKey;
@@ -70,6 +71,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.hamcrest.CoreMatchers.is;
@@ -1381,6 +1383,37 @@ class StructureDiagramGeneratorTest {
     }
 
     @Test
+    void testAlignedCoordinatesWithoutReference() throws CDKException {
+        SmilesParser parser = new SmilesParser(SilentChemObjectBuilder.getInstance());
+        Pattern pattern = Pattern.findSubstructure(parser.parseSmiles("c1ccccc1"));
+        StructureDiagramGenerator sdg = new StructureDiagramGenerator();
+        IAtomContainer first = parser.parseSmiles("CCc1ccccc1");
+        IAtomContainer second = parser.parseSmiles("OCc1ccccc1");
+
+        sdg.generateAlignedCoordinates(first, pattern);
+        sdg.generateAlignedCoordinates(second, pattern);
+
+        for (IAtomContainer mol : Arrays.asList(first, second)) {
+            for (IAtom atom : mol.atoms()) {
+                Point2d point = atom.getPoint2d();
+                Assertions.assertNotNull(point);
+                Assertions.assertTrue(Double.isFinite(point.x));
+                Assertions.assertTrue(Double.isFinite(point.y));
+            }
+        }
+
+        int[] firstMapping = pattern.match(first);
+        int[] secondMapping = pattern.match(second);
+        Assertions.assertEquals(6, firstMapping.length);
+        Assertions.assertEquals(6, secondMapping.length);
+        for (int i = 0; i < firstMapping.length; i++) {
+            Point2d firstPoint = first.getAtom(firstMapping[i]).getPoint2d();
+            Point2d secondPoint = second.getAtom(secondMapping[i]).getPoint2d();
+            Assertions.assertEquals(0, firstPoint.distance(secondPoint), 1e-6);
+        }
+    }
+
+    @Test
     void testAssignWedges() throws CDKException {
         IChemObjectBuilder builder = SilentChemObjectBuilder.getInstance();
         SmilesParser smipar = new SmilesParser(builder);
@@ -1424,5 +1457,49 @@ class StructureDiagramGeneratorTest {
             }
         }
         Assertions.assertEquals(expected, wedgeCount);
+    }
+
+    @Test
+    void testEffectiveChargePolarBond() throws CDKException {
+        IChemObjectBuilder builder = SilentChemObjectBuilder.getInstance();
+        SmilesParser smipar = new SmilesParser(builder);
+        IAtomContainer mol = smipar.parseSmiles("[O-][S+]1CCC([S-])C1.[Na+]");
+        Map<IAtom,Integer> charges = StructureDiagramGenerator.calculateEffectiveCharges(mol);
+        Assertions.assertEquals(2, charges.size());
+        Assertions.assertEquals(-1, charges.getOrDefault(mol.getAtom(5),0)); // S-
+        Assertions.assertEquals(+1, charges.getOrDefault(mol.getAtom(7),0)); // Na+
+    }
+
+    @Test
+    void testEffectiveChargeMulticenter() throws CDKException {
+        IChemObjectBuilder builder = SilentChemObjectBuilder.getInstance();
+        SmilesParser smipar = new SmilesParser(builder);
+        IAtomContainer mol = smipar.parseSmiles("*[Fe++]*.[cH-]1cccc1.[cH-]1cccc1[O-].[Na+] |m:0:3.4.5.6.7,2:8.9.10.11.12|");
+        Map<IAtom,Integer> charges = StructureDiagramGenerator.calculateEffectiveCharges(mol);
+        Assertions.assertEquals(2, charges.size());
+        Assertions.assertEquals(-1, charges.getOrDefault(mol.getAtom(mol.getAtomCount()-2),0)); // O-
+        Assertions.assertEquals(+1, charges.getOrDefault(mol.getAtom(mol.getAtomCount()-1),0)); // Na+
+    }
+
+    @Test
+    void testEffectiveChargeMulticenter2() throws CDKException {
+        IChemObjectBuilder builder = SilentChemObjectBuilder.getInstance();
+        SmilesParser smipar = new SmilesParser(builder);
+        IAtomContainer mol = smipar.parseSmiles("*[Mn+]([C-]#[O+])([C-]#[O+])[C-]#[O+].C[c-]1cccc1 |m:0:9.10.11.12.13|");
+        Map<IAtom,Integer> charges = StructureDiagramGenerator.calculateEffectiveCharges(mol);
+        Assertions.assertEquals(0, charges.size());
+    }
+
+    @Test
+    void noOverlappingAtoms() throws Exception {
+        SmilesParser smipar = new SmilesParser(SilentChemObjectBuilder.getInstance());
+        IAtomContainer mol = smipar.parseSmiles("COC(=O)C=C(C(=O)O)C(CC1=C(Br)C(O)=C(O)C(Br)=C1Br)C(=O)O");
+        layout(mol);
+        for (int i = 0; i < mol.getAtomCount(); i++) {
+            for (int j = i + 1; j < mol.getAtomCount(); j++) {
+                assertThat(mol.getAtom(i).getPoint2d().distance(mol.getAtom(j).getPoint2d()),
+                           is(greaterThan(SDG.getBondLength() / 4)));
+            }
+        }
     }
 }

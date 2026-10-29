@@ -15,6 +15,7 @@ import org.openscience.cdk.exception.CDKException;
 import org.openscience.cdk.graph.AllPairsShortestPaths;
 import org.openscience.cdk.interfaces.IAtom;
 import org.openscience.cdk.interfaces.IAtomContainer;
+import org.openscience.cdk.interfaces.IElement;
 
 import java.util.ArrayList;
 import java.util.BitSet;
@@ -22,8 +23,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-//import org.openscience.cdk.graph.matrix.TopologicalMatrix;
+import java.util.Set;
 
 /**
  * Generates an atom pair 2D fingerprint as implemented in PaDEL given an  {@link IAtomContainer}, that
@@ -38,6 +38,7 @@ import java.util.Map;
 public class AtomPairs2DFingerprinter extends AbstractFingerprinter implements IFingerprinter {
 
     private static final int      MAX_DISTANCE = 10;
+    // important keep sync'd with include() below
     private static final String[] atypes       = {"C", "N", "O", "S", "P", "F", "Cl", "Br", "I", "B", "Si", "X"};
 
     private final Map<String, Integer> pathToBit = new HashMap<>();
@@ -67,10 +68,10 @@ public class AtomPairs2DFingerprinter extends AbstractFingerprinter implements I
      */
     private static boolean isHalogen(final IAtom atom) {
         switch (atom.getAtomicNumber()) {
-            case 9:  // F
-            case 17: // Cl
-            case 35: // Br
-            case 53: // I
+            case IElement.F:
+            case IElement.Cl:
+            case IElement.Br:
+            case IElement.I:
                 return true;
             default:
                 return false;
@@ -84,17 +85,17 @@ public class AtomPairs2DFingerprinter extends AbstractFingerprinter implements I
      */
     private static boolean include(final IAtom atom) {
         switch (atom.getAtomicNumber()) {
-            case 5:  // B
-            case 6:  // C
-            case 7:  // N
-            case 8:  // O
-            case 14: // Si
-            case 15: // P
-            case 16: // S
-            case 9:  // F
-            case 17: // Cl
-            case 35: // Br
-            case 53: // I
+            case IElement.B:
+            case IElement.C:
+            case IElement.N:
+            case IElement.O:
+            case IElement.Si:
+            case IElement.P:
+            case IElement.S:
+            case IElement.F:
+            case IElement.Cl:
+            case IElement.Br:
+            case IElement.I:
                 return true;
             default:
                 return false;
@@ -124,6 +125,13 @@ public class AtomPairs2DFingerprinter extends AbstractFingerprinter implements I
                (isHalogen(b) ? "X" : b.getSymbol());
     }
 
+    private boolean add(List<String> paths, String path) {
+        if (!pathToBit.containsKey(path))
+            return false;
+        paths.add(path);
+        return true;
+    }
+
     /**
      * This performs the calculations used to generate the fingerprint
      * @param paths
@@ -142,11 +150,14 @@ public class AtomPairs2DFingerprinter extends AbstractFingerprinter implements I
                     continue;
                 final IAtom beg = mol.getAtom(i);
                 final IAtom end = mol.getAtom(j);
-                paths.add(encodePath(dist, beg, end));
-                paths.add(encodePath(dist, end, beg));
+
+                // if one path gets added we know the other one won't
+                // be, we also avoid double counting symmetric paths 4_C_C
+                if (!add(paths, encodePath(dist, beg, end)))
+                    add(paths, encodePath(dist, end, beg));
                 if (isHalogen(mol.getAtom(i)) || isHalogen(mol.getAtom(j))) {
-                    paths.add(encodeHalPath(dist, beg, end));
-                    paths.add(encodeHalPath(dist, end, beg));
+                    if (!add(paths, encodeHalPath(dist, beg, end)))
+                        add(paths, encodeHalPath(dist, end, beg));
                 }
             }
         }
@@ -158,9 +169,7 @@ public class AtomPairs2DFingerprinter extends AbstractFingerprinter implements I
         List<String> paths = new ArrayList<>();
         calculate(paths, container);
         for (String path : paths) {
-        	if (!pathToBit.containsKey(path))
-        		continue;
-            fp.set(pathToBit.get(path));
+        	fp.set(pathToBit.get(path));
         }
         return new BitSetFingerprint(fp);
     }
@@ -176,7 +185,7 @@ public class AtomPairs2DFingerprinter extends AbstractFingerprinter implements I
         int count = 0;
         String prev = null;
         for (String path : paths) {
-            if (prev == null || !path.equals(prev)) {
+            if (!path.equals(prev)) {
                 if (count > 0)
                     raw.put(prev, count);
                 count = 1;
@@ -195,6 +204,7 @@ public class AtomPairs2DFingerprinter extends AbstractFingerprinter implements I
     public ICountFingerprint getCountFingerprint(IAtomContainer mol) throws CDKException {
         final Map<String,Integer> raw  = getRawFingerprint(mol);
         final List<String>        keys = new ArrayList<>(raw.keySet());
+        keys.sort((a, b) -> pathToBit.get(a).compareTo(pathToBit.get(b)));
         return new ICountFingerprint() {
             @Override
             public long size() {
@@ -218,23 +228,23 @@ public class AtomPairs2DFingerprinter extends AbstractFingerprinter implements I
 
             @Override
             public void merge(ICountFingerprint fp) {
-
+                throw new UnsupportedOperationException();
             }
 
             @Override
             public void setBehaveAsBitFingerprint(
                 boolean behaveAsBitFingerprint) {
-
+                throw new UnsupportedOperationException();
             }
 
             @Override
             public boolean hasHash(int hash) {
-                return bitToPath.containsKey(hash);
+                return raw.containsKey(bitToPath.get(hash));
             }
 
             @Override
             public int getCountForHash(int hash) {
-                return raw.get(bitToPath.get(hash));
+                return raw.getOrDefault(bitToPath.get(hash), 0);
             }
         };
     }
