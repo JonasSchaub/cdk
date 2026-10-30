@@ -30,6 +30,7 @@ import org.openscience.cdk.AtomContainerSet;
 import org.openscience.cdk.DefaultChemObjectBuilder;
 import org.openscience.cdk.exception.CDKException;
 import org.openscience.cdk.exception.InvalidSmilesException;
+import org.openscience.cdk.graph.AtomContainerAtomPermutor;
 import org.openscience.cdk.interfaces.IAtomContainer;
 import org.openscience.cdk.interfaces.IAtomContainerSet;
 import org.openscience.cdk.silent.SilentChemObjectBuilder;
@@ -39,13 +40,17 @@ import org.openscience.cdk.smiles.SmilesParser;
 
 import java.util.ArrayList;
 import java.util.BitSet;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
 
 /**
  * Test class for {@link BiosynfoniFingerprinter}.
  * The class uses modified copies from <a href="https://github.com/lucinamay/biosynfoni/blob/main/tests/main_test.py">
  * original python implementation tests</a> , {@link SubstructureFingerprinterTest} and own additions.
  * In a lot of test substructure key 13,14,15 are tested along other keys, because during development issues occurred,
- * in ring size perception. //ToDo create specific test
+ * in ring size perception. These keys are tested specifically in {@link #testPhenylKeysRingSizePerception()}.
  * //ToDo fix local build and tests
  * @author Marlon Raffelt (MaRa1778)
  */
@@ -194,7 +199,7 @@ class BiosynfoniFingerprinterTest {
         Assertions.assertTrue(bitfp.get(15));
         Assertions.assertTrue(bitfp.get(34));
         //molcule should not match CoA
-        Assertions.assertFalse((bitfp.get(1)));
+        Assertions.assertFalse((bitfp.get(0)));
     }
 
     /**
@@ -220,7 +225,7 @@ class BiosynfoniFingerprinterTest {
         Assertions.assertEquals(1, cfp.getCountForHash(15));
         Assertions.assertEquals(1, cfp.getCountForHash(34));
         //molcule should not match CoA
-        Assertions.assertEquals(0, cfp.getCountForHash(1));
+        Assertions.assertEquals(0, cfp.getCountForHash(0));
     }
 
     /**
@@ -320,7 +325,7 @@ class BiosynfoniFingerprinterTest {
         Assertions.assertTrue(bitfp.get(30));
         //molecule does not contain a nitrogen close to the ring
         Assertions.assertFalse(bitfp.get(12));
-        //ring size is not 8 in the given mol
+        //ring size is not 7 in the given mol
         Assertions.assertFalse(bitfp.get(35));
     }
 
@@ -437,19 +442,70 @@ class BiosynfoniFingerprinterTest {
     }
 
     /**
+     * Verifies the ring size perception of the phenyl keys 13 (phenylC3), 14 (phenylC2) and 15 (phenylC1).
+     *
+     * <p>The side chain carbons of keys 13 and 14 must not be part of any six-membered ring. In the reference
+     * implementation this is expressed with {@code [#6;!$([r6])]}, which only excludes atoms whose smallest ring
+     * has six members. This implementation uses {@code [#6!$(*1*****1)]} instead, which excludes atoms in any
+     * six-membered ring.</p>
+     *
+     * <p>Molecules used:</p>
+     * <ul>
+     *   <li>{@code c1ccccc1CCC}: propylbenzene, all three keys match.</li>
+     *   <li>{@code c1ccccc1CC12CCC1CC2}: benzyl bicyclo[2.2.0]hexane. The second side chain carbon is part of the
+     *       six-membered perimeter ring, but its smallest ring has four members. The reference SMARTS would match,
+     *       the SMARTS of this implementation must not.</li>
+     *   <li>{@code Cc1cccc2ccccc12}: 1-methylnaphthalene. The fused ring atoms are part of two rings and
+     *       therefore do not match {@code [#6;R1]}, so no phenyl key matches.</li>
+     * </ul>
+     */
+    @Test
+    void testPhenylKeysRingSizePerception() throws CDKException {
+        ICountFingerprint propylbenzene = this.biosynfoniFingerprinter.getCountFingerprint(
+                this.smilesParser.parseSmiles("c1ccccc1CCC"));
+        Assertions.assertEquals(1, propylbenzene.getCountForHash(13));
+        Assertions.assertEquals(1, propylbenzene.getCountForHash(14));
+        Assertions.assertEquals(1, propylbenzene.getCountForHash(15));
+
+        IAtomContainer bicyclic = this.smilesParser.parseSmiles("c1ccccc1CC12CCC1CC2");
+        ICountFingerprint bicyclicFp = this.biosynfoniFingerprinter.getCountFingerprint(bicyclic);
+        Assertions.assertEquals(0, bicyclicFp.getCountForHash(13));
+        Assertions.assertEquals(0, bicyclicFp.getCountForHash(14));
+        Assertions.assertEquals(1, bicyclicFp.getCountForHash(15));
+        //the SMARTS of the reference implementation does not exclude the side chain carbon in the six-membered ring
+        String referencePhenylC2 = "[#6;R1]~1~[#6;R1]~[#6;R1]~[#6;R1]~[#6;R1]~[#6;R1]~1~[#6]~[#6;!$([r6])]";
+        Assertions.assertTrue(SmartsPattern.create(referencePhenylC2).matches(bicyclic));
+
+        ICountFingerprint methylnaphthalene = this.biosynfoniFingerprinter.getCountFingerprint(
+                this.smilesParser.parseSmiles("Cc1cccc2ccccc12"));
+        Assertions.assertEquals(0, methylnaphthalene.getCountForHash(13));
+        Assertions.assertEquals(0, methylnaphthalene.getCountForHash(14));
+        Assertions.assertEquals(0, methylnaphthalene.getCountForHash(15));
+    }
+
+    /**
      * Verifies that the canonical atom index mapping is generated correctly.
      *
      * <p>The test uses the phenol molecule and the expected canonical atom
      * index mapping derived from the CDK {@code Canon.label()} implementation.
      * The expected mapping is the inverse of the canonical labels and therefore
      * represents the canonical position of each atom in the original molecule.</p>
-     * //ToDo make more clare how the data is structured
+     *
+     * <p>The array is indexed by the original atom index (the order of the atoms in the SMILES) and each
+     * value is the canonical index of that atom, starting at 0:</p>
+     * <pre>
+     * atom index (SMILES order):  0(O) 1(C1) 2(C) 3(C) 4(C) 5(C) 6(C)
+     * Canon.label():              1    7     5    3    2    4    6
+     * canonical index:            0    6     4    2    1    3    5
+     * </pre>
+     * <p>The canonical index is the canonical label minus one. Symmetry equivalent atoms (ortho carbons 2/6,
+     * meta carbons 3/5) receive neighbouring canonical indices.</p>
      */
     @Test
-    void testCanoicalisation() throws InvalidSmilesException {
+    void testCanonicalisation() throws InvalidSmilesException {
         IAtomContainer mol1 = this.smilesParser.parseSmiles("OC1=CC=CC=C1");
-        BiosynfoniFingerprinter bfp3 = new BiosynfoniFingerprinter(false, true);
-        int[] bfpCanonicalIndex = bfp3.getCanonicalIndexMap(mol1);
+        BiosynfoniFingerprinter bfp2 = new BiosynfoniFingerprinter(true, false);
+        int[] bfpCanonicalIndex = bfp2.getCanonicalIndexMap(mol1);
         int[] canonicalIndex = {0, 6, 4, 2, 1, 3, 5};
         Assertions.assertNotNull(bfpCanonicalIndex);
         Assertions.assertArrayEquals(bfpCanonicalIndex, canonicalIndex);
