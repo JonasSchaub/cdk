@@ -266,7 +266,10 @@ public class AWTDrawVisitor extends AbstractAWTDrawVisitor {
         this.graphics.setFont(this.fontManager.getFont());
         Point point = this.getTextBasePoint(textElement.text, textElement.xCoord, textElement.yCoord, graphics);
         Rectangle2D textBounds = this.getTextBounds(textElement.text, textElement.xCoord, textElement.yCoord, graphics);
-        this.graphics.setColor(getBackgroundColor());
+        if (textElement.backColor != null)
+            this.graphics.setColor(textElement.backColor);
+        else
+            this.graphics.setColor(getBackgroundColor());
         this.graphics.fill(textBounds);
         this.graphics.setColor(textElement.color);
         this.graphics.drawString(textElement.text, point.x, point.y);
@@ -429,15 +432,13 @@ public class AWTDrawVisitor extends AbstractAWTDrawVisitor {
     }
 
     private void visit(RectangleElement rectangle) {
-        if (rectangle.color == null)
-            return;
+        int[] p1 = this.transformPoint(rectangle.xCoord, rectangle.yCoord);
+        int[] p2 = this.transformPoint(rectangle.xCoord + rectangle.width, rectangle.yCoord + rectangle.height);
         this.graphics.setColor(rectangle.color);
-        int width = scaleX(rectangle.width);
-        int height = scaleY(rectangle.height);
         if (rectangle.filled) {
-            this.graphics.fillRect(transformX(rectangle.xCoord), transformY(rectangle.yCoord) - height, width, height);
+            this.graphics.fill(new Rectangle2D.Double(p1[0], p1[1], p2[0] - p1[0], p2[1] - p1[1]));
         } else {
-            this.graphics.drawRect(transformX(rectangle.xCoord), transformY(rectangle.yCoord) - height, width, height);
+            this.graphics.draw(new Rectangle2D.Double(p1[0], p1[1], p2[0] - p1[0], p2[1] - p1[1]));
         }
     }
 
