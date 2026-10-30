@@ -884,4 +884,5 @@ final class BiosynfoniCountFingerprint extends IntArrayCountFingerprint {
             this.numOfHits[i] = values.get(i);
         }
     }
+
 }
