@@ -701,4 +701,39 @@ class BiosynfoniFingerprinterTest {
                     this.biosynfoniFingerprinter.getCountFingerprint(this.smilesParser.parseSmiles(smiles)).getCountForHash(30), smiles);
         }
     }
+
+    /**
+     * Verifies that the side chain carbon atoms of the phenyl-C3 (key 13) and phenyl-C2 (key 14) units must not be part
+     * of any six-membered ring, regardless of the bond orders in this ring and of further fused rings like the lactone
+     * ring of aryltetralin lignans, while open side chains are still matched, for all four combinations of the overlap
+     * filters.
+     */
+    @Test
+    void testPhenylSideChainRing() throws CDKException {
+        //side chain in a six-membered ring: phenylcyclohexane, 4-phenylcyclohexene (non-aromatic double bond in the
+        // ring), aryltetralin lignan skeletons with and without lactone ring, and aryldihydronaphthalene lignan
+        // skeletons (double bond in the ring) with and without lactone ring
+        String[] ringSmilesArray = {"c1ccccc1C1CCCCC1", "c1ccccc1C1CC=CCC1",
+                "COc1cc(cc(OC)c1OC)C1C2C(COC2=O)Cc2cc3OCOc3cc12", "OCC1Cc2cc(OC)c(O)cc2C(c2ccc(O)c(OC)c2)C1CO",
+                "COc1cc(cc(OC)c1OC)C1=C2C(COC2=O)Cc2cc3OCOc3cc12", "OCC1=Cc2cc(OC)c(O)cc2C(c2ccc(O)c(OC)c2)C1CO"};
+        //open side chains: propylbenzene, cinnamyl alcohol, and cannabidiol, whose only phenyl-C3 unit is in the pentyl
+        // chain, while its aryl group is attached to a cyclohexene ring
+        String[] openSmilesArray = {"CCCc1ccccc1", "OC/C=C/c1ccccc1", "CCCCCc1cc(O)c(C2C=C(C)CCC2C(C)=C)c(O)c1"};
+        boolean[] toggles = {false, true};
+        for (boolean intraSubOverlapToggle : toggles) {
+            for (boolean interSubOverlapToggle : toggles) {
+                BiosynfoniFingerprinter bfp = new BiosynfoniFingerprinter(intraSubOverlapToggle, interSubOverlapToggle);
+                String filters = ", intra " + intraSubOverlapToggle + ", inter " + interSubOverlapToggle;
+                for (String smiles : ringSmilesArray) {
+                    ICountFingerprint cfp = bfp.getCountFingerprint(this.smilesParser.parseSmiles(smiles));
+                    Assertions.assertEquals(0, cfp.getCountForHash(13), smiles + filters);
+                    Assertions.assertEquals(0, cfp.getCountForHash(14), smiles + filters);
+                }
+                for (String smiles : openSmilesArray) {
+                    Assertions.assertEquals(1,
+                            bfp.getCountFingerprint(this.smilesParser.parseSmiles(smiles)).getCountForHash(13), smiles + filters);
+                }
+            }
+        }
+    }
 }

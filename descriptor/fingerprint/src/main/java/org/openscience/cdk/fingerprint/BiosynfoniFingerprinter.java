@@ -93,15 +93,15 @@ import java.util.Map;
  *   <p><b>Known differences to the reference implementation:</b></p>
  *   <ul>
  *     <li>
- *      The original pattern does not exclude carbon atoms that are part of all six-membered rings because, in SMARTS,
- *      the r{@literal <}x{@literal >} primitive refers to the size of the smallest ring containing an atom.
- *      Consequently, carbon atoms that belong to both a six-membered ring and a smaller fused ring are not matched as
- *      r{@literal <}6{@literal >} and are therefore not excluded.
- *      in CDK did not reproduce the intended semantics of the original
- *      Biosynfoni implementation. The affected fingerprint keys represent phenyl-derived substructures
- *      originating from the shikimate pathway (fingerprint keys 13, 14, and 15)
- *      See the <a href="https://github.com/cdk/cdk/issues/1292#issue-4641968710">  Git Issue </a>
- *      for more information.
+ *      In the patterns of {@link BiosynfoniKey#D_PHENYL_C3} and {@link BiosynfoniKey#D_PHENYL_C2}, the side chain
+ *      carbon atoms after the first one must not be part of any six-membered ring. The original patterns exclude them
+ *      via {@code [#6;!$([r6])]}, but in SMARTS, the r{@literal <}x{@literal >} primitive refers to the size of the
+ *      smallest ring containing an atom. Consequently, carbon atoms that belong to both a six-membered ring and a
+ *      smaller fused ring, e.g. the lactone ring of aryltetralin lignans, are not excluded there. Here, they are
+ *      excluded via the recursive SMARTS {@code $(*~1~*~*~*~*~*~1)}, which recognises six-membered rings regardless of
+ *      their bond orders, e.g. also cyclohexene rings. This is a deliberate revision and not a toolkit difference: with
+ *      the original patterns, the CDK gives the same counts as RDKit. See the
+ *      <a href="https://github.com/cdk/cdk/issues/1292">GitHub issue</a> for the meaning of the r primitive.
  *     </li>
  *   <li>
  *       The oxygen atoms of nitro groups, nitrate esters, and N-oxides are not matched as hydroxyl groups (see
@@ -257,17 +257,30 @@ public class BiosynfoniFingerprinter extends AbstractFingerprinter {
         /**
          * Phenylpropyl motif.
          * <p>
-         * SMARTS matches a phenyl ring attached to a three-carbon side chain.
+         * SMARTS matches a phenyl ring attached to a three-carbon side chain. The second and third side chain carbon
+         * atoms must not be part of any six-membered ring, so that, e.g., a phenyl ring attached to a cyclohexane ring
+         * or to the central six-membered ring of an aryltetralin lignan is not matched.
+         * </p>
+         * <p>
+         * This is a revision of the original pattern, which excludes these atoms via {@code [#6;!$([r6])]} only if
+         * their smallest ring is six-membered, so that, e.g., carbon atoms in a six-membered ring fused to the
+         * five-membered lactone ring of aryltetralin lignans are not excluded there. The recursive SMARTS
+         * {@code $(*~1~*~*~*~*~*~1)} is written with any-bond expressions ("~") so that six-membered rings are
+         * recognised regardless of their bond orders. Without bond symbols, as in {@code [#6!$(*1*****1)]}, a bond means
+         * single or aromatic in SMARTS, so that rings with a non-aromatic double bond, e.g. cyclohexene, would not be
+         * recognised.
          * </p>
          */
-        D_PHENYL_C3("d_phenylC3_9_strict", "[#6;R1]~1~[#6;R1]~[#6;R1]~[#6;R1]~[#6;R1]~[#6;R1]~1~[#6]~[#6!$(*1*****1)]~[#6!$(*1*****1)]"),
+        D_PHENYL_C3("d_phenylC3_9_strict", "[#6;R1]~1~[#6;R1]~[#6;R1]~[#6;R1]~[#6;R1]~[#6;R1]~1~[#6]~[#6;!$(*~1~*~*~*~*~*~1)]~[#6;!$(*~1~*~*~*~*~*~1)]"),
         /**
          * Phenethyl motif.
          * <p>
-         * SMARTS matches a phenyl ring attached to a two-carbon side chain.
+         * SMARTS matches a phenyl ring attached to a two-carbon side chain. The second side chain carbon atom must not
+         * be part of any six-membered ring, regardless of its bond orders. This is a revision of the original pattern,
+         * see {@link #D_PHENYL_C3}.
          * </p>
          */
-        D_PHENYL_C2("d_phenylC2_8_strict", "[#6;R1]~1~[#6;R1]~[#6;R1]~[#6;R1]~[#6;R1]~[#6;R1]~1~[#6]~[#6!$(*1*****1)]"),
+        D_PHENYL_C2("d_phenylC2_8_strict", "[#6;R1]~1~[#6;R1]~[#6;R1]~[#6;R1]~[#6;R1]~[#6;R1]~1~[#6]~[#6;!$(*~1~*~*~*~*~*~1)]"),
         /**
          * Benzyl motif.
          * <p>
