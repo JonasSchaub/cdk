@@ -110,7 +110,8 @@ public class PharmacophoreQueryAtom extends Atom implements IQueryAtom {
     @Override
     public boolean matches(IAtom atom) {
         PharmacophoreAtom patom = PharmacophoreAtom.get(atom);
-        return patom.getSymbol().equals(getSymbol());
+        assert patom != null;
+        return patom.getSymbol() != null && patom.getSymbol().equals(getSymbol());
     }
 
     /**

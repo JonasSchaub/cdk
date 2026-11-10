@@ -35,7 +35,6 @@ import org.openscience.cdk.interfaces.IAtomContainer;
 import org.openscience.cdk.interfaces.IBond;
 import org.openscience.cdk.tools.LoggingToolFactory;
 
-import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -313,6 +312,7 @@ public final class Aromaticity {
      * @param bond the bond
      */
     private static void makeAromatic(final IBond bond) {
+        assert bond.getBegin() != null && bond.getEnd() != null;
         bond.set(AROMATIC);
         bond.getBegin().set(AROMATIC);
         bond.getEnd().set(AROMATIC);

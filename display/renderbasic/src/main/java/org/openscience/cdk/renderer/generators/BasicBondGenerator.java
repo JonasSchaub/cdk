@@ -27,7 +27,6 @@ import java.util.List;
 import javax.vecmath.Point2d;
 import javax.vecmath.Vector2d;
 
-import org.openscience.cdk.CDKConstants;
 import org.openscience.cdk.geometry.GeometryUtil;
 import org.openscience.cdk.graph.ConnectivityChecker;
 import org.openscience.cdk.graph.Cycles;
@@ -307,7 +306,7 @@ public class BasicBondGenerator implements IGenerator<IAtomContainer> {
      */
     public IRenderingElement generateBondElement(IBond bond, IBond.Order type, RendererModel model) {
         // More than 2 atoms per bond not supported by this module
-        if (bond.getAtomCount() > 2) return null;
+        if (bond.getAtomCount() != 2) return null;
 
         // is object right? if not replace with a good one
         Point2d point1 = bond.getBegin().getPoint2d();
