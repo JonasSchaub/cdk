@@ -124,7 +124,7 @@ public class RDBERule implements IRule {
 
         List<Double> RDBEList = getRDBEValue(formula);
         for (double RDBE : RDBEList) {
-            if (min <= RDBE && RDBE <= 30) if (validate(formula, RDBE)) return 1.0;
+            if (min <= RDBE && RDBE <= max) if (validate(formula, RDBE)) return 1.0;
         }
 
         return 0.0;
@@ -248,6 +248,7 @@ public class RDBERule implements IRule {
         table.put("P", new int[]{3, 5});
         table.put("S", new int[]{2, 4, 6});
         table.put("Cl", new int[]{1});
+        table.put("Br", new int[]{1});
         //            table.put("K", 1);
         //            table.put("Ca", 2);
         //            table.put("Ga", 3);

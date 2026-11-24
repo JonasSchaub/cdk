@@ -355,6 +355,16 @@ public class Mol2Reader extends DefaultChemObjectReader {
                             logger.debug(nfExc);
                             throw new CDKException(error, nfExc);
                         }
+                        // Optional fields: subst_id, subst_name, charge, status_bit.
+                        if (tokenizer.hasMoreTokens()) tokenizer.nextToken();
+                        if (tokenizer.hasMoreTokens()) tokenizer.nextToken();
+                        if (tokenizer.hasMoreTokens()) {
+                            try {
+                                atom.setCharge(Double.parseDouble(tokenizer.nextToken()));
+                            } catch (NumberFormatException nfExc) {
+                                handleError("Invalid partial charge", nfExc);
+                            }
+                        }
                         molecule.addAtom(atom);
                     }
                 } else if (line.startsWith("@<TRIPOS>BOND")) {
@@ -384,7 +394,9 @@ public class Mol2Reader extends DefaultChemObjectReader {
                                     bond.setOrder(Order.DOUBLE);
                                 } else if ("3".equals(orderStr)) {
                                     bond.setOrder(Order.TRIPLE);
-                                } else if ("am".equals(orderStr) || "ar".equals(orderStr)) {
+                                } else if ("am".equals(orderStr)) {
+                                    bond.setOrder(Order.SINGLE);
+                                } else if ("ar".equals(orderStr)) {
                                     bond.setOrder(Order.SINGLE);
                                     bond.setFlag(IChemObject.AROMATIC, true);
                                     bond.getBegin().setFlag(IChemObject.AROMATIC, true);
