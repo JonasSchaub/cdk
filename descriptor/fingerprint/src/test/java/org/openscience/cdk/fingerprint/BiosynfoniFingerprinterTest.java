@@ -30,20 +30,18 @@ import org.openscience.cdk.AtomContainerSet;
 import org.openscience.cdk.DefaultChemObjectBuilder;
 import org.openscience.cdk.exception.CDKException;
 import org.openscience.cdk.exception.InvalidSmilesException;
-import org.openscience.cdk.graph.AtomContainerAtomPermutor;
 import org.openscience.cdk.interfaces.IAtomContainer;
 import org.openscience.cdk.interfaces.IAtomContainerSet;
 import org.openscience.cdk.silent.SilentChemObjectBuilder;
 import org.openscience.cdk.similarity.Tanimoto;
 import org.openscience.cdk.smarts.SmartsPattern;
+import org.openscience.cdk.smiles.SmiFlavor;
+import org.openscience.cdk.smiles.SmilesGenerator;
 import org.openscience.cdk.smiles.SmilesParser;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.BitSet;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
 
 /**
  * Test class for {@link BiosynfoniFingerprinter}.
@@ -77,18 +75,20 @@ class BiosynfoniFingerprinterTest {
     private final BiosynfoniFingerprinter biosynfoniFingerprinter = new BiosynfoniFingerprinter();
 
     /**
-     * Verifies that {@link BiosynfoniFingerprinter} uses viable SMARTS for substructure detection
+     * Verifies that {@link BiosynfoniFingerprinter} uses viable original and refined SMARTS for substructure detection
      */
     @Test
     void allSmartsViable() {
         for (BiosynfoniFingerprinter.BiosynfoniKey key : BiosynfoniFingerprinter.BiosynfoniKey.values()) {
-            Assertions.assertDoesNotThrow(() -> {
-                SmartsPattern.create(key.getSmarts(),
-                        DefaultChemObjectBuilder.getInstance());
-            }, " Invalid SMARTS detected" +
-                    "Key: " + key.name() +
-                    "Label: " + key.getLabel() +
-                    "SMARTS: " + key.getSmarts());
+            for (String smarts : new String[]{key.getOriginalSmarts(), key.getRefinedSmarts()}) {
+                Assertions.assertDoesNotThrow(() -> {
+                    SmartsPattern.create(smarts,
+                            DefaultChemObjectBuilder.getInstance());
+                }, " Invalid SMARTS detected" +
+                        "Key: " + key.name() +
+                        "Label: " + key.getLabel() +
+                        "SMARTS: " + smarts);
+            }
         }
     }
 
@@ -270,9 +270,11 @@ class BiosynfoniFingerprinterTest {
 
         IAtomContainer mol1 = this.smilesParser.parseSmiles("CCc1c[nH]c2cc(-c3ccc(CC)cc3)ccc12");
         IBitFingerprint bitfp = this.biosynfoniFingerprinter.getBitFingerprint(mol1);
-        //molecule shall match patterns with defined aromaticity like 9 or 10
+        //the original pattern of key 10 (phenethylamine) matches the aromatic pyrrole ring of the indole, the refined
+        // one does not, see BiosynfoniKey.D_PHENYL_C2N
         Assertions.assertNotNull(bitfp);
-        Assertions.assertTrue(bitfp.get(10));
+        Assertions.assertFalse(bitfp.get(10));
+        Assertions.assertTrue(new BiosynfoniFingerprinter(false, false, true).getBitFingerprint(mol1).get(10));
         //molecule shall not match aliphatic substructures
         Assertions.assertFalse(bitfp.get(27));
 
@@ -320,9 +322,12 @@ class BiosynfoniFingerprinterTest {
         Assertions.assertTrue(bitfp.get(16));
         Assertions.assertTrue(bitfp.get(19));
         Assertions.assertTrue(bitfp.get(34));
-        //molecule contains a sulfate group and should match substructure key 22 (Sulfonate) and key 30 (hydroxyl)
+        //molecule contains a sulfonic acid group and should match substructure key 22 (Sulfonate)
         Assertions.assertTrue(bitfp.get(22));
-        Assertions.assertTrue(bitfp.get(30));
+        //but not key 30 (hydroxyl): the OH group of the sulfonic acid is bonded to sulfur, not to carbon or nitrogen,
+        // and the [O-] of the charge-separated nitro group is not a deprotonated hydroxyl group (in the original
+        // implementation, it is matched as hydroxyl, which was the only hydroxyl match here)
+        Assertions.assertFalse(bitfp.get(30));
         //molecule does not contain a nitrogen close to the ring
         Assertions.assertFalse(bitfp.get(12));
         //ring size is not 7 in the given mol
@@ -431,7 +436,9 @@ class BiosynfoniFingerprinterTest {
         ICountFingerprint cfp2 = this.biosynfoniFingerprinter.getCountFingerprint(mol2);
 
         Assertions.assertEquals(1, cfp.getCountForHash(9));
-        Assertions.assertEquals(1, cfp.getCountForHash(10));
+        //the pyrrole ring of the indole is not a phenethylamine unit in the refined fingerprint, but in the original one
+        Assertions.assertEquals(0, cfp.getCountForHash(10));
+        Assertions.assertEquals(1, new BiosynfoniFingerprinter(false, false, true).getCountFingerprint(mol1).getCountForHash(10));
         Assertions.assertNotEquals(1, cfp.getCountForHash(11));
         Assertions.assertEquals(1, cfp.getCountForHash(12));
 
@@ -444,23 +451,24 @@ class BiosynfoniFingerprinterTest {
     /**
      * Verifies the ring size perception of the phenyl keys 13 (phenylC3), 14 (phenylC2) and 15 (phenylC1).
      *
-     * <p>The side chain carbons of keys 13 and 14 must not be part of any six-membered ring. In the reference
-     * implementation this is expressed with {@code [#6;!$([r6])]}, which only excludes atoms whose smallest ring
-     * has six members. This implementation uses {@code [#6!$(*1*****1)]} instead, which excludes atoms in any
-     * six-membered ring.</p>
+     * <p>The side chain carbons of keys 13 and 14 must not be part of any six-membered ring. In the original pattern
+     * of the reference implementation, this is expressed with {@code [#6;!$([r6])]}, which only excludes atoms whose
+     * smallest ring has six members. The refined pattern uses {@code [#6;!$(*~1~*~*~*~*~*~1)]} instead, which excludes
+     * atoms in any six-membered ring (see {@link BiosynfoniFingerprinter.BiosynfoniKey#D_PHENYL_C3}).</p>
      *
      * <p>Molecules used:</p>
      * <ul>
      *   <li>{@code c1ccccc1CCC}: propylbenzene, all three keys match.</li>
      *   <li>{@code c1ccccc1CC12CCC1CC2}: benzyl bicyclo[2.2.0]hexane. The second side chain carbon is part of the
-     *       six-membered perimeter ring, but its smallest ring has four members. The reference SMARTS would match,
-     *       the SMARTS of this implementation must not.</li>
+     *       six-membered perimeter ring, but its smallest ring has four members. The original pattern matches, the
+     *       refined one must not.</li>
      *   <li>{@code Cc1cccc2ccccc12}: 1-methylnaphthalene. The fused ring atoms are part of two rings and
-     *       therefore do not match {@code [#6;R1]}, so no phenyl key matches.</li>
+     *       therefore do not match {@code [#6;R1]} or {@code [c;R1]}, so no phenyl key matches.</li>
      * </ul>
      */
     @Test
     void testPhenylKeysRingSizePerception() throws CDKException {
+        BiosynfoniFingerprinter originalBfp = new BiosynfoniFingerprinter(false, false, true);
         ICountFingerprint propylbenzene = this.biosynfoniFingerprinter.getCountFingerprint(
                 this.smilesParser.parseSmiles("c1ccccc1CCC"));
         Assertions.assertEquals(1, propylbenzene.getCountForHash(13));
@@ -472,42 +480,469 @@ class BiosynfoniFingerprinterTest {
         Assertions.assertEquals(0, bicyclicFp.getCountForHash(13));
         Assertions.assertEquals(0, bicyclicFp.getCountForHash(14));
         Assertions.assertEquals(1, bicyclicFp.getCountForHash(15));
-        //the SMARTS of the reference implementation does not exclude the side chain carbon in the six-membered ring
-        String referencePhenylC2 = "[#6;R1]~1~[#6;R1]~[#6;R1]~[#6;R1]~[#6;R1]~[#6;R1]~1~[#6]~[#6;!$([r6])]";
-        Assertions.assertTrue(SmartsPattern.create(referencePhenylC2).matches(bicyclic));
+        //the original pattern does not exclude the side chain carbon in the six-membered ring
+        Assertions.assertTrue(SmartsPattern.create(BiosynfoniFingerprinter.BiosynfoniKey.D_PHENYL_C2.getOriginalSmarts())
+                .matches(bicyclic));
+        Assertions.assertEquals(1, originalBfp.getCountFingerprint(bicyclic).getCountForHash(14));
 
-        ICountFingerprint methylnaphthalene = this.biosynfoniFingerprinter.getCountFingerprint(
-                this.smilesParser.parseSmiles("Cc1cccc2ccccc12"));
-        Assertions.assertEquals(0, methylnaphthalene.getCountForHash(13));
-        Assertions.assertEquals(0, methylnaphthalene.getCountForHash(14));
-        Assertions.assertEquals(0, methylnaphthalene.getCountForHash(15));
+        for (BiosynfoniFingerprinter bfp : new BiosynfoniFingerprinter[]{this.biosynfoniFingerprinter, originalBfp}) {
+            ICountFingerprint methylnaphthalene = bfp.getCountFingerprint(this.smilesParser.parseSmiles("Cc1cccc2ccccc12"));
+            Assertions.assertEquals(0, methylnaphthalene.getCountForHash(13));
+            Assertions.assertEquals(0, methylnaphthalene.getCountForHash(14));
+            Assertions.assertEquals(0, methylnaphthalene.getCountForHash(15));
+        }
     }
 
     /**
      * Verifies that the canonical atom index mapping is generated correctly.
      *
-     * <p>The test uses the phenol molecule and the expected canonical atom
-     * index mapping derived from the CDK {@code Canon.label()} implementation.
-     * The expected mapping is the inverse of the canonical labels and therefore
-     * represents the canonical position of each atom in the original molecule.</p>
-     *
-     * <p>The array is indexed by the original atom index (the order of the atoms in the SMILES) and each
-     * value is the canonical index of that atom, starting at 0:</p>
-     * <pre>
-     * atom index (SMILES order):  0(O) 1(C1) 2(C) 3(C) 4(C) 5(C) 6(C)
-     * Canon.label():              1    7     5    3    2    4    6
-     * canonical index:            0    6     4    2    1    3    5
-     * </pre>
-     * <p>The canonical index is the canonical label minus one. Symmetry equivalent atoms (ortho carbons 2/6,
-     * meta carbons 3/5) receive neighbouring canonical indices.</p>
+     * <p>The test uses phenol in two different atom orders. The mapping returns the canonical
+     * position (0 to 6) of every atom, indexed by the original atom index. The positions follow a
+     * depth-first traversal along the bonds that starts at the oxygen atom (smallest canonical
+     * label): oxygen 0, ipso carbon 1, then around the ring ortho, meta, para, meta, ortho. So,
+     * independent of the atom order, the para carbon atom gets position 4, the two
+     * symmetry-equivalent ortho carbon atoms the positions 2 and 6, and the two symmetry-equivalent
+     * meta carbon atoms the positions 3 and 5. Which of two equivalent atoms gets which of the two
+     * positions is not checked, because both atoms are interchangeable.</p>
      */
     @Test
     void testCanonicalisation() throws InvalidSmilesException {
-        IAtomContainer mol1 = this.smilesParser.parseSmiles("OC1=CC=CC=C1");
-        BiosynfoniFingerprinter bfp2 = new BiosynfoniFingerprinter(true, false);
-        int[] bfpCanonicalIndex = bfp2.getCanonicalIndexMap(mol1);
-        int[] canonicalIndex = {0, 6, 4, 2, 1, 3, 5};
-        Assertions.assertNotNull(bfpCanonicalIndex);
-        Assertions.assertArrayEquals(bfpCanonicalIndex, canonicalIndex);
+        //the mapping only depends on the molecule, not on the overlap filter settings
+        BiosynfoniFingerprinter bfp = new BiosynfoniFingerprinter(true, false);
+        //atom indices: O 0, ipso 1, ortho 2 and 6, meta 3 and 5, para 4
+        int[] map1 = bfp.getCanonicalIndexMap(this.smilesParser.parseSmiles("OC1=CC=CC=C1"));
+        BiosynfoniFingerprinterTest.assertPhenolMapping(map1, 0, 1, new int[]{2, 6}, new int[]{3, 5}, 4);
+        //atom indices: para 0, meta 1 and 5, ortho 2 and 4, ipso 3, O 6
+        int[] map2 = bfp.getCanonicalIndexMap(this.smilesParser.parseSmiles("C1=CC=C(C=C1)O"));
+        BiosynfoniFingerprinterTest.assertPhenolMapping(map2, 6, 3, new int[]{2, 4}, new int[]{1, 5}, 0);
+    }
+
+    /**
+     * Checks the canonical atom index mapping of phenol, see {@link #testCanonicalisation()}.
+     *
+     * @param map    the canonical atom index mapping, indexed by the original atom index
+     * @param oxygen original index of the oxygen atom
+     * @param ipso   original index of the ipso carbon atom
+     * @param ortho  original indices of the ortho carbon atoms
+     * @param meta   original indices of the meta carbon atoms
+     * @param para   original index of the para carbon atom
+     */
+    private static void assertPhenolMapping(int[] map, int oxygen, int ipso, int[] ortho, int[] meta, int para) {
+        Assertions.assertNotNull(map);
+        Assertions.assertEquals(7, map.length);
+        Assertions.assertEquals(0, map[oxygen]);
+        Assertions.assertEquals(1, map[ipso]);
+        Assertions.assertEquals(4, map[para]);
+        int[] orthoPositions = {map[ortho[0]], map[ortho[1]]};
+        int[] metaPositions = {map[meta[0]], map[meta[1]]};
+        Arrays.sort(orthoPositions);
+        Arrays.sort(metaPositions);
+        Assertions.assertArrayEquals(new int[]{2, 6}, orthoPositions);
+        Assertions.assertArrayEquals(new int[]{3, 5}, metaPositions);
+    }
+
+    /**
+     * Verifies that the intra-substructure overlap filter selects the matches along chains and rings, so that they
+     * are packed as densely as in the original Python implementation. The expected counts were taken from the original
+     * implementation, where they do not depend on the input atom order for these molecules. Every molecule is given in
+     * two atom orders.
+     *
+     * <ul>
+     *   <li>p-benzoquinone: three disjoint ethyl units (key 19) in the six-membered ring and two acetyl units
+     *   (key 17)</li>
+     *   <li>thiophene 1,1-dioxide: two disjoint ethyl units in the chain of four carbon atoms; selecting the middle
+     *   carbon-carbon bond first, as with a numbering directly by the canonical labels, would block both other bonds
+     *   and result in only one ethyl unit</li>
+     * </ul>
+     */
+    @Test
+    void testIntraSubOverlapDensePacking() throws CDKException {
+        BiosynfoniFingerprinter bfp = new BiosynfoniFingerprinter(true, false);
+        for (String smiles : new String[]{"O=C1C=CC(=O)C=C1", "C1=CC(=O)C=CC1=O"}) {
+            ICountFingerprint cfp = bfp.getCountFingerprint(this.smilesParser.parseSmiles(smiles));
+            Assertions.assertEquals(3, cfp.getCountForHash(19), smiles);
+            Assertions.assertEquals(2, cfp.getCountForHash(17), smiles);
+        }
+        for (String smiles : new String[]{"O=S1(=O)C=CC=C1", "C1=CS(=O)(=O)C=C1"}) {
+            ICountFingerprint cfp = bfp.getCountFingerprint(this.smilesParser.parseSmiles(smiles));
+            Assertions.assertEquals(2, cfp.getCountForHash(19), smiles);
+        }
+    }
+
+    /**
+     * Verifies that the count fingerprint does not depend on the input atom order for all four combinations of the
+     * overlap filters, for the refined and the original fingerprint. Every molecule is given in two different atom orders: as written and as unique SMILES generated
+     * by the CDK. Without the canonical atom numbering, the intra-substructure overlap filter would select different
+     * matches depending on the atom order, e.g. for the chain of four carbon atoms in thiophene 1,1-dioxide.
+     *
+     * <p>Molecules: p-benzoquinone, thiophene 1,1-dioxide,
+     * <a href="https://coconut.naturalproducts.net/compounds/CNP0175721.3">Rapamycin</a>, and
+     * <a href="https://coconut.naturalproducts.net/compounds/CNP0151033">CNP0151033</a>.</p>
+     */
+    @Test
+    void testFilterAtomOrderIndependence() throws CDKException {
+        String[] smilesArray = {
+                "O=C1C=CC(=O)C=C1",
+                "O=S1(=O)C=CC=C1",
+                "CO[C@@H]1C[C@H]2CC[C@@H](C)[C@@](O)(O2)C(=O)C(=O)N2CCCCC2C(=O)O[C@@H]([C@@H](C)C[C@@H]2CC[C@@H](O)[C@H](OC)C2)CC(=O)[C@@H](C)/C=C(/C)[C@@H](O)[C@@H](OC)C(=O)[C@H](C)C[C@H](C)/C=C/C=C/C=C\\1C",
+                "O=C(OC1C(OCC2=COC(OC(=O)CC(C)C)C3C2CC(O)C3(O)COC(=O)C)OC(CO)C(O)C1O)C=CC4=CC=C(O)C=C4"};
+        SmilesGenerator smilesGenerator = new SmilesGenerator(SmiFlavor.Unique);
+        boolean[] toggles = {false, true};
+        for (boolean isOriginalFingerprint : toggles) {
+            for (boolean intraSubOverlapToggle : toggles) {
+                for (boolean interSubOverlapToggle : toggles) {
+                    BiosynfoniFingerprinter bfp = new BiosynfoniFingerprinter(intraSubOverlapToggle, interSubOverlapToggle,
+                            isOriginalFingerprint);
+                    for (String smiles : smilesArray) {
+                        IAtomContainer mol = this.smilesParser.parseSmiles(smiles);
+                        IAtomContainer reorderedMol = this.smilesParser.parseSmiles(smilesGenerator.create(mol));
+                        ICountFingerprint cfp = bfp.getCountFingerprint(mol);
+                        ICountFingerprint reorderedCfp = bfp.getCountFingerprint(reorderedMol);
+                        for (int i = 0; i < bfp.getSize(); i++) {
+                            Assertions.assertEquals(cfp.getCountForHash(i), reorderedCfp.getCountForHash(i),
+                                    "key " + i + ", intra " + intraSubOverlapToggle + ", inter " + interSubOverlapToggle
+                                            + ", original " + isOriginalFingerprint + ": " + smiles);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Verifies that the counts are identical to the ones of the
+     * <a href="https://github.com/lucinamay/biosynfoni">original Python implementation</a> without overlap filters
+     * and with the inter-substructure overlap filter.
+     *
+     * <p>The expected counts were generated with the original implementation (version "full_1103", commit 0ba4620,
+     * RDKit 2025.03.3, reproduced with RDKit 2025.03.6) via {@code Biosynfoni(mol, intersub_overlap=...).fingerprint},
+     * with {@code intersub_overlap=True} for the counts without filter and {@code intersub_overlap=False} for the
+     * counts with the inter-substructure overlap filter. In the original implementation, the parameters state whether
+     * overlap is allowed, i.e. {@code False} enables the filter; {@code intrasub_overlap} keeps its default
+     * {@code True}. The intra-substructure overlap filter is not compared because the counts of the original
+     * implementation depend on the input atom order with this filter. The original fingerprint is used (see
+     * {@link BiosynfoniFingerprinter#isOriginalFingerprint()}); the chosen molecules contain neither nitro groups,
+     * nitrate esters, or N-oxides nor explicit hydrogen atoms. The refined fingerprint of the same molecules is tested
+     * in {@link #testRefinedCounts()}.</p>
+     *
+     * <p>Molecules: <a href="https://pubchem.ncbi.nlm.nih.gov/compound/L-Tryptophan">L-Tryptophan</a>,
+     * <a href="https://coconut.naturalproducts.net/compounds/CNP0175721.3">Rapamycin</a>,
+     * <a href="https://coconut.naturalproducts.net/compounds/CNP0151033">CNP0151033</a>, and
+     * <a href="https://pubchem.ncbi.nlm.nih.gov/compound/Coenzyme-A">Coenzyme A</a>.</p>
+     */
+    @Test
+    void testReferenceCounts() throws CDKException {
+        String[] smilesArray = {
+                "C1=CC=C2C(=C1)C(=CN2)C[C@@H](C(=O)O)N",
+                "CO[C@@H]1C[C@H]2CC[C@@H](C)[C@@](O)(O2)C(=O)C(=O)N2CCCCC2C(=O)O[C@@H]([C@@H](C)C[C@@H]2CC[C@@H](O)[C@H](OC)C2)CC(=O)[C@@H](C)/C=C(/C)[C@@H](O)[C@@H](OC)C(=O)[C@H](C)C[C@H](C)/C=C/C=C/C=C\\1C",
+                "O=C(OC1C(OCC2=COC(OC(=O)CC(C)C)C3C2CC(O)C3(O)COC(=O)C)OC(CO)C(O)C1O)C=CC4=CC=C(O)C=C4",
+                "CC(C)(COP(=O)(O)OP(=O)(O)OCC1C(C(C(O1)N2C=NC3=C(N=CN=C32)N)O)OP(=O)(O)O)C(C(=O)NCCC(=O)NCCS)O"};
+        int[][] expectedUnfiltered = {
+                {0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 0, 1, 0, 0, 0, 7, 2, 0, 11, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0},
+                {0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 2, 1, 1, 17, 27, 14, 47, 10, 0, 0, 0, 0, 0, 0, 0, 0, 3, 2, 0, 0, 0, 1, 0, 0, 0, 0},
+                {0, 0, 0, 0, 0, 1, 2, 1, 0, 0, 0, 0, 0, 1, 1, 1, 18, 29, 3, 29, 3, 0, 0, 0, 0, 0, 0, 0, 0, 1, 6, 0, 0, 1, 1, 0, 0, 0, 0},
+                {1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 3, 13, 5, 14, 2, 12, 0, 0, 0, 0, 0, 1, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0}};
+        int[][] expectedInterFiltered = {
+                {0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+                {0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 12, 2, 0, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0, 3, 2, 0, 0, 0, 0, 0, 0, 0, 0},
+                {0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 15, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0},
+                {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
+        BiosynfoniFingerprinter unfilteredBfp = new BiosynfoniFingerprinter(false, false, true);
+        BiosynfoniFingerprinter interFilteredBfp = new BiosynfoniFingerprinter(false, true, true);
+        this.assertCounts(smilesArray, expectedUnfiltered, expectedInterFiltered, unfilteredBfp, interFilteredBfp);
+    }
+
+    /**
+     * Verifies the counts of the refined fingerprint (default) for the molecules of {@link #testReferenceCounts()},
+     * without overlap filters and with the inter-substructure overlap filter.
+     *
+     * <p>Without filters, the counts differ from the original ones (see {@link #testReferenceCounts()}) as follows:
+     * L-Tryptophan: no phenethylamine unit (key 10), since the pyrrole ring of the indole is not matched; Rapamycin:
+     * the pipecolic acid residue, whose ring is matched as lysine side chain by both amino acid patterns, counts as
+     * standard amino acid (key 3) instead of non-standard one (key 4), since its nitrogen atom is acylated and its
+     * carboxy group esterified, the cyclohexane ring is no phenyl unit (keys 13 to 15), and the hemiketal hydroxyl
+     * group is counted (key 30);
+     * CNP0151033: the glucopyranose ring is no open-chain hexose or pentose (keys 5 and 6); Coenzyme A: three
+     * phosphorus atoms instead of twelve phosphorus-oxygen bonds (key 21). The counts were cross-checked against the
+     * pattern variants of the Biosynfoni fragmenter of MORTAR, which give the same counts.</p>
+     */
+    @Test
+    void testRefinedCounts() throws CDKException {
+        String[] smilesArray = {
+                "C1=CC=C2C(=C1)C(=CN2)C[C@@H](C(=O)O)N",
+                "CO[C@@H]1C[C@H]2CC[C@@H](C)[C@@](O)(O2)C(=O)C(=O)N2CCCCC2C(=O)O[C@@H]([C@@H](C)C[C@@H]2CC[C@@H](O)[C@H](OC)C2)CC(=O)[C@@H](C)/C=C(/C)[C@@H](O)[C@@H](OC)C(=O)[C@H](C)C[C@H](C)/C=C/C=C/C=C\\1C",
+                "O=C(OC1C(OCC2=COC(OC(=O)CC(C)C)C3C2CC(O)C3(O)COC(=O)C)OC(CO)C(O)C1O)C=CC4=CC=C(O)C=C4",
+                "CC(C)(COP(=O)(O)OP(=O)(O)OCC1C(C(C(O1)N2C=NC3=C(N=CN=C32)N)O)OP(=O)(O)O)C(C(=O)NCCC(=O)NCCS)O"};
+        int[][] expectedUnfiltered = {
+                {0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 7, 2, 0, 11, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0},
+                {0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 17, 27, 14, 47, 10, 0, 0, 0, 0, 0, 0, 0, 0, 3, 3, 0, 0, 0, 1, 0, 0, 0, 0},
+                {0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 1, 18, 29, 3, 29, 3, 0, 0, 0, 0, 0, 0, 0, 0, 1, 6, 0, 0, 1, 1, 0, 0, 0, 0},
+                {1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 3, 13, 5, 14, 2, 3, 0, 0, 0, 0, 0, 1, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0}};
+        int[][] expectedInterFiltered = {
+                {0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 2, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+                {0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 17, 2, 0, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0},
+                {0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 15, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 4, 0, 0, 0, 0, 0, 0, 0, 0},
+                {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
+        this.assertCounts(smilesArray, expectedUnfiltered, expectedInterFiltered, new BiosynfoniFingerprinter(false, false),
+                new BiosynfoniFingerprinter(false, true));
+    }
+
+    /**
+     * Checks the count fingerprints of the given molecules generated with the given fingerprinters.
+     *
+     * @param smilesArray           SMILES codes of the molecules
+     * @param expectedUnfiltered    expected counts of the first fingerprinter, per molecule
+     * @param expectedInterFiltered expected counts of the second fingerprinter, per molecule
+     * @param unfilteredBfp         first fingerprinter, without overlap filters
+     * @param interFilteredBfp      second fingerprinter, with the inter-substructure overlap filter
+     */
+    private void assertCounts(String[] smilesArray, int[][] expectedUnfiltered, int[][] expectedInterFiltered,
+                              BiosynfoniFingerprinter unfilteredBfp, BiosynfoniFingerprinter interFilteredBfp)
+            throws CDKException {
+        for (int m = 0; m < smilesArray.length; m++) {
+            ICountFingerprint unfilteredCfp = unfilteredBfp.getCountFingerprint(this.smilesParser.parseSmiles(smilesArray[m]));
+            ICountFingerprint interFilteredCfp = interFilteredBfp.getCountFingerprint(this.smilesParser.parseSmiles(smilesArray[m]));
+            int[] unfilteredCounts = new int[unfilteredBfp.getSize()];
+            int[] interFilteredCounts = new int[interFilteredBfp.getSize()];
+            for (int i = 0; i < unfilteredBfp.getSize(); i++) {
+                unfilteredCounts[i] = unfilteredCfp.getCountForHash(i);
+                interFilteredCounts[i] = interFilteredCfp.getCountForHash(i);
+            }
+            Assertions.assertArrayEquals(expectedUnfiltered[m], unfilteredCounts, smilesArray[m]);
+            Assertions.assertArrayEquals(expectedInterFiltered[m], interFilteredCounts, smilesArray[m]);
+        }
+    }
+
+    /**
+     * Verifies that the fingerprint does not depend on whether the hydrogen atoms of a molecule are explicit or
+     * implicit, for all four combinations of the overlap filters and for the refined and the original fingerprint. Several patterns use the SMARTS primitives D and h,
+     * which count explicit hydrogen atoms as connections and only implicit ones as hydrogen atoms. Without suppressing
+     * the explicit hydrogen atoms, the methyl group of toluene (key 20) would not be matched and the oxygen atom of
+     * ethanol would be matched as ether (key 29) instead of hydroxyl (key 30).
+     */
+    @Test
+    void testExplicitHydrogens() throws CDKException {
+        String[][] pairs = {
+                {"CCO", "[H]OC([H])([H])C([H])([H])[H]"},
+                {"Cc1ccccc1", "[H]C([H])([H])c1ccccc1"},
+                {"NCC(=O)O", "[H]N([H])C([H])([H])C(=O)O[H]"}};
+        boolean[] toggles = {false, true};
+        for (boolean isOriginalFingerprint : toggles) {
+            for (boolean intraSubOverlapToggle : toggles) {
+                for (boolean interSubOverlapToggle : toggles) {
+                    BiosynfoniFingerprinter bfp = new BiosynfoniFingerprinter(intraSubOverlapToggle, interSubOverlapToggle,
+                            isOriginalFingerprint);
+                    for (String[] pair : pairs) {
+                        ICountFingerprint implicitCfp = bfp.getCountFingerprint(this.smilesParser.parseSmiles(pair[0]));
+                        ICountFingerprint explicitCfp = bfp.getCountFingerprint(this.smilesParser.parseSmiles(pair[1]));
+                        for (int i = 0; i < bfp.getSize(); i++) {
+                            Assertions.assertEquals(implicitCfp.getCountForHash(i), explicitCfp.getCountForHash(i),
+                                    "key " + i + ", intra " + intraSubOverlapToggle + ", inter " + interSubOverlapToggle
+                                            + ", original " + isOriginalFingerprint + ": " + pair[1]);
+                        }
+                    }
+                }
+            }
+        }
+        ICountFingerprint ethanolCfp = this.biosynfoniFingerprinter.getCountFingerprint(this.smilesParser.parseSmiles(pairs[0][1]));
+        Assertions.assertEquals(1, ethanolCfp.getCountForHash(30));
+        Assertions.assertEquals(0, ethanolCfp.getCountForHash(29));
+        ICountFingerprint tolueneCfp = this.biosynfoniFingerprinter.getCountFingerprint(this.smilesParser.parseSmiles(pairs[1][1]));
+        Assertions.assertEquals(1, tolueneCfp.getCountForHash(20));
+    }
+
+    /**
+     * Verifies that the given molecule is not modified, i.e. that neither its explicit hydrogen atoms are removed nor
+     * aromaticity flags are set by the SMARTS preparation.
+     */
+    @Test
+    void testInputNotModified() throws CDKException {
+        IAtomContainer mol = this.smilesParser.parseSmiles("[H]OC1=CC=CC=C1");
+        int atomCount = mol.getAtomCount();
+        this.biosynfoniFingerprinter.getCountFingerprint(mol);
+        new BiosynfoniFingerprinter(true, true).getBitFingerprint(mol);
+        this.biosynfoniFingerprinter.getRawFingerprint(mol);
+        Assertions.assertEquals(atomCount, mol.getAtomCount());
+        for (int i = 0; i < mol.getAtomCount(); i++) {
+            Assertions.assertFalse(mol.getAtom(i).isAromatic(), "atom " + i);
+        }
+    }
+
+    /**
+     * Verifies that nitro groups, nitrate esters, and N-oxides give the same fingerprint in their pentavalent
+     * ({@code N(=O)=O}, {@code N=O}) and charge-separated ({@code [N+](=O)[O-]}, {@code [N+][O-]}) form, for all four
+     * combinations of the overlap filters, and that their oxygen atoms are not matched as hydroxyl group (key 30),
+     * while hydroxylamines (also deprotonated), oximes, hydroxamic acids, and deprotonated hydroxyl groups still are.
+     */
+    @Test
+    void testNitroGroupAndNOxideRepresentations() throws CDKException {
+        String[][] pairs = {
+                {"CN(=O)=O", "C[N+](=O)[O-]"},
+                {"c1ccccc1N(=O)=O", "c1ccccc1[N+](=O)[O-]"},
+                {"CON(=O)=O", "CO[N+](=O)[O-]"},
+                {"OCc1ccc(cc1)N(=O)=O", "OCc1ccc(cc1)[N+](=O)[O-]"},
+                {"CN(C)(C)=O", "C[N+](C)(C)[O-]"},
+                {"O=n1ccccc1", "[O-][n+]1ccccc1"}};
+        int[] expectedHydroxylCounts = {0, 0, 0, 1, 0, 0};
+        boolean[] toggles = {false, true};
+        for (boolean intraSubOverlapToggle : toggles) {
+            for (boolean interSubOverlapToggle : toggles) {
+                BiosynfoniFingerprinter bfp = new BiosynfoniFingerprinter(intraSubOverlapToggle, interSubOverlapToggle);
+                for (String[] pair : pairs) {
+                    ICountFingerprint pentavalentCfp = bfp.getCountFingerprint(this.smilesParser.parseSmiles(pair[0]));
+                    ICountFingerprint chargeSeparatedCfp = bfp.getCountFingerprint(this.smilesParser.parseSmiles(pair[1]));
+                    for (int i = 0; i < bfp.getSize(); i++) {
+                        Assertions.assertEquals(pentavalentCfp.getCountForHash(i), chargeSeparatedCfp.getCountForHash(i),
+                                "key " + i + ", intra " + intraSubOverlapToggle + ", inter " + interSubOverlapToggle + ": " + pair[1]);
+                    }
+                }
+            }
+        }
+        for (int m = 0; m < pairs.length; m++) {
+            for (String smiles : pairs[m]) {
+                Assertions.assertEquals(expectedHydroxylCounts[m],
+                        this.biosynfoniFingerprinter.getCountFingerprint(this.smilesParser.parseSmiles(smiles)).getCountForHash(30), smiles);
+            }
+        }
+        //N-methylhydroxylamine, deprotonated N,N-dimethylhydroxylamine (uncharged nitrogen atom), acetaldoxime,
+        // acetohydroxamic acid, and phenolate keep their hydroxyl group
+        for (String smiles : new String[]{"CNO", "CN(C)[O-]", "CC=NO", "CC(=O)NO", "[O-]c1ccccc1"}) {
+            Assertions.assertEquals(1,
+                    this.biosynfoniFingerprinter.getCountFingerprint(this.smilesParser.parseSmiles(smiles)).getCountForHash(30), smiles);
+        }
+    }
+
+    /**
+     * Verifies that the side chain carbon atoms of the phenyl-C3 (key 13) and phenyl-C2 (key 14) units must not be part
+     * of any six-membered ring, regardless of the bond orders in this ring and of further fused rings like the lactone
+     * ring of aryltetralin lignans, while open side chains are still matched, for all four combinations of the overlap
+     * filters.
+     */
+    @Test
+    void testPhenylSideChainRing() throws CDKException {
+        //side chain in a six-membered ring: phenylcyclohexane, 4-phenylcyclohexene (non-aromatic double bond in the
+        // ring), aryltetralin lignan skeletons with and without lactone ring, and aryldihydronaphthalene lignan
+        // skeletons (double bond in the ring) with and without lactone ring
+        String[] ringSmilesArray = {"c1ccccc1C1CCCCC1", "c1ccccc1C1CC=CCC1",
+                "COc1cc(cc(OC)c1OC)C1C2C(COC2=O)Cc2cc3OCOc3cc12", "OCC1Cc2cc(OC)c(O)cc2C(c2ccc(O)c(OC)c2)C1CO",
+                "COc1cc(cc(OC)c1OC)C1=C2C(COC2=O)Cc2cc3OCOc3cc12", "OCC1=Cc2cc(OC)c(O)cc2C(c2ccc(O)c(OC)c2)C1CO"};
+        //open side chains: propylbenzene, cinnamyl alcohol, and cannabidiol, whose only phenyl-C3 unit is in the pentyl
+        // chain, while its aryl group is attached to a cyclohexene ring
+        String[] openSmilesArray = {"CCCc1ccccc1", "OC/C=C/c1ccccc1", "CCCCCc1cc(O)c(C2C=C(C)CCC2C(C)=C)c(O)c1"};
+        boolean[] toggles = {false, true};
+        for (boolean intraSubOverlapToggle : toggles) {
+            for (boolean interSubOverlapToggle : toggles) {
+                BiosynfoniFingerprinter bfp = new BiosynfoniFingerprinter(intraSubOverlapToggle, interSubOverlapToggle);
+                String filters = ", intra " + intraSubOverlapToggle + ", inter " + interSubOverlapToggle;
+                for (String smiles : ringSmilesArray) {
+                    ICountFingerprint cfp = bfp.getCountFingerprint(this.smilesParser.parseSmiles(smiles));
+                    Assertions.assertEquals(0, cfp.getCountForHash(13), smiles + filters);
+                    Assertions.assertEquals(0, cfp.getCountForHash(14), smiles + filters);
+                }
+                for (String smiles : openSmilesArray) {
+                    Assertions.assertEquals(1,
+                            bfp.getCountFingerprint(this.smilesParser.parseSmiles(smiles)).getCountForHash(13), smiles + filters);
+                }
+            }
+        }
+    }
+
+    /**
+     * Verifies that the refined fingerprint is the default and that the original fingerprint is only used if it is
+     * explicitly requested in the constructor.
+     */
+    @Test
+    void testOriginalFingerprintSetting() {
+        Assertions.assertFalse(BiosynfoniFingerprinter.IS_ORIGINAL_FINGERPRINT_DEFAULT);
+        Assertions.assertFalse(new BiosynfoniFingerprinter().isOriginalFingerprint());
+        Assertions.assertFalse(new BiosynfoniFingerprinter(true, true).isOriginalFingerprint());
+        Assertions.assertFalse(new BiosynfoniFingerprinter(false, false, false).isOriginalFingerprint());
+        Assertions.assertTrue(new BiosynfoniFingerprinter(false, false, true).isOriginalFingerprint());
+        Assertions.assertEquals(39, new BiosynfoniFingerprinter(false, false, true).getSize());
+        int refinedKeys = 0;
+        for (BiosynfoniFingerprinter.BiosynfoniKey key : BiosynfoniFingerprinter.BiosynfoniKey.values()) {
+            if (!key.getOriginalSmarts().equals(key.getRefinedSmarts())) {
+                refinedKeys++;
+            }
+        }
+        //15 refined SMARTS patterns, plus the 8 ring keys that are matched by ring perception
+        Assertions.assertEquals(15, refinedKeys);
+        Assertions.assertEquals(8, Arrays.stream(BiosynfoniFingerprinter.BiosynfoniKey.values())
+                .filter(key -> key.getRingSize() > 0).count());
+    }
+
+    /**
+     * Verifies every refinement by a molecule whose count of the respective key differs between the original and the
+     * refined fingerprint, without overlap filters, and by molecules that are matched by both, see the documentation of
+     * the keys in {@link BiosynfoniFingerprinter.BiosynfoniKey}. The counts were cross-checked against the original
+     * and the variant pattern set of the Biosynfoni fragmenter of MORTAR, which give the same counts.
+     */
+    @Test
+    void testOriginalVersusRefined() throws CDKException {
+        //SMILES, key position, original count, refined count
+        Object[][] cases = {
+                //NADPH is no NADH (key 1), its three phosphate groups are counted once each (key 21)
+                {"C1C=CN(C=C1C(=O)N)C2C(C(C(O2)COP(=O)(O)OP(=O)(O)OCC3C(C(C(O3)N4C=NC5=C(N=CN=C54)N)OP(=O)(O)O)O)O)O", 1, 1, 0},
+                {"C1C=CN(C=C1C(=O)N)C2C(C(C(O2)COP(=O)(O)OP(=O)(O)OCC3C(C(C(O3)N4C=NC5=C(N=CN=C54)N)OP(=O)(O)O)O)O)O", 2, 1, 1},
+                {"C1C=CN(C=C1C(=O)N)C2C(C(C(O2)COP(=O)(O)OP(=O)(O)OCC3C(C(C(O3)N4C=NC5=C(N=CN=C54)N)OP(=O)(O)O)O)O)O", 21, 12, 3},
+                //alanine methyl ester is a standard amino acid (key 3), not a non-standard one (key 4)
+                {"COC(=O)[C@@H](C)N", 3, 0, 1},
+                {"COC(=O)[C@@H](C)N", 4, 1, 0},
+                //ornithine and 2-aminoisobutyric acid are non-standard amino acids (key 4)
+                {"NCCC[C@H](N)C(=O)O", 4, 0, 1},
+                {"CC(C)(N)C(=O)O", 4, 0, 1},
+                //glucopyranose is no open-chain hexose (key 5) or pentose (key 6), its anomeric hydroxyl group is counted
+                // (key 30); open-chain glucose is matched by both
+                {"OC[C@H]1OC(O)[C@H](O)[C@@H](O)[C@@H]1O", 5, 1, 0},
+                {"OC[C@H]1OC(O)[C@H](O)[C@@H](O)[C@@H]1O", 6, 2, 0},
+                {"OC[C@H]1OC(O)[C@H](O)[C@@H](O)[C@@H]1O", 30, 4, 5},
+                {"OC[C@@H](O)[C@@H](O)[C@H](O)[C@H](O)C=O", 5, 1, 1},
+                //the pyrrole ring of tryptamine is no phenethylamine unit (key 10), tetrahydroisoquinoline and
+                // phenethylamine are
+                {"NCCc1c[nH]c2ccccc12", 10, 1, 0},
+                {"C1Cc2ccccc2CN1", 10, 1, 1},
+                {"NCCc1ccccc1", 10, 1, 1},
+                //phenyl units (keys 13 to 15) need an aromatic ring and a side chain outside of six-membered rings
+                {"CCCC1CCCCC1", 13, 1, 0},
+                {"CCCC1CCCCC1", 15, 1, 0},
+                {"CCCc1ccccc1", 13, 1, 1},
+                {"COc1cc(cc(OC)c1OC)C1C2C(COC2=O)Cc2cc3OCOc3cc12", 13, 2, 0},
+                {"COc1cc(cc(OC)c1OC)C1C2C(COC2=O)Cc2cc3OCOc3cc12", 14, 1, 0},
+                //the methyl group of a methylmalonyl unit (key 18) is attached to a branching point
+                {"CCCC", 18, 2, 0},
+                {"CCCc1ccccc1", 18, 1, 0},
+                //one count per phosphorus (key 21) and sulfur atom (key 22) bonded to oxygen
+                {"COP(=O)(O)O", 21, 4, 1},
+                {"COS(=O)(=O)O", 22, 4, 1},
+                //nitriles and imines have no terminal nitrogen atom (key 27), amines have
+                {"CC#N", 27, 1, 0},
+                {"CC=N", 27, 1, 0},
+                {"CCN", 27, 1, 1},
+                //peroxide oxygen atoms are no ethers (key 29)
+                {"COOC", 29, 2, 0},
+                //hemiacetal hydroxyl groups are hydroxyl groups (key 30), the oxygen atoms of nitro groups are not
+                {"CC(O)OC", 30, 0, 1},
+                {"C[N+](=O)[O-]", 30, 1, 0},
+                //ring keys (31 to 38) do not match the perimeter of fused and bridged ring systems, but every face of
+                // cubane
+                {"c1ccc2ccccc2c1", 38, 1, 0},
+                {"c1ccc2ccccc2c1", 34, 2, 2},
+                {"C1CC2CC2C1", 34, 1, 0},
+                {"C1CC2CC2C1", 31, 1, 1},
+                {"C12C3C4C1C5C2C3C45", 32, 6, 6},
+                {"C12C3C4C1C5C2C3C45", 34, 16, 0},
+                {"C12C3C4C1C5C2C3C45", 36, 1, 0},
+                {"CC12CCC3C(CCC4CC(O)CCC34C)C1CCC2O", 37, 1, 0},
+                {"CC12CCC3C(CCC4CC(O)CCC34C)C1CCC2O", 38, 2, 0}};
+        BiosynfoniFingerprinter originalBfp = new BiosynfoniFingerprinter(false, false, true);
+        for (Object[] testCase : cases) {
+            IAtomContainer mol = this.smilesParser.parseSmiles((String) testCase[0]);
+            int key = (int) testCase[1];
+            String message = "key " + key + ": " + testCase[0];
+            Assertions.assertEquals((int) testCase[2], originalBfp.getCountFingerprint(mol).getCountForHash(key),
+                    "original, " + message);
+            Assertions.assertEquals((int) testCase[3], this.biosynfoniFingerprinter.getCountFingerprint(mol).getCountForHash(key),
+                    "refined, " + message);
+        }
     }
 }
