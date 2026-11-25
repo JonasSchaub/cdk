@@ -638,8 +638,11 @@ public class PDBReader extends DefaultChemObjectReader {
         String  resName  = cLine.substring(17, 20).trim();
         String  symbol   = parseAtomSymbol(cLine);
 
-        if (symbol == null)
+        if (symbol == null) {
             handleError("Cannot parse symbol from " + atomName);
+            // handleError will warn and/or through an exception else we set it to R and carry on
+            symbol = "R";
+        }
 
         PDBAtom oAtom = new PDBAtom(symbol, new Point3d(Double.parseDouble(cLine.substring(30, 38)),
                 Double.parseDouble(cLine.substring(38, 46)), Double.parseDouble(cLine.substring(46, 54))));
@@ -778,11 +781,11 @@ public class PDBReader extends DefaultChemObjectReader {
 
     private void initIOSettings() {
         useRebondTool = addSetting(new BooleanIOSetting("UseRebondTool", IOSetting.Importance.LOW,
-                "Should the PDBReader deduce bonding patterns?", "false"));
+                "Should the PDBReader deduce bonding patterns?", false));
         readConnect = addSetting(new BooleanIOSetting("ReadConnectSection", IOSetting.Importance.LOW,
-                "Should the CONECT be read?", "true"));
+                "Should the CONECT be read?", true));
         useHetDictionary = addSetting(new BooleanIOSetting("UseHetDictionary", IOSetting.Importance.LOW,
-                "Should the PDBReader use the HETATM dictionary for atom types?", "false"));
+                "Should the PDBReader use the HETATM dictionary for atom types?", false));
     }
 
     public void customizeJob() {

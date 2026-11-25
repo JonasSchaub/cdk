@@ -41,13 +41,15 @@ import org.openscience.cdk.renderer.generators.standard.StandardGenerator.ForceD
 import javax.vecmath.Point2d;
 import java.awt.Color;
 import java.awt.Font;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import static org.openscience.cdk.interfaces.IBond.Order.UNSET;
 
 /**
- * Generates aromatic donuts (or life buoys) as ovals in small (<8) aromatic
+ * Generates aromatic donuts (or life buoys) as ovals in small (&le;8) aromatic
  * rings. If the ring is charged (and the charged is not shared with another
  * ring, e.g. rbonds > 2) it will be depicted in the middle of the ring.
  *
@@ -72,6 +74,10 @@ final class StandardDonutGenerator {
     private final Font       font;
     private final IAtomContainer mol;
 
+    private List<OvalElement> ovals = new ArrayList<>();
+    private List<IRenderingElement> text = new ArrayList<>();
+    private IRenderingElement element = null;
+
     /**
      * Create a new generator for a molecule.
      * @param mol molecule
@@ -92,7 +98,7 @@ final class StandardDonutGenerator {
     }
 
     private boolean canDelocalise(final IAtomContainer ring) {
-        boolean okay = ring.getBondCount() < 8;
+        boolean okay = ring.getBondCount() <= 8;
         if (!okay)
             return false;
         for (IBond bond : ring.bonds()) {
@@ -103,13 +109,33 @@ final class StandardDonutGenerator {
                 !forceDelocalised)
                 okay = false;
         }
+
+        // ring size 8 "might" not be circle
+        if (ring.getBondCount() == 8) {
+            int rsize = ring.getAtomCount();
+            int concensus = 0;
+            for (int i = 0; i < rsize; i++) {
+                IAtom a = ring.getAtom(i);
+                IAtom b = ring.getAtom((i + 1)%rsize);
+                IAtom c = ring.getAtom((i + 2)%rsize);
+                int sign = (int) Math.signum(GeometryUtil.det(a.getPoint2d(),
+                                                              b.getPoint2d(),
+                                                              c.getPoint2d()));
+                if (concensus != 0 && concensus != sign) {
+                    okay = false;
+                    break;
+                }
+
+                concensus = sign;
+            }
+        }
+
         return okay;
     }
 
-    IRenderingElement generate() {
+    void generate() {
         if (!delocalisedDonuts)
-            return null;
-        ElementGroup group = new ElementGroup();
+            return;
         smallest = Cycles.edgeShort(mol).toRingSet();
         for (IAtomContainer ring : smallest.atomContainers()) {
             if (!canDelocalise(ring))
@@ -146,15 +172,38 @@ final class StandardDonutGenerator {
                 qSym = qSym.resize(1 / scale, -1 / scale);
                 qSym = qSym.translate(p2.x - qSym.getCenter().getX(),
                                       p2.y - qSym.getCenter().getY());
-                group.add(GeneralPath.shapeOf(qSym.getOutline(), fgColor));
+                text.add(GeneralPath.shapeOf(qSym.getOutline(), fgColor));
             }
 
             double  s  = GeometryUtil.getBondLengthMedian(ring);
             double  n  = ring.getBondCount();
             double  r  = s / (2 * Math.tan(Math.PI / n));
-            group.add(new OvalElement(p2.x, p2.y, r - 1.5*dbSpacing,
-                                      stroke, false, fgColor));
+            OvalElement oval = new OvalElement(p2.x, p2.y, r - 1.5 * dbSpacing,
+                                               stroke, false, fgColor);
+            ovals.add(oval);
         }
+    }
+
+    List<OvalElement> getOvals() {
+        return ovals;
+    }
+
+    List<IRenderingElement> getChargeLabels() {
+        return text;
+    }
+
+    void setElement(IRenderingElement element) {
+        this.element = element;
+    }
+
+    IRenderingElement getElement() {
+        if (element != null)
+            return element;
+        ElementGroup group = new ElementGroup();
+        for (OvalElement oval : ovals)
+            group.add(oval);
+        for (IRenderingElement t : text)
+            group.add(t);
         return group;
     }
 

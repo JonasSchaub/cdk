@@ -23,6 +23,7 @@ import org.openscience.cdk.renderer.elements.ElementGroup;
 import org.openscience.cdk.renderer.elements.GeneralPath;
 import org.openscience.cdk.renderer.elements.IRenderingElement;
 import org.openscience.cdk.renderer.elements.LineElement;
+import org.openscience.cdk.renderer.elements.OvalElement;
 import org.openscience.cdk.renderer.elements.path.Type;
 import org.openscience.cdk.tools.LoggingToolFactory;
 
@@ -44,6 +45,8 @@ final class AwtArea {
             return ((LineElement)e).toArea();
         else if (e instanceof GeneralPath)
             return ((GeneralPath)e).toArea();
+        else if (e instanceof OvalElement)
+            return ((OvalElement)e).toArea();
         else if (e instanceof ElementGroup) {
             Area total = null;
             ElementGroup grp = (ElementGroup)e;

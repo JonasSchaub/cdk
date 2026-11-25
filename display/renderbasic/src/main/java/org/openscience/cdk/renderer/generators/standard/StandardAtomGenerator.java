@@ -576,12 +576,8 @@ final class StandardAtomGenerator {
      * @return the mass is the major mass for the atomic number
      */
     private boolean isMajorIsotope(int number, int mass) {
-        try {
-            IIsotope isotope = Isotopes.getInstance().getMajorIsotope(number);
-            return isotope != null && isotope.getMassNumber().equals(mass);
-        } catch (IOException e) {
-            return false;
-        }
+        IIsotope isotope = Isotopes.major(number);
+        return isotope != null && isotope.getMassNumber().equals(mass);
     }
 
     /**
@@ -600,7 +596,7 @@ final class StandardAtomGenerator {
      * Characters used in the charge label.
      */
     private static final char BULLET = '•', // '\u2022'
-            PLUS                     = '+', MINUS = '−'; // '\u2212' and not a hyphen
+            PLUS                     = '+', MINUS = '-';
 
     /**
      * Create the charge adjunct text for the specified charge and number of unpaired electrons.

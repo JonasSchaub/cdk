@@ -77,6 +77,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -164,7 +165,7 @@ public class MDLV2000Reader extends DefaultChemObjectReader {
      * @param in The Reader to read from
      */
     public MDLV2000Reader(Reader in) {
-        this(in, Mode.RELAXED);
+        this(in, Mode.DEFAULT);
     }
 
     public MDLV2000Reader(Reader in, Mode mode) {
@@ -538,7 +539,9 @@ public class MDLV2000Reader extends DefaultChemObjectReader {
         int numNbrs = 0;
         IAtom[] carriers = new IAtom[4];
         int idxOfHyd = -1;
-        for (IAtom nbr : mol.getConnectedAtomsList(focus)) {
+        List<IAtom> nbrs = mol.getConnectedAtomsList(focus);
+        nbrs.sort(Comparator.comparingInt(mol::indexOf));
+        for (IAtom nbr : nbrs) {
             if (numNbrs == 4)
                 return null; // too many neighbors
             if (nbr.getAtomicNumber() == IElement.H) {
@@ -581,7 +584,6 @@ public class MDLV2000Reader extends DefaultChemObjectReader {
      * @param explicitValence the explicit valence (bond order sum)
      */
     private void applyMDLValenceModel(IAtom atom, int explicitValence, int unpaired) {
-
         if (atom.getValency() != null) {
             if (atom.getValency() >= explicitValence)
                 atom.setImplicitHydrogenCount(atom.getValency() - (explicitValence - unpaired));
@@ -596,32 +598,9 @@ public class MDLV2000Reader extends DefaultChemObjectReader {
 
             int implicitValence = MDLValence.implicitValence(element, charge, explicitValence);
             if (implicitValence < explicitValence) {
-                atom.setValency(explicitValence);
                 atom.setImplicitHydrogenCount(0);
             } else {
-                atom.setValency(implicitValence);
                 atom.setImplicitHydrogenCount(implicitValence - explicitValence);
-            }
-        }
-    }
-
-    private void fixHydrogenIsotopes(IAtomContainer molecule, IsotopeFactory isotopeFactory) {
-        for (IAtom atom : AtomContainerManipulator.getAtomArray(molecule)) {
-            if (atom instanceof IPseudoAtom) {
-                IPseudoAtom pseudo = (IPseudoAtom) atom;
-                if ("D".equals(pseudo.getLabel())) {
-                    IAtom newAtom = molecule.getBuilder().newInstance(IAtom.class, atom);
-                    newAtom.setSymbol("H");
-                    newAtom.setAtomicNumber(1);
-                    isotopeFactory.configure(newAtom, isotopeFactory.getIsotope("H", 2));
-                    AtomContainerManipulator.replaceAtomByAtom(molecule, atom, newAtom);
-                } else if ("T".equals(pseudo.getLabel())) {
-                    IAtom newAtom = molecule.getBuilder().newInstance(IAtom.class, atom);
-                    newAtom.setSymbol("H");
-                    newAtom.setAtomicNumber(1);
-                    isotopeFactory.configure(newAtom, isotopeFactory.getIsotope("H", 3));
-                    AtomContainerManipulator.replaceAtomByAtom(molecule, atom, newAtom);
-                }
             }
         }
     }
@@ -633,13 +612,13 @@ public class MDLV2000Reader extends DefaultChemObjectReader {
 
     private void initIOSettings() {
         optForce3d = addSetting(new BooleanIOSetting("ForceReadAs3DCoordinates", IOSetting.Importance.LOW,
-                "Should coordinates always be read as 3D?", "false"));
+                "Should coordinates always be read as 3D?", false));
         optHydIso = addSetting(new BooleanIOSetting("InterpretHydrogenIsotopes",
-                IOSetting.Importance.LOW, "Should D and T be interpreted as hydrogen isotopes?", "true"));
+                IOSetting.Importance.LOW, "Should D and T be interpreted as hydrogen isotopes?", true));
         optStereoPerc = addSetting(new BooleanIOSetting("AddStereoElements", IOSetting.Importance.LOW,
-                "Detect and create IStereoElements for the input.", "true"));
+                "Detect and create IStereoElements for the input.", true));
         optStereo0d = addSetting(new BooleanIOSetting("AddStereo0d", IOSetting.Importance.LOW,
-                "Allow stereo created from parity value when no coordinates", "true"));
+                "Allow stereo created from parity value when no coordinates", true));
     }
 
     public void customizeJob() {
@@ -765,12 +744,11 @@ public class MDLV2000Reader extends DefaultChemObjectReader {
             parities.put(atom, parity);
 
         // if there was a mass difference, set the mass number
-        if (massDiff != 0 && atom.getAtomicNumber() > 0) {
-            IIsotope majorIsotope = Isotopes.getInstance().getMajorIsotope(atom.getAtomicNumber());
-            if (majorIsotope == null)
-                atom.setMassNumber(-1); // checked after M ISO is processed
-            else
-                atom.setMassNumber(majorIsotope.getMassNumber() + massDiff);
+        if (massDiff != 0) {
+            if (!MDLIsotope.setAbsoluteMass(atom, massDiff))
+                handleError("Ignored relative mass number for unknown element:" + atom.getSymbol(), lineNum, 34, 35);
+            if (atom.getMassNumber() != null && atom.getMassNumber() < 0)
+                handleError("Relative mass number is negative " + atom.getSymbol() + " " + massDiff, lineNum, 34, 35);
         }
 
         if (valence > 0 && valence < 16) atom.setValency(valence == 15 ? 0 : valence);
@@ -997,7 +975,7 @@ public class MDLV2000Reader extends DefaultChemObjectReader {
                 {
                     boolean negate = line.charAt(3) == 'T' ||
                             line.charAt(4) == 'T';
-                    Expr expr = new Expr(Expr.Type.TRUE);
+                    Expr expr = new Expr(Expr.Type.FALSE);
                     for (int i = 11; i < line.length(); i+=4) {
                         int atomicNumber = readUInt(line, i, 3);
                         expr.or(new Expr(Expr.Type.ELEMENT, atomicNumber));
@@ -1032,7 +1010,7 @@ public class MDLV2000Reader extends DefaultChemObjectReader {
                     {
                         boolean negate = line.charAt(13) == 'T' ||
                                          line.charAt(14) == 'T';
-                        Expr expr = new Expr(Expr.Type.TRUE);
+                        Expr expr = new Expr(Expr.Type.FALSE);
                         StringBuilder sb = new StringBuilder();
                         for (int i = 16; i < line.length(); i++) {
                             if (line.charAt(i) != ' ') {
@@ -1090,9 +1068,13 @@ public class MDLV2000Reader extends DefaultChemObjectReader {
                     count = readUInt(line, 6, 3);
                     for (int i = 0, st = 10; i < count && st + 7 <= length; i++, st += 8) {
                         index = readMolfileInt(line, st) - 1;
+                        if (index >= nAtoms) {
+                            handleError("M ISO ignored invalid atom index" + line);
+                            continue;
+                        }
                         int mass = readMolfileInt(line, st + 4);
                         if (mass < 0)
-                            handleError("Absolute mass number should be >= 0, " + line);
+                            handleError("M ISO ignored negative absolute mass number, " + line);
                         else
                             container.getAtom(offset + index).setMassNumber(mass);
                       }
@@ -1443,14 +1425,6 @@ public class MDLV2000Reader extends DefaultChemObjectReader {
                 // version stamp in the counts line.
                 case M_END:
                     break LINES;
-            }
-        }
-
-        // check of ill specified atomic mass
-        for (IAtom atom : container.atoms()) {
-            if (atom.getMassNumber() != null && atom.getMassNumber() < 0) {
-              handleError("Unstable use of mass delta on " + atom.getSymbol() + " please use M  ISO");
-              atom.setMassNumber(null);
             }
         }
 
@@ -1880,9 +1854,8 @@ public class MDLV2000Reader extends DefaultChemObjectReader {
         }
 
         logger.debug("Atom type: ", element);
-        IsotopeFactory isotopeFactory = Isotopes.getInstance();
-        if (isotopeFactory.isElement(element)) {
-            atom = isotopeFactory.configure(builder.newInstance(IAtom.class, element));
+        if (Elements.isValid(element)) {
+            atom = builder.newInstance(IAtom.class, element);
         } else if ("A".equals(element)) {
             atom = builder.newInstance(IPseudoAtom.class, element);
         } else if ("Q".equals(element)) {
@@ -1924,18 +1897,13 @@ public class MDLV2000Reader extends DefaultChemObjectReader {
         if (line.length() >= 36) {
             String massDiffString = line.substring(34, 36).trim();
             logger.debug("Mass difference: ", massDiffString);
-            if (!(atom instanceof IPseudoAtom)) {
-                try {
-                    int massDiff = Integer.parseInt(massDiffString);
-                    if (massDiff != 0) {
-                        IIsotope major = Isotopes.getInstance().getMajorIsotope(element);
-                        atom.setMassNumber(major.getMassNumber() + massDiff);
-                    }
-                } catch (NumberFormatException | IOException exception) {
-                    handleError("Could not parse mass difference field.", linecount, 35, 37, exception);
-                }
-            } else {
-                logger.error("Cannot set mass difference for a non-element!");
+            int massDiff = Integer.parseInt(massDiffString);
+            // if there was a mass difference, set the mass number
+            if (massDiff != 0) {
+                if (!MDLIsotope.setAbsoluteMass(atom, massDiff))
+                    handleError("Ignored relative mass number for unknown element:" + atom.getSymbol(), linecount, 34, 35);
+                if (atom.getMassNumber() != null && atom.getMassNumber() < 0)
+                    handleError("Relative mass number is negative " + atom.getSymbol() + " " + massDiff, linecount, 34, 35);
             }
         } else {
             handleError("Mass difference is missing", linecount, 34, 36);
