@@ -25,6 +25,7 @@ package org.openscience.cdk.io;
 import java.io.IOException;
 import java.io.StringReader;
 import java.io.StringWriter;
+import java.util.Arrays;
 
 import javax.vecmath.Point3d;
 import javax.vecmath.Vector3d;
@@ -83,8 +84,11 @@ class PDBWriterTest extends ChemObjectIOTest {
         writer.close();
 
         String output = sWriter.toString();
-        Assertions.assertNotNull(output);
-        Assertions.assertTrue(output.length() > 0);
+        String[] records = Arrays.stream(output.split("\n"))
+                                 .map(line -> line.substring(0, 6).trim())
+                                 .toArray(String[]::new);
+        Assertions.assertArrayEquals(new String[]{"HEADER", "CRYST1", "ATOM", "END"}, records,
+                                     Arrays.toString(records));
 
         PDBReader reader = new PDBReader();
         ChemFile chemFile = reader.read(new ChemFile());
@@ -99,6 +103,23 @@ class PDBWriterTest extends ChemObjectIOTest {
 
         // can't do further testing as the PDBReader does not read
         // Crystal structures :(
+    }
+
+    @Test
+    void writeCrystalCellParameters() throws Exception {
+        ICrystal crystal = builder.newInstance(ICrystal.class);
+        crystal.setA(new Vector3d(10, 0, 0));
+        crystal.setB(new Vector3d(-5, 5 * Math.sqrt(3), 0));
+        crystal.setC(new Vector3d(0, 0, 25.125));
+
+        StringWriter output = new StringWriter();
+        try (PDBWriter writer = new PDBWriter(output)) {
+            writer.write(crystal);
+        }
+
+        String cellRecord = output.toString().split("\n")[1];
+        Assertions.assertTrue(cellRecord.startsWith("CRYST1   10.000   10.000   25.125  90.00  90.00 120.00"),
+                              cellRecord);
     }
 
     @Test
@@ -197,6 +218,7 @@ class PDBWriterTest extends ChemObjectIOTest {
         writer.writeMolecule(mol);
         writer.close();
         String asString = stringWriter.toString();
+        Assertions.assertTrue(asString.startsWith("HEADER"));
         Assertions.assertTrue(asString.contains("ATOM"));
     }
 
